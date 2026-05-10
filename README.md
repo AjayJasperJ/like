@@ -1,5 +1,8 @@
 # 🚀 LIKE (Link Intelligent Kernel Engine)
 
+![LIKE Banner](assets/banner.png)
+
+
 [![GitHub](https://img.shields.io/badge/GitHub-AjayJasperJ-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AjayJasperJ)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Ajay_Jasper_J-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://in.linkedin.com/in/ajay-jasper-j-8563852b4)
 [![Instagram](https://img.shields.io/badge/Instagram-@ajayjasper.j-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/ajayjasper.j)
@@ -9,27 +12,6 @@ A **production-grade, 3-tier caching networking ecosystem** for Flutter. LIKE is
 
 ---
 
-## 🏗️ Architecture
-
-LIKE abstracts the complexity of raw HTTP requests into a reactive state machine. It handles caching, resilience, and synchronization automatically, ensuring your UI remains alive and your business logic remains pure.
-
-```mermaid
-graph TD
-    UI[UI Layer: LikeBuilder/LikeWhen] -->|Subscribes| PROV[Provider Layer: LikeStateResponse]
-    PROV -->|Calls| SERV[Service Layer: Domain Models]
-    SERV -->|Executes| CLIENT[Client Layer: LikeClient]
-    
-    subgraph Engine [LIKE Engine]
-        CLIENT --> L1[L1 RAM Cache]
-        CLIENT --> L2[L2 Disk Cache]
-        CLIENT --> SWR[L3 SWR Revalidation]
-        CLIENT --> NETWORK[Network Interceptors]
-    end
-    
-    NETWORK --> API[External API]
-```
-
----
 
 ## ✨ Key Features
 
