@@ -1,0 +1,168 @@
+import 'package:flutter/material.dart';
+import 'package:like/src/models/like_state_response.dart';
+import 'package:like/src/models/like_error.dart';
+
+/// A state management builder widget that handles [LikeStateResponse] with
+/// SWR (stale-while-revalidate) support.
+/// Matches the exact signature of the original StateBuilder for seamless integration.
+class LikeBuilder<T> extends StatefulWidget {
+  /// A function that returns the current [LikeStateResponse] to observe.
+  /// Usually returns a property from a provider or state manager.
+  final LikeStateResponse<dynamic> Function() observe;
+
+  /// Builder function called when data is successfully retrieved.
+  ///
+  /// This builder supports "Sticky Data":
+  /// * Also called during [LikeState.refreshing] and [LikeState.staleWhileRevalidate]
+  ///   to ensure the UI never flickers to a loading state while new data is
+  ///   being fetched in the background.
+  /// * [isRefreshing] is true if an explicit refresh (e.g. pull-to-refresh) is active.
+  /// * [isFromStaleWhileRevalidate] is true if cached data is being displayed
+  ///   while a background network update is in progress.
+  final Widget Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate) onSuccess;
+
+  /// Optional builder called when the initial data load is in progress.
+  /// If [onSuccess] was previously called, [LikeBuilder] will continue to show
+  /// the old data via [onSuccess] (sticky behavior) instead of switching to [onLoading].
+  final Widget Function()? onLoading;
+
+  /// Optional builder called when the state is [LikeState.idle].
+  final Widget Function()? onIdle;
+
+  /// Optional builder called when an explicit [LikeError] occurs.
+  final Widget Function(LikeError error)? onError;
+
+  /// Optional builder called when an unexpected exception or system error occurs.
+  final Widget Function(String message)? onException;
+
+  /// An optional side-effect listener that triggers every time the observed state changes.
+  /// Useful for showing Toasts, Snackerbars, or navigating based on state.
+  final void Function(LikeStateResponse<dynamic> response)? listener;
+
+  const LikeBuilder({
+    super.key,
+    required this.observe,
+    required this.onSuccess,
+    this.onLoading,
+    this.onIdle,
+    this.onError,
+    this.onException,
+    this.listener,
+  });
+
+  @override
+  State<LikeBuilder<T>> createState() => _LikeBuilderState<T>();
+}
+
+class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
+  LikeStateResponse<dynamic>? _lastNotifiedResponse;
+  T? _lastSuccessfulData;
+
+  T? _castData(dynamic data) {
+    if (data == null) return null;
+    if (data is T) return data;
+    try {
+      return data as T;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final response = widget.observe();
+
+    if (widget.listener != null && _lastNotifiedResponse != response) {
+      _lastNotifiedResponse = response;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.listener!(response);
+      });
+    }
+
+    // Update sticky data
+    final casted = _castData(response.data);
+    if (casted != null) {
+      _lastSuccessfulData = casted;
+    }
+
+    switch (response.state) {
+      case LikeState.idle:
+        return widget.onIdle?.call() ?? const SizedBox.shrink();
+
+      case LikeState.loading:
+        if (_lastSuccessfulData != null) {
+          return widget.onSuccess(_lastSuccessfulData as T, true, false);
+        }
+
+        return widget.onLoading?.call() ??
+            const Center(child: CircularProgressIndicator());
+
+      case LikeState.success:
+      case LikeState.refreshing:
+      case LikeState.staleWhileRevalidate:
+        if (casted == null) {
+          throw StateError(
+            'Success/Refreshing/SWR state requires non-null data. '
+            'Expected type: $T, Received: ${response.data?.runtimeType ?? "null"}',
+          );
+        }
+        return widget.onSuccess(
+          casted,
+          response.state == LikeState.refreshing,
+          response.state == LikeState.staleWhileRevalidate ||
+              response.isFromStaleWhileRevalidate,
+        );
+
+      case LikeState.error:
+        return widget.onError?.call(response.error!) ?? const SizedBox.shrink();
+
+      case LikeState.exception:
+        return widget.onException?.call(response.message) ??
+            const SizedBox.shrink();
+    }
+  }
+}
+
+/// A specialized version of [LikeBuilder] that takes a [LikeStateResponse] directly.
+/// Useful when you already have the response object (e.g. from a Stream or local variable).
+class LikeStateResponseBuilder<T> extends StatelessWidget {
+  /// The [LikeStateResponse] to build the UI from.
+  final LikeStateResponse<T> response;
+
+  /// Builder function called when data is successfully retrieved.
+  final Widget Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate) onSuccess;
+
+  /// Optional builder called when the initial data load is in progress.
+  final Widget Function()? onLoading;
+
+  /// Optional builder called when the state is [LikeState.idle].
+  final Widget Function()? onIdle;
+
+  /// Optional builder called when an explicit [LikeError] occurs.
+  final Widget Function(LikeError error)? onError;
+
+  /// Optional builder called when an unexpected exception or system error occurs.
+  final Widget Function(String message)? onException;
+
+  const LikeStateResponseBuilder({
+    super.key,
+    required this.response,
+    required this.onSuccess,
+    this.onLoading,
+    this.onIdle,
+    this.onError,
+    this.onException,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LikeBuilder<T>(
+      observe: () => response,
+      onSuccess: onSuccess,
+      onLoading: onLoading,
+      onIdle: onIdle,
+      onError: onError,
+      onException: onException,
+    );
+  }
+}

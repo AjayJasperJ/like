@@ -1,0 +1,199 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:like/src/core/like_constants.dart';
+import 'package:toastification/toastification.dart';
+import 'package:like/src/interceptors/like_auth_interceptor.dart';
+import 'package:like/src/services/like_service.dart';
+import 'package:like/src/services/like_connectivity_manager.dart';
+import 'package:like/src/services/like_toast_manager.dart';
+import 'package:like/src/services/like_toast_delegate.dart';
+
+/// The top-level wrapper for applications using the LIKE networking package.
+/// Handles initialization of connectivity monitoring, persistent storage,
+/// background synchronization, and authentication interceptors.
+class Like extends StatefulWidget {
+  /// The main application widget tree.
+  final Widget child;
+
+  /// A [ValueNotifier] used to show/hide the global synchronization overlay.
+  /// If not provided, the widget will automatically use [LikeService.isSyncing].
+  final ValueNotifier<bool>? isSyncing;
+
+  /// Custom builder for the synchronization progress toast.
+  final Widget Function(String title, String message, double progress)?
+      syncProgressBuilder;
+
+  /// Custom widget to display when [isSyncing] is true.
+  final Widget? syncOverlay;
+
+  /// Custom widget to display while the LIKE engine is performing its initial setup.
+  final Widget? loadingWidget;
+
+  /// Whether to automatically display [Toastification] alerts when internet connectivity changes.
+  final bool showConnectivityToasts;
+
+  /// The base URL for all network requests. This is the root-level configuration.
+  final String? baseUrl;
+
+  /// A function used by [LikeAuthInterceptor] to retrieve the current user's session token.
+  final Future<String?> Function()? getToken;
+
+  /// Custom widget to display when the device comes back online.
+  final Widget? onlineWidget;
+
+  /// Custom widget to display when the device goes offline.
+  final Widget? offlineWidget;
+
+  /// A custom delegate to control how network-related toasts are displayed and styled.
+  /// If provided, this takes precedence over individual widget overrides.
+  final LikeToastDelegate? toastDelegate;
+
+  const Like({
+    super.key,
+    required this.child,
+    this.isSyncing,
+    this.syncOverlay,
+    this.loadingWidget,
+    this.showConnectivityToasts = true,
+    this.baseUrl,
+    this.getToken,
+    this.onlineWidget,
+    this.offlineWidget,
+    this.syncProgressBuilder,
+    this.toastDelegate,
+  });
+
+  @override
+  State<Like> createState() => _LikeState();
+}
+
+class _LikeState extends State<Like> {
+  StreamSubscription<bool>? _subscription;
+  Future<void>? _initFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initFuture = _initialize();
+  }
+
+  Future<void> _initialize() async {
+    // 1. Centralized Initialization (Hive, Connectivity, Client, Sync)
+    // Merge root-level baseUrl into the current app-level config
+    final engineConfig = LikeConstants.current.copyWith(
+      baseUrl: widget.baseUrl,
+    );
+
+    await LikeService.init(config: engineConfig);
+
+    // 2. Toasts & Security (Context-dependent)
+    if (widget.toastDelegate != null) {
+      LikeToastManager.setDelegate(widget.toastDelegate!);
+    } else if (widget.onlineWidget != null ||
+        widget.offlineWidget != null ||
+        widget.syncProgressBuilder != null) {
+      LikeToastManager.setDelegate(
+        DefaultLikeToastDelegate(
+          onlineWidget: widget.onlineWidget,
+          offlineWidget: widget.offlineWidget,
+          syncProgressBuilder: widget.syncProgressBuilder,
+        ),
+      );
+    }
+
+    if (widget.getToken != null) {
+      LikeAuthInterceptor.getToken = widget.getToken!;
+    }
+
+    // 3. Connectivity Toasts Listener
+    if (widget.showConnectivityToasts) {
+      _subscription = LikeConnectivityManager().connectionChange.listen((
+        isConnected,
+      ) {
+        if (!mounted) return;
+        LikeToastManager.showConnectivityToast(isConnected);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _initFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return widget.loadingWidget ?? const _DefaultLoadingScreen();
+        }
+
+        return ToastificationWrapper(
+          child: Builder(
+            builder: (context) {
+              // Register the context for contextless toast calls
+              LikeToastManager.registerContext(context);
+
+              return Stack(
+                children: [
+                  widget.child,
+                  ValueListenableBuilder<bool>(
+                    valueListenable: widget.isSyncing ?? LikeService.isSyncing,
+                    builder: (context, syncing, _) {
+                      if (!syncing) return const SizedBox.shrink();
+
+                      return widget.syncOverlay ?? _DefaultSyncOverlay();
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DefaultSyncOverlay extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black45,
+      child: const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text(
+                  'Synchronizing Data...',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Please do not close the app.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DefaultLoadingScreen extends StatelessWidget {
+  const _DefaultLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+}
