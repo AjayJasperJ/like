@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-05-10
+
+### Fixed
+- **Pub.dev Asset Loading**: Switched to raw GitHub URLs for the banner to ensure correct rendering on pub.dev.
+- **Package Size Optimization**: Added `.pubignore` to exclude the `build/` folder and other artifacts, significantly reducing the package size (from 16MB down to <1MB).
+
 ## [1.0.1] - 2026-05-10
+
 
 ### Added
 - **Visual Identity**: Added a high-fidelity package banner to the README for a more professional presentation on pub.dev.
