@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.7] - 2026-05-11
+
+### Added
+- **Documentation**: Major update to README with corrected initialization via the `Like` root wrapper widget.
+- **4-Tier Roadmap**: Explicitly documented Tiers 1-4 (Service, Repository, Provider, UI) with production-grade examples.
+- **Manual Initialization**: Added `addPostFrameCallback` pattern for deferred engine setup.
+- **Contribution**: Integrated social links (GitHub, LinkedIn, Instagram) and email for community engagement.
+- **Visuals**: Standardized package banners across all documentation using raw GitHub URLs.
+
 ## [1.0.6] - 2026-05-11
+
 
 ### Added
 - **Background Parsing**: Added isolate-based JSON transformation for background processing.

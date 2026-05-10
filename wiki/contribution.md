@@ -1,5 +1,3 @@
-![LIKE Banner](https://raw.githubusercontent.com/AjayJasperJ/like/refs/heads/main/assets/banner.png)
-
 # Contributing to LIKE 🚀
 
 Thank you for contributing to the Link Intelligent Kernel Engine (LIKE). To maintain the high architectural standards of this package, please follow these guidelines.
@@ -53,14 +51,3 @@ New providers must implement the following lifecycle hooks to ensure system-wide
 5.  **Review**: Submit a Pull Request with a clear description of the "What" and "Why".
 
 ---
-
-## 🤝 Connect & Contribute
-
-Support the project or reach out for collaboration:
-
-- **GitHub**: [@AjayJasperJ](https://github.com/AjayJasperJ)
-- **LinkedIn**: [Ajay Jasper J](https://in.linkedin.com/in/ajay-jasper-j-8563852b4)
-- **Instagram**: [@ajayjasper.j](https://www.instagram.com/ajayjasper.j)
-- **Email**: [ajayjasperj@outlook.com](mailto:ajayjasperj@outlook.com)
-
-*Created with ❤️ by Ajay Jasper J.*
