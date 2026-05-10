@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:like/src/models/like_error.dart';
+import 'package:like/src/models/like_api_result.dart';
 
 /// Function signature for creating models from JSON.
 typedef LikeModelFactory<T> = T Function(Map<String, dynamic> json);
@@ -183,6 +184,25 @@ class LikeStateResponse<T> {
       LikeStateResponse<T>.error(
         LikeError(message: message, type: LikeApiErrorType.unknown),
       );
+
+  /// Creates a [LikeStateResponse] from a [LikeApiResult].
+  factory LikeStateResponse.fromResult(LikeApiResult<dynamic> result) {
+    if (result.isSuccess) {
+      return LikeStateResponse.success(
+        result.data as T,
+        isFromCache: result.isFromCache,
+        isFromStaleWhileRevalidate: result.isFromStaleWhileRevalidate,
+        isResiliencyFallback: result.isResiliencyFallback,
+      );
+    } else {
+      return LikeStateResponse.error(
+        result.error!,
+        isFromCache: result.isFromCache,
+        isFromStaleWhileRevalidate: result.isFromStaleWhileRevalidate,
+        isResiliencyFallback: result.isResiliencyFallback,
+      );
+    }
+  }
 
   // Helper getters
   bool get isSuccess => state == LikeState.success;

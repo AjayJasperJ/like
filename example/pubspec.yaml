@@ -1,0 +1,22 @@
+name: like_example
+description: "Demonstrates how to use the LIKE networking package."
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.11.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  like:
+    path: ../
+  provider: ^6.1.5+1
+  toastification: ^3.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

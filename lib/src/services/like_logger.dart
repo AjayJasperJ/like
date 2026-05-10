@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:universal_io/io.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -100,15 +100,15 @@ class LikeLogger {
       message: message,
       details: {
         'success': success,
-        if (requestId != null) 'requestId': requestId,
-        if (statusCode != null) 'statusCode': statusCode,
-        if (method != null) 'method': method,
-        if (requestHeaders != null) 'requestHeaders': requestHeaders,
-        if (responseHeaders != null) 'responseHeaders': responseHeaders,
-        if (requestBody != null) 'requestBody': requestBody,
+        'requestId': ?requestId,
+        'statusCode': ?statusCode,
+        'method': ?method,
+        'requestHeaders': ?requestHeaders,
+        'responseHeaders': ?responseHeaders,
+        'requestBody': ?requestBody,
         if (response != null) 'response': response.toString(),
         if (shouldShrink) 'shrink': true,
-        if (statusText != null) 'status': statusText,
+        'status': ?statusText,
       },
     );
   }
@@ -129,9 +129,9 @@ class LikeLogger {
       message: '$endpoint | STARTED',
       details: {
         'requestId': requestId,
-        if (method != null) 'method': method,
-        if (headers != null) 'headers': headers,
-        if (body != null) 'body': body,
+        'method': ?method,
+        'headers': ?headers,
+        'body': ?body,
       },
     );
   }

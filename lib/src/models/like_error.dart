@@ -1,27 +1,47 @@
 /// High-level error types for the LIKE networking layer.
 /// Matches enterprise's ApiErrorType 1:1.
 enum LikeApiErrorType {
+  /// General network/connectivity failure.
   network,
+  /// Request timed out (connection or receive).
   timeout,
+  /// 401 Unauthorized - Authentication required or expired.
   unauthorized,
+  /// 500 Internal Server Error - Server-side failure.
   server,
+  /// Request was manually cancelled.
   cancelled,
+  /// Data parsing failure (JSON/Model mapping).
   parsing,
+  /// Unknown or unexpected error.
   unknown,
+  /// 400 Bad Request.
   badRequest,
+  /// 403 Forbidden - Access denied.
   forbidden,
+  /// 404 Not Found.
   notFound,
+  /// 429 Too Many Requests.
   rateLimit,
+  /// 503 Service Unavailable.
   serverUnavailable,
+  /// Request was queued for offline synchronization.
   offlineQueued,
 }
 
 /// A unified error model for all network operations.
 /// Matches the exact logic and contract of enterprise's ApiError.
 class LikeError {
+  /// Human-readable error message.
   final String message;
+
+  /// HTTP status code or internal status code.
   final int? code;
+
+  /// The high-level category of the error.
   final LikeApiErrorType type;
+
+  /// The raw response data from the server (if any).
   final dynamic rawResponse;
 
   LikeError({

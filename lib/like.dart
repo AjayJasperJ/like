@@ -1,3 +1,4 @@
+/// Link Intelligent Kernel Engine (LIKE) - A high-performance, 4-tier caching networking package for Flutter.
 library;
 
 // Core

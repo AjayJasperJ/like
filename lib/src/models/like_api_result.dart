@@ -6,14 +6,28 @@ import 'package:like/src/models/like_state_response.dart';
 /// Generic result wrapper for API responses.
 /// Note: Both 200 OK and 304 Not Modified are considered success states.
 class LikeApiResult<T> {
+  /// The data payload returned from the network or cache.
   final T? data;
+
+  /// Error details if the request failed.
   final LikeError? error;
+
+  /// Whether the request was successful.
   final bool isSuccess;
+
+  /// Whether the data was retrieved from the local cache.
   final bool isFromCache;
+
+  /// Whether the data was served from the stale-while-revalidate cache.
   final bool isFromStaleWhileRevalidate;
+
+  /// Whether the data was served as a resiliency fallback when the network was down.
   final bool isResiliencyFallback;
+
+  /// Whether the response was an HTTP 304 Not Modified.
   final bool isFrom304;
 
+  /// Convenience getter for checking error state.
   bool get isError => !isSuccess;
 
   LikeApiResult.success(

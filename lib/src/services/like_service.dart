@@ -138,7 +138,7 @@ class LikeService {
     await cacheBox.put(key, {
       'data': data,
       'timestamp': timestamp,
-      if (storageDurationMs != null) 'storageDurationMs': storageDurationMs,
+      'storageDurationMs': ?storageDurationMs,
     });
   }
 

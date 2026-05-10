@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:universal_io/io.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/core/like_data_unpacker.dart';

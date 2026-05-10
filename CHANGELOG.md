@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4] - 2026-05-10
+
+### Added
+- **Multi-platform Support**: Integrated `universal_io` to enable Web support while maintaining mobile/desktop parity.
+- **Dependency Hardening**: Synchronized all core packages to their latest resolvable versions for optimal security and performance.
+
+### Fixed
+- **Static Analysis**: Resolved all linter hints (info) across the codebase.
+- **Documentation**: Finalized banner rendering paths.
+
 ## [1.0.3] - 2026-05-10
+
 
 ### Fixed
 - **Documentation**: Finalized correct banner URL path for pub.dev.

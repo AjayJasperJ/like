@@ -65,11 +65,17 @@ abstract class LikeToastDelegate {
 
 /// The default implementation of [LikeToastDelegate] using standard Material widgets.
 class DefaultLikeToastDelegate implements LikeToastDelegate {
+  /// The widget to show when the device comes back online.
   final Widget? onlineWidget;
+
+  /// The widget to show when the device goes offline.
   final Widget? offlineWidget;
+
+  /// A builder for custom synchronization progress toasts.
   final Widget Function(String title, String message, double progress)?
   syncProgressBuilder;
 
+  /// Creates a [DefaultLikeToastDelegate] with optional custom widgets.
   DefaultLikeToastDelegate({
     this.onlineWidget,
     this.offlineWidget,
@@ -167,7 +173,6 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
     _current = toastification.showCustom(
       context: context,
       alignment: alignment,
-      dismissDirection: dismissDirection,
       autoCloseDuration: autoCloseDuration,
       animationDuration: maxDuration,
       callbacks: ToastificationCallbacks(onTap: (item) => onTap?.call()),
