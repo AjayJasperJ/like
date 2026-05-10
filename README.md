@@ -1,6 +1,6 @@
 # 🚀 LIKE (Link Intelligent Kernel Engine)
 
-![LIKE Banner](https://raw.githubusercontent.com/ja5p3r/like/main/assets/banner.png)
+![LIKE Banner](https://raw.githubusercontent.com/AjayJasperJ/like/refs/heads/main/assets/banner.png)
 
 
 [![GitHub](https://img.shields.io/badge/GitHub-AjayJasperJ-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AjayJasperJ)

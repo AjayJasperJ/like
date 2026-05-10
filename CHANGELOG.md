@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2026-05-10
+
+### Fixed
+- **Documentation**: Finalized correct banner URL path for pub.dev.
+
 ## [1.0.2] - 2026-05-10
+
 
 ### Fixed
 - **Pub.dev Asset Loading**: Switched to raw GitHub URLs for the banner to ensure correct rendering on pub.dev.
