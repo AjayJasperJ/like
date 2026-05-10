@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-05-10
+
+### Added
+- **Visual Identity**: Added a high-fidelity package banner to the README for a more professional presentation on pub.dev.
+
+### Fixed
+- **Code Hardening**: Fixed multiple `use_build_context_synchronously` lint issues in `LikeWhen` to ensure UI stability during async gaps.
+- **Style Consistency**: Corrected string quoting and applied `dart format` across the entire package (63 files) for 100% lint compliance.
+
 ## [1.0.0] - 2026-05-10
+
 
 ### Initial Release
 
