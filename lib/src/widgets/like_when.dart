@@ -16,9 +16,9 @@ Future<void> updateNotifier<T extends Object>({
   Future<void> Function(T data)? onSuccess,
   Future<void> Function(LikeError error)? onError,
   Future<void> Function(String message)? onException,
-  
+
   // Toast Control Flags
-  bool disableLoadingToast = true, 
+  bool disableLoadingToast = true,
   bool disableSuccessToast = false,
   bool disableErrorToast = false,
   bool disableExceptionToast = false,
@@ -51,9 +51,10 @@ Future<void> updateNotifier<T extends Object>({
 
     case LikeState.loading:
       if (!disableLoadingToast) {
+        if (context != null && !context.mounted) return;
         LikeToastManager.showLoadingToast(
-          context: context, 
-          title: "Loading", 
+          context: context,
+          title: 'Loading',
           message: resolveMessage(response.message, LikeState.loading),
         );
       }
@@ -69,26 +70,31 @@ Future<void> updateNotifier<T extends Object>({
 
       if (response.state == LikeState.success && !disableSuccessToast) {
         if (enableHaptics) HapticFeedback.lightImpact();
+        if (context != null && !context.mounted) return;
         LikeToastManager.showToast(
-          context: context, 
-          message: resolveMessage(response.resolvedMessage, LikeState.success), 
+          context: context,
+          message: resolveMessage(response.resolvedMessage, LikeState.success),
           type: ToastificationType.success,
         );
       }
       break;
 
     case LikeState.error:
-      final error = response.error ?? LikeError(
-        message: response.message,
-        type: response.errorType ?? LikeApiErrorType.unknown,
-        code: response.code,
-      );
-      
+      final error =
+          response.error ??
+          LikeError(
+            message: response.message,
+            type: response.errorType ?? LikeApiErrorType.unknown,
+            code: response.code,
+          );
+
       await onError?.call(error);
-      
+
       if (!disableErrorToast) {
         if (enableHaptics) HapticFeedback.mediumImpact();
-        if (error.type != LikeApiErrorType.cancelled || !disableCancelledToast) {
+        if (error.type != LikeApiErrorType.cancelled ||
+            !disableCancelledToast) {
+          if (context != null && !context.mounted) return;
           LikeToastManager.showToast(
             context: context,
             message: resolveMessage(response.message, LikeState.error),
@@ -100,9 +106,10 @@ Future<void> updateNotifier<T extends Object>({
 
     case LikeState.exception:
       await onException?.call(response.message);
-      
+
       if (!disableExceptionToast) {
         if (enableHaptics) HapticFeedback.heavyImpact();
+        if (context != null && !context.mounted) return;
         LikeToastManager.showToast(
           context: context,
           message: resolveMessage(response.message, LikeState.exception),

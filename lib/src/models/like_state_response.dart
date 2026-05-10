@@ -237,7 +237,8 @@ class LikeStateResponse<T> {
       errorType: errorType ?? this.errorType,
       code: code ?? this.code,
       isFromCache: isFromCache ?? this.isFromCache,
-      isFromStaleWhileRevalidate: isFromStaleWhileRevalidate ?? this.isFromStaleWhileRevalidate,
+      isFromStaleWhileRevalidate:
+          isFromStaleWhileRevalidate ?? this.isFromStaleWhileRevalidate,
       isResiliencyFallback: isResiliencyFallback ?? this.isResiliencyFallback,
       isFrom304: isFrom304 ?? this.isFrom304,
     );
@@ -247,7 +248,13 @@ class LikeStateResponse<T> {
 extension LikeStateResponseExtension<T> on LikeStateResponse<T> {
   /// Simple helper to build UI based on the current state.
   R when<R>({
-    required R Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate, bool isResiliencyFallback) onSuccess,
+    required R Function(
+      T data,
+      bool isRefreshing,
+      bool isFromStaleWhileRevalidate,
+      bool isResiliencyFallback,
+    )
+    onSuccess,
     R Function()? onLoading,
     R Function()? onIdle,
     R Function(LikeError error)? onError,
@@ -278,7 +285,12 @@ extension LikeStateResponseExtension<T> on LikeStateResponse<T> {
 
   /// Specialized helper for building slivers.
   List<Widget> whenSliver({
-    required List<Widget> Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate, bool isResiliencyFallback)
+    required List<Widget> Function(
+      T data,
+      bool isRefreshing,
+      bool isFromStaleWhileRevalidate,
+      bool isResiliencyFallback,
+    )
     onSuccess,
     List<Widget> Function()? onLoading,
     List<Widget> Function()? onIdle,
@@ -295,4 +307,3 @@ extension LikeStateResponseExtension<T> on LikeStateResponse<T> {
     );
   }
 }
-

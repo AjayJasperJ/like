@@ -21,7 +21,7 @@ class Like extends StatefulWidget {
 
   /// Custom builder for the synchronization progress toast.
   final Widget Function(String title, String message, double progress)?
-      syncProgressBuilder;
+  syncProgressBuilder;
 
   /// Custom widget to display when [isSyncing] is true.
   final Widget? syncOverlay;

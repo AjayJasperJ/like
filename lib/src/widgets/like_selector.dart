@@ -26,7 +26,12 @@ class LikeSelector<N, T> extends StatelessWidget {
   builder;
 
   /// Builder function called when the selected state contains successful data.
-  final Widget Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate)? onSuccess;
+  final Widget Function(
+    T data,
+    bool isRefreshing,
+    bool isFromStaleWhileRevalidate,
+  )?
+  onSuccess;
 
   /// Optional builder called when the state is [LikeState.loading].
   final Widget Function()? onLoading;

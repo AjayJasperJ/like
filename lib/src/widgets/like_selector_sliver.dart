@@ -12,7 +12,11 @@ class LikeSelectorSliver<N, T extends Object> extends StatelessWidget {
 
   /// Builder function called when the selected state contains successful data.
   /// Returns a list of slivers.
-  final List<Widget> Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate)
+  final List<Widget> Function(
+    T data,
+    bool isRefreshing,
+    bool isFromStaleWhileRevalidate,
+  )
   onSuccess;
 
   /// Optional builder called when the state is [LikeState.loading].

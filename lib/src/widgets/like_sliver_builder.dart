@@ -11,7 +11,11 @@ class LikeSliverBuilder<T extends Object> extends StatefulWidget {
 
   /// Builder function called when data is successfully retrieved.
   /// Returns a list of sliver widgets.
-  final List<Widget> Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate)
+  final List<Widget> Function(
+    T data,
+    bool isRefreshing,
+    bool isFromStaleWhileRevalidate,
+  )
   onSuccess;
 
   /// Optional builder called when the initial load is in progress.
@@ -123,7 +127,11 @@ class LikeStateResponseBuilderSliver<T extends Object> extends StatelessWidget {
 
   /// Builder function called when data is successfully retrieved.
   /// Returns a list of slivers.
-  final List<Widget> Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate)
+  final List<Widget> Function(
+    T data,
+    bool isRefreshing,
+    bool isFromStaleWhileRevalidate,
+  )
   onSuccess;
 
   /// Optional builder called when the initial load is in progress.

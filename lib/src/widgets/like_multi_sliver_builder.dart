@@ -106,11 +106,16 @@ class _LikeMultiSliverBuilderState extends State<LikeMultiSliverBuilder> {
           case LikeState.staleWhileRevalidate:
             final results = responses.map((r) => r.data).toList();
             final isRefreshing = responses.any((r) => r.isRefreshing);
-            final isStaleWhileRevalidate = responses.any((r) => r.isStaleWhileRevalidate || r.isFromStaleWhileRevalidate);
-            return widget.onSuccess(results, isRefreshing, isStaleWhileRevalidate);
+            final isStaleWhileRevalidate = responses.any(
+              (r) => r.isStaleWhileRevalidate || r.isFromStaleWhileRevalidate,
+            );
+            return widget.onSuccess(
+              results,
+              isRefreshing,
+              isStaleWhileRevalidate,
+            );
         }
       }(),
     );
   }
 }
-

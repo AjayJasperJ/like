@@ -228,7 +228,9 @@ void main() {
         );
 
         LikeConnectivityManager().debugSetStatus(internet: false);
-        LikeConstants.apply(LikeConstants.current.copyWith(cacheOnOffline: true));
+        LikeConstants.apply(
+          LikeConstants.current.copyWith(cacheOnOffline: true),
+        );
 
         final result = await client.get(path);
 

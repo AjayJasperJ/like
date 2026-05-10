@@ -100,7 +100,11 @@ class LikeToastManager {
   }) {
     final effectiveContext = context ?? _context;
     if (effectiveContext == null) return;
-    _delegate.showLoadingToast(effectiveContext, title: title, message: message);
+    _delegate.showLoadingToast(
+      effectiveContext,
+      title: title,
+      message: message,
+    );
   }
 
   /// Shows a toast for synchronization progress.
@@ -121,10 +125,16 @@ class LikeToastManager {
   }
 
   /// Dismisses all active toasts managed by the delegate.
-  static void dismiss({BuildContext? context, bool showRemoveAnimation = false}) {
+  static void dismiss({
+    BuildContext? context,
+    bool showRemoveAnimation = false,
+  }) {
     final effectiveContext = context ?? _context;
     if (effectiveContext == null) return;
-    _delegate.dismiss(effectiveContext, showRemoveAnimation: showRemoveAnimation);
+    _delegate.dismiss(
+      effectiveContext,
+      showRemoveAnimation: showRemoveAnimation,
+    );
   }
 }
 

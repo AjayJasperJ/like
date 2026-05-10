@@ -19,7 +19,12 @@ class LikeBuilder<T> extends StatefulWidget {
   /// * [isRefreshing] is true if an explicit refresh (e.g. pull-to-refresh) is active.
   /// * [isFromStaleWhileRevalidate] is true if cached data is being displayed
   ///   while a background network update is in progress.
-  final Widget Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate) onSuccess;
+  final Widget Function(
+    T data,
+    bool isRefreshing,
+    bool isFromStaleWhileRevalidate,
+  )
+  onSuccess;
 
   /// Optional builder called when the initial data load is in progress.
   /// If [onSuccess] was previously called, [LikeBuilder] will continue to show
@@ -130,7 +135,12 @@ class LikeStateResponseBuilder<T> extends StatelessWidget {
   final LikeStateResponse<T> response;
 
   /// Builder function called when data is successfully retrieved.
-  final Widget Function(T data, bool isRefreshing, bool isFromStaleWhileRevalidate) onSuccess;
+  final Widget Function(
+    T data,
+    bool isRefreshing,
+    bool isFromStaleWhileRevalidate,
+  )
+  onSuccess;
 
   /// Optional builder called when the initial data load is in progress.
   final Widget Function()? onLoading;

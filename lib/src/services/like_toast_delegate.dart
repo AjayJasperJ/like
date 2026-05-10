@@ -68,7 +68,7 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
   final Widget? onlineWidget;
   final Widget? offlineWidget;
   final Widget Function(String title, String message, double progress)?
-      syncProgressBuilder;
+  syncProgressBuilder;
 
   DefaultLikeToastDelegate({
     this.onlineWidget,

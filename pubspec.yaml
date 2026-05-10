@@ -2,6 +2,13 @@ name: like
 description: "Link Intelligent Kernel Engine (LIKE) - A high-performance, 4-tier caching networking package for Flutter."
 version: 1.0.0
 repository: https://github.com/ja5p3r/like
+topics:
+  - networking
+  - cache
+  - swr
+  - offline-first
+  - flutter
+
 
 environment:
   sdk: ^3.8.0

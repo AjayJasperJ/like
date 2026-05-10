@@ -37,7 +37,8 @@ class LikeLoggerInterceptor extends Interceptor {
     }
     final requestId = response.requestOptions.extra['requestId'] as String?;
 
-    final bool isStaleWhileRevalidate = response.extra['isFromStaleWhileRevalidate'] ?? false;
+    final bool isStaleWhileRevalidate =
+        response.extra['isFromStaleWhileRevalidate'] ?? false;
     final bool isCache = response.extra['isFromCache'] ?? false;
     final bool isResiliency = response.extra['isResiliencyFallback'] ?? false;
 
@@ -60,8 +61,7 @@ class LikeLoggerInterceptor extends Interceptor {
       requestId: requestId,
       method: response.requestOptions.method,
       statusText: statusText,
-      requestHeaders:
-          (LikeConstants.debugMode || LikeConstants.logApiResponses)
+      requestHeaders: (LikeConstants.debugMode || LikeConstants.logApiResponses)
           ? response.requestOptions.headers
           : null,
       responseHeaders:
@@ -97,8 +97,7 @@ class LikeLoggerInterceptor extends Interceptor {
           : errorMessage,
       requestId: requestId,
       method: err.requestOptions.method,
-      requestHeaders:
-          (LikeConstants.debugMode || LikeConstants.logApiResponses)
+      requestHeaders: (LikeConstants.debugMode || LikeConstants.logApiResponses)
           ? err.requestOptions.headers
           : null,
       responseHeaders:

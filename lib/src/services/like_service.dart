@@ -22,9 +22,7 @@ class LikeService {
   /// [baseUrl] (optional) can be set here or via [LikeClient].
   /// Numerous optional parameters allow fine-tuning the engine's behavior
   /// (timeouts, cache TTLs, logging levels, etc.).
-  static Future<void> init({
-    required LikeConfig config,
-  }) async {
+  static Future<void> init({required LikeConfig config}) async {
     final baseUrl = config.baseUrl;
     // 0. Apply config settings to LikeConstants
     LikeConstants.apply(config);

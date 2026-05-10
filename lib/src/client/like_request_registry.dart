@@ -67,7 +67,8 @@ class LikeRequestRegistry {
   bool isFresh(String key, {Duration? ttl}) {
     final last = _lastFetchedTimestamps[key];
     if (last == null) return false;
-    final effectiveTtl = ttl ?? Duration(seconds: LikeConstants.sessionStaleTTL);
+    final effectiveTtl =
+        ttl ?? Duration(seconds: LikeConstants.sessionStaleTTL);
     return DateTime.now().difference(last) < effectiveTtl;
   }
 
