@@ -38,11 +38,17 @@ class Like extends StatefulWidget {
   /// A function used by [LikeAuthInterceptor] to retrieve the current user's session token.
   final Future<String?> Function()? getToken;
 
-  /// Custom widget to display when the device comes back online.
-  final Widget? onlineWidget;
+  /// A function used by [LikeAuthInterceptor] to perform token refresh.
+  final Future<String?> Function()? refreshToken;
 
-  /// Custom widget to display when the device goes offline.
-  final Widget? offlineWidget;
+  /// A function used by [LikeAuthInterceptor] to handle logout on authentication error.
+  final Future<void> Function({int? statusCode, bool force})? onLogout;
+
+  /// A function used by [LikeAuthInterceptor] to retrieve the API Key.
+  final Future<String?> Function()? getApiKey;
+
+  /// Configuration for network-related toasts.
+  final LikeToastConfig? toastConfig;
 
   /// A custom delegate to control how network-related toasts are displayed and styled.
   /// If provided, this takes precedence over individual widget overrides.
@@ -57,9 +63,11 @@ class Like extends StatefulWidget {
     this.showConnectivityToasts = true,
     this.baseUrl,
     this.getToken,
-    this.onlineWidget,
-    this.offlineWidget,
+    this.refreshToken,
+    this.onLogout,
+    this.getApiKey,
     this.syncProgressBuilder,
+    this.toastConfig,
     this.toastDelegate,
   });
 
@@ -87,22 +95,36 @@ class _LikeState extends State<Like> {
     await LikeService.init(config: engineConfig);
 
     // 2. Toasts & Security (Context-dependent)
+    if (widget.toastConfig != null) {
+      if (widget.toastConfig!.online != null) {
+        LikeToastManager.onlineWidget = widget.toastConfig!.online;
+      }
+      if (widget.toastConfig!.offline != null) {
+        LikeToastManager.offlineWidget = widget.toastConfig!.offline;
+      }
+    }
+
     if (widget.toastDelegate != null) {
       LikeToastManager.setDelegate(widget.toastDelegate!);
-    } else if (widget.onlineWidget != null ||
-        widget.offlineWidget != null ||
-        widget.syncProgressBuilder != null) {
+    } else if (widget.syncProgressBuilder != null || widget.toastConfig?.syncProgressBuilder != null) {
       LikeToastManager.setDelegate(
         DefaultLikeToastDelegate(
-          onlineWidget: widget.onlineWidget,
-          offlineWidget: widget.offlineWidget,
-          syncProgressBuilder: widget.syncProgressBuilder,
+          syncProgressBuilder: widget.syncProgressBuilder ?? widget.toastConfig?.syncProgressBuilder,
         ),
       );
     }
 
     if (widget.getToken != null) {
       LikeAuthInterceptor.getToken = widget.getToken!;
+    }
+    if (widget.refreshToken != null) {
+      LikeAuthInterceptor.refreshToken = widget.refreshToken!;
+    }
+    if (widget.onLogout != null) {
+      LikeAuthInterceptor.onLogout = widget.onLogout!;
+    }
+    if (widget.getApiKey != null) {
+      LikeAuthInterceptor.getApiKey = widget.getApiKey!;
     }
 
     // 3. Connectivity Toasts Listener
@@ -196,4 +218,23 @@ class _DefaultLoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
+}
+
+/// Configuration for the LIKE toast system.
+class LikeToastConfig {
+  /// Custom widget for the online state.
+  final Widget? online;
+
+  /// Custom widget for the offline state.
+  final Widget? offline;
+
+  /// Custom builder for synchronization progress.
+  final Widget Function(String title, String message, double progress)?
+  syncProgressBuilder;
+
+  const LikeToastConfig({
+    this.online,
+    this.offline,
+    this.syncProgressBuilder,
+  });
 }

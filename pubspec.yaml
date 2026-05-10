@@ -1,12 +1,31 @@
 name: like
-description: "Link Intelligent Kernel Engine (LIKE) - A high-performance, 4-tier caching networking package for Flutter."
-version: 1.0.4
+description: "Link Intelligent Kernel Engine (LIKE) - A high-performance, 3-tier caching networking package for Flutter."
+version: 1.0.5
 repository: https://github.com/AjayJasperJ/like
+
 topics:
   - networking
   - cache
-  - swr
+  - dio
+  - http
+  - provider
+  - riverpod
   - offline-first
+  - connectivity
+  - api-error-handling
+  - api-state-handling
+  - interceptors
+  - toast
+  - advance-caching
+  - auto-reconnect
+  - performance
+  - security
+  - cache fallback
+  - request cancellation
+  - request deduplication
+  - background sync
+  - isolate
+  - dio-smart-retry
   - flutter
 
 
@@ -21,7 +40,6 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   connectivity_plus: ^7.1.1
-  flutter_secure_storage: ^10.1.0
   toastification: ^3.2.0
   universal_io: ^2.2.2
   crypto: ^3.0.7

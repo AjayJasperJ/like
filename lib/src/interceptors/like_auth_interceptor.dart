@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
@@ -10,6 +12,12 @@ class LikeAuthInterceptor extends Interceptor {
   static DateTime? _rateLimitedUntil;
   static int get _maxRetries => LikeConstants.maxAutoRetries;
   static const String _retryCountKey = 'x-retry-count';
+
+  /// Synchronization lock for concurrent token refreshes.
+  static Completer<String?>? _refreshCompleter;
+
+  /// Global notifier indicating if a token refresh is currently in progress.
+  static final ValueNotifier<bool> isRefreshing = ValueNotifier<bool>(false);
 
   /// Hook for the host app to provide the current access token.
   static Future<String?> Function()? getToken;
@@ -75,8 +83,23 @@ class LikeAuthInterceptor extends Interceptor {
       }
 
       if (refreshToken != null) {
+        // Handle concurrent refreshes using a Completer
+        if (_refreshCompleter != null) {
+          final newToken = await _refreshCompleter!.future;
+          if (newToken != null) {
+            return _retryRequest(err.requestOptions, newToken, handler);
+          } else {
+            return handler.next(err);
+          }
+        }
+
+        _refreshCompleter = Completer<String?>();
+        isRefreshing.value = true;
+
         try {
           final newToken = await refreshToken!();
+          _refreshCompleter?.complete(newToken);
+          
           if (newToken != null) {
             return _retryRequest(err.requestOptions, newToken, handler);
           } else {
@@ -84,8 +107,12 @@ class LikeAuthInterceptor extends Interceptor {
             return handler.next(err);
           }
         } catch (e) {
+          _refreshCompleter?.complete(null);
           if (onLogout != null) await onLogout!(statusCode: 401, force: true);
           return handler.next(err);
+        } finally {
+          _refreshCompleter = null;
+          isRefreshing.value = false;
         }
       }
     }

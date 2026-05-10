@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "like",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "dependencies": [
         "collection",
         "connectivity_plus",
@@ -14,7 +14,6 @@
         "dio_smart_retry",
         "encrypt",
         "flutter",
-        "flutter_secure_storage",
         "hive",
         "hive_flutter",
         "http_parser",
@@ -244,19 +243,6 @@
         "flutter",
         "pausable_timer",
         "uuid"
-      ]
-    },
-    {
-      "name": "flutter_secure_storage",
-      "version": "10.1.0",
-      "dependencies": [
-        "flutter",
-        "flutter_secure_storage_darwin",
-        "flutter_secure_storage_linux",
-        "flutter_secure_storage_platform_interface",
-        "flutter_secure_storage_web",
-        "flutter_secure_storage_windows",
-        "meta"
       ]
     },
     {
@@ -908,52 +894,6 @@
       ]
     },
     {
-      "name": "flutter_secure_storage_windows",
-      "version": "4.1.0",
-      "dependencies": [
-        "ffi",
-        "flutter",
-        "flutter_secure_storage_platform_interface",
-        "path",
-        "path_provider",
-        "win32"
-      ]
-    },
-    {
-      "name": "flutter_secure_storage_web",
-      "version": "2.1.1",
-      "dependencies": [
-        "flutter",
-        "flutter_secure_storage_platform_interface",
-        "flutter_web_plugins",
-        "web"
-      ]
-    },
-    {
-      "name": "flutter_secure_storage_platform_interface",
-      "version": "2.0.1",
-      "dependencies": [
-        "flutter",
-        "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "flutter_secure_storage_linux",
-      "version": "3.0.0",
-      "dependencies": [
-        "flutter",
-        "flutter_secure_storage_platform_interface"
-      ]
-    },
-    {
-      "name": "flutter_secure_storage_darwin",
-      "version": "0.3.0",
-      "dependencies": [
-        "flutter",
-        "plugin_platform_interface"
-      ]
-    },
-    {
       "name": "nm",
       "version": "0.5.0",
       "dependencies": [
@@ -1158,13 +1098,6 @@
         "package_config",
         "path",
         "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "win32",
-      "version": "5.15.0",
-      "dependencies": [
-        "ffi"
       ]
     },
     {

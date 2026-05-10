@@ -9,6 +9,14 @@ class LikeToastManager {
   static LikeToastDelegate _delegate = DefaultLikeToastDelegate();
   static BuildContext? _context;
 
+  /// Global registry for connectivity widgets.
+  static Widget? onlineWidget;
+  static Widget? offlineWidget;
+
+  /// Global overrides for toast actions.
+  static void Function()? onOnline;
+  static void Function()? onOffline;
+
   /// Updates the delegate to use a custom UI implementation.
   static void setDelegate(LikeToastDelegate delegate) {
     _delegate = delegate;
@@ -152,3 +160,27 @@ class LikeToastManager {
 class LikeToastType {
   const LikeToastType._();
 }
+
+/// Default connectivity actions for LIKE toasts.
+extension LikeConnectivityActions on LikeToastType {
+  /// Shows the online toast.
+  void online() {
+    if (LikeToastManager.onOnline != null) {
+      LikeToastManager.onOnline!();
+    } else {
+      LikeToastManager.showConnectivityToast(true);
+    }
+  }
+
+  /// Shows the offline toast.
+  void offline() {
+    if (LikeToastManager.onOffline != null) {
+      LikeToastManager.onOffline!();
+    } else {
+      LikeToastManager.showConnectivityToast(false);
+    }
+  }
+}
+
+/// Global accessor for LIKE toast types and actions.
+const LikeToast = LikeToastType._();

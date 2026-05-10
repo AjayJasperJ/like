@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:like/src/services/like_toast_manager.dart';
 import 'package:toastification/toastification.dart';
 import 'package:like/src/models/like_state_response.dart';
 
@@ -65,28 +66,20 @@ abstract class LikeToastDelegate {
 
 /// The default implementation of [LikeToastDelegate] using standard Material widgets.
 class DefaultLikeToastDelegate implements LikeToastDelegate {
-  /// The widget to show when the device comes back online.
-  final Widget? onlineWidget;
-
-  /// The widget to show when the device goes offline.
-  final Widget? offlineWidget;
-
   /// A builder for custom synchronization progress toasts.
   final Widget Function(String title, String message, double progress)?
   syncProgressBuilder;
 
-  /// Creates a [DefaultLikeToastDelegate] with optional custom widgets.
-  DefaultLikeToastDelegate({
-    this.onlineWidget,
-    this.offlineWidget,
-    this.syncProgressBuilder,
-  });
+  /// Creates a [DefaultLikeToastDelegate] with optional custom builders.
+  DefaultLikeToastDelegate({this.syncProgressBuilder});
 
   ToastificationItem? _current;
 
   @override
   void showConnectivityToast(BuildContext context, bool isOnline) {
-    final customWidget = isOnline ? onlineWidget : offlineWidget;
+    final customWidget = isOnline
+        ? LikeToastManager.onlineWidget
+        : LikeToastManager.offlineWidget;
 
     if (customWidget != null) {
       showCustomToast(context, child: customWidget);
