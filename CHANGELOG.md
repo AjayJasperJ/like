@@ -2,7 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.6] - 2026-05-11
+
+### Added
+- **Background Parsing**: Added isolate-based JSON transformation for background processing.
+- **LikeBuilder Updates**: 
+  - Added support for onLoading, onError, and onSuccess callbacks.
+  - Added support for pagination loading states.
+  - Created `LikeWhen` widget for pattern matching UI.
+- **Reactive UI Components**: Added `LikeToast` for contextless notifications and `LikeNetworkImage` for caching.
+- **Connectivity**: Integrated `ConnectivityPlus` for network status monitoring.
+- **Haptics**: Added haptic feedback support.
+- **Async Utilities**: Added `mapAsync` and `mapSuccessAsync` extensions.
+
+### Fixed
+- **Memory Safety**: Added critical documentation on `dispose` patterns to prevent background sync leaks in multi-screen applications.
+- **Metadata**: Resolved `pubspec.yaml` topic limit issues for better discoverability.
+
+## [1.0.5] - 2026-05-10
+
+### Added
+- **Architecture Roadmap**: Added comprehensive documentation for Clean Architecture integration covering Service, Repository, Provider, and UI layers.
+- **Background Parsing**: Standardized `mapAsync` and `mapSuccessAsync` extensions for isolate-based JSON transformation to maintain 120 FPS.
+- **Provider Hardening**: Enhanced `LikeAutoReconnectMixin` documentation with "Gold Standard" implementation patterns.
+- **Resync Engine**: Formally documented cross-notifier synchronization (`syncWith`) and automated reconnection recovery (`onReconnect`).
+
+### Fixed
+- **Memory Safety**: Added critical documentation on `dispose` patterns to prevent background sync leaks in multi-screen applications.
+- **Metadata**: Resolved `pubspec.yaml` topic limit issues for better discoverability.
+
 ## [1.0.4] - 2026-05-10
+
 
 ### Added
 - **Multi-platform Support**: Integrated `universal_io` to enable Web support while maintaining mobile/desktop parity.
