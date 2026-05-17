@@ -19,12 +19,23 @@ class LikeLoggerInterceptor extends Interceptor {
       final requestId = _uuid.v4();
       options.extra['requestId'] = requestId;
 
+      Map<String, String>? fields;
+      if (options.data is FormData) {
+        final formData = options.data as FormData;
+        fields = {};
+        for (var field in formData.fields) {
+          fields[field.key] = field.value;
+        }
+      }
+
       await LikeLogger.logApiRequest(
         options.path,
         requestId: requestId,
         method: options.method,
         headers: options.headers,
         body: options.data,
+        fields: fields,
+        query: options.queryParameters,
       );
     }
     handler.next(options);
@@ -51,6 +62,15 @@ class LikeLoggerInterceptor extends Interceptor {
       statusText = 'RESILIENCY FALLBACK';
     }
 
+    Map<String, String>? fields;
+    if (response.requestOptions.data is FormData) {
+      final formData = response.requestOptions.data as FormData;
+      fields = {};
+      for (var field in formData.fields) {
+        fields[field.key] = field.value;
+      }
+    }
+
     await LikeLogger.logApi(
       response.requestOptions.path,
       success: true,
@@ -71,6 +91,8 @@ class LikeLoggerInterceptor extends Interceptor {
       requestBody: (LikeConstants.debugMode || LikeConstants.logApiResponses)
           ? response.requestOptions.data
           : null,
+      requestFields: fields,
+      requestQuery: response.requestOptions.queryParameters,
       shrinkEndpointOnly: LikeConstants.compactApiLogs,
     );
     handler.next(response);
@@ -87,6 +109,15 @@ class LikeLoggerInterceptor extends Interceptor {
         (err.type == DioExceptionType.cancel && err.error != null)
         ? err.error.toString()
         : err.message;
+
+    Map<String, String>? fields;
+    if (err.requestOptions.data is FormData) {
+      final formData = err.requestOptions.data as FormData;
+      fields = {};
+      for (var field in formData.fields) {
+        fields[field.key] = field.value;
+      }
+    }
 
     await LikeLogger.logApi(
       err.requestOptions.path,
@@ -107,6 +138,8 @@ class LikeLoggerInterceptor extends Interceptor {
       requestBody: (LikeConstants.debugMode || LikeConstants.logApiResponses)
           ? err.requestOptions.data
           : null,
+      requestFields: fields,
+      requestQuery: err.requestOptions.queryParameters,
     );
     handler.next(err);
   }

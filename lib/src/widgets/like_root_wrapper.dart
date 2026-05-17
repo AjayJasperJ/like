@@ -54,6 +54,21 @@ class Like extends StatefulWidget {
   /// If provided, this takes precedence over individual widget overrides.
   final LikeToastDelegate? toastDelegate;
 
+  /// Optional debug-only wrapper injected by an external devtool package.
+  ///
+  /// Receives the fully assembled [child] tree and wraps it with overlay
+  /// widgets (e.g., a developer panel FAB). Should be `null` in production.
+  ///
+  /// Example with `like_devtool`:
+  /// ```dart
+  /// Like(
+  ///   baseUrl: 'https://api.example.com',
+  ///   devTool: (child) => LikeDevTool(child: child),
+  ///   child: MyApp(),
+  /// )
+  /// ```
+  final Widget Function(Widget child)? devTool;
+
   const Like({
     super.key,
     required this.child,
@@ -69,6 +84,7 @@ class Like extends StatefulWidget {
     this.syncProgressBuilder,
     this.toastConfig,
     this.toastDelegate,
+    this.devTool,
   });
 
   @override
@@ -153,28 +169,32 @@ class _LikeState extends State<Like> {
           return widget.loadingWidget ?? const _DefaultLoadingScreen();
         }
 
-        return ToastificationWrapper(
-          child: Builder(
-            builder: (context) {
-              // Register the context for contextless toast calls
-              LikeToastManager.registerContext(context);
-
-              return Stack(
-                children: [
-                  widget.child,
-                  ValueListenableBuilder<bool>(
-                    valueListenable: widget.isSyncing ?? LikeService.isSyncing,
-                    builder: (context, syncing, _) {
-                      if (!syncing) return const SizedBox.shrink();
-
-                      return widget.syncOverlay ?? _DefaultSyncOverlay();
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
+        // Build the core app stack
+        final coreStack = Builder(
+          builder: (context) {
+            LikeToastManager.registerContext(context);
+            return Stack(
+              alignment: Alignment.topLeft,
+              children: [
+                widget.child,
+                ValueListenableBuilder<bool>(
+                  valueListenable: widget.isSyncing ?? LikeService.isSyncing,
+                  builder: (context, syncing, _) {
+                    if (!syncing) return const SizedBox.shrink();
+                    return widget.syncOverlay ?? _DefaultSyncOverlay();
+                  },
+                ),
+              ],
+            );
+          },
         );
+
+        // Wrap with devTool overlay if provided (debug-only by convention)
+        final appTree = widget.devTool != null
+            ? widget.devTool!(coreStack)
+            : coreStack;
+
+        return ToastificationWrapper(child: appTree);
       },
     );
   }
@@ -183,26 +203,32 @@ class _LikeState extends State<Like> {
 class _DefaultSyncOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black45,
-      child: const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text(
-                  'Synchronizing Data...',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+    return const Directionality(
+      textDirection: TextDirection.ltr,
+      child: Material(
+        type: MaterialType.transparency,
+        child: ColoredBox(
+          color: Colors.black45,
+          child: Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Synchronizing Data...',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'Please do not close the app.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                 ),
-                Text(
-                  'Please do not close the app.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -216,7 +242,16 @@ class _DefaultLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const Directionality(
+      textDirection: TextDirection.ltr,
+      child: Material(
+        child: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ),
+    );
   }
 }
 

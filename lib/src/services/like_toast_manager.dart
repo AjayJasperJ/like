@@ -183,4 +183,5 @@ extension LikeConnectivityActions on LikeToastType {
 }
 
 /// Global accessor for LIKE toast types and actions.
+// ignore: constant_identifier_names
 const LikeToast = LikeToastType._();

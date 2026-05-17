@@ -84,6 +84,8 @@ class LikeLogger {
     dynamic requestHeaders,
     dynamic responseHeaders,
     dynamic requestBody,
+    dynamic requestFields,
+    dynamic requestQuery,
     bool? shrinkEndpointOnly,
     String? statusText,
   }) async {
@@ -106,6 +108,8 @@ class LikeLogger {
         'requestHeaders': ?requestHeaders,
         'responseHeaders': ?responseHeaders,
         'requestBody': ?requestBody,
+        'requestFields': ?requestFields,
+        'requestQuery': ?requestQuery,
         if (response != null) 'response': response.toString(),
         if (shouldShrink) 'shrink': true,
         'status': ?statusText,
@@ -120,6 +124,8 @@ class LikeLogger {
     String? method,
     dynamic headers,
     dynamic body,
+    dynamic fields,
+    dynamic query,
   }) async {
     if (LikeConstants.silentApiStartLogs) return;
 
@@ -132,6 +138,8 @@ class LikeLogger {
         'method': ?method,
         'headers': ?headers,
         'body': ?body,
+        'fields': ?fields,
+        'query': ?query,
       },
     );
   }

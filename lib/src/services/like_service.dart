@@ -9,6 +9,7 @@ import 'package:like/src/services/like_background_sync_service.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_offline_sync_manager.dart';
 import 'package:like/src/services/like_utils.dart';
+import 'package:like/src/services/app_cache_manager.dart';
 
 /// Low-level service for interacting with LIKE's persistent Hive boxes.
 /// Handles caching, ETags, and the offline queue.
@@ -49,9 +50,12 @@ class LikeService {
       );
     }
 
-    // 4. Background Services
+    // 4. Background Services & Cache Managers
     await LikeBackgroundSyncService().init();
     LikeOfflineSyncManager().init();
+    
+    // Ensure the disk image cache respects the configured limits on startup
+    await AppCacheManager().pruneCacheIfExceedsSize();
   }
 
   static Box getBox(String name) {

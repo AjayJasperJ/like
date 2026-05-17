@@ -32,9 +32,13 @@ export 'src/services/like_service.dart';
 export 'src/services/like_background_sync_service.dart';
 export 'src/services/like_toast_delegate.dart';
 export 'src/services/like_toast_manager.dart';
+export 'src/services/app_cache_manager.dart';
 
 // Mixins
 export 'src/mixins/like_auto_reconnect_mixin.dart';
+
+// Services
+export 'src/services/like_mock_controller.dart';
 
 // Widgets
 export 'src/widgets/like_builder.dart';
@@ -45,8 +49,9 @@ export 'src/widgets/like_multi_sliver_builder.dart';
 export 'src/widgets/like_selector.dart';
 export 'src/widgets/like_selector_sliver.dart';
 export 'src/widgets/like_when.dart';
-
+export 'src/widgets/like_cache_image.dart';
 // Interceptors
+export 'src/interceptors/like_mock_interceptor.dart';
 export 'src/interceptors/like_auth_interceptor.dart';
 export 'src/interceptors/like_cache_interceptor.dart';
 export 'src/interceptors/like_etag_interceptor.dart';
@@ -57,3 +62,4 @@ export 'src/interceptors/like_pipeline_interceptor.dart';
 export 'src/interceptors/like_perf_interceptors.dart';
 // Third Party Exports
 export 'package:dio/dio.dart' show CancelToken;
+

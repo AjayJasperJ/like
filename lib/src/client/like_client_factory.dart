@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/client/like_request_registry.dart';
+import 'package:like/src/interceptors/like_mock_interceptor.dart';
 import 'package:like/src/interceptors/like_etag_interceptor.dart';
 import 'package:like/src/interceptors/like_pipeline_interceptor.dart';
 import 'package:like/src/interceptors/like_auth_interceptor.dart';
@@ -55,8 +56,12 @@ class LikeClientFactory {
         // 0. Logging (Catches all requests)
         if (LikeConstants.logApiResponses) LikeLoggerInterceptor(),
 
+        // 0.5 Mocking (Intercepts requests and returns mock data)
+        LikeMockInterceptor(),
+
         // 1. Core Logic
         LikeEtagInterceptor(),
+
         LikeCacheInterceptor(),
         LikePipelineInterceptor(),
 

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-05-17
+
+### Added
+- **Metadata Tuning**: Updated the package description and topics in `pubspec.yaml` to highlight core Dio, Hive, and AES encryption integrations for enhanced discoverability on pub.dev.
+- **Engine Optimization**: Consolidated brand-agnostic key transformations and optimized test configurations.
+
+## [1.1.0] - 2026-05-17
+
+### Added
+- **Network Mocking Engine**: Integrated persistent Hive-backed mocking (`MockController`) and Dio request interception (`LikeMockInterceptor`) for offline, testing, and staging environment simulation.
+- **Secure Image Caching**: Added transparent AES-CBC 256-bit disk encryption (`AppCacheManager`, `EncryptedHttpFileService`) with dynamic stream-based decryption for sensitive assets.
+- **Auto LRU Image Pruning**: Implemented automatic Least Recently Used (LRU) pruning targeting size limits (`maxImageCacheMB` and `minImageCacheMB`).
+- **`LikeCacheImage` Widget**: Added a robust network image caching widget that removes ephemeral tracking query parameters automatically to maximize cache hits.
+- **DevTool Integration**: Added support for debug staging overlays via the new optional `devTool` callback in the root `Like` wrapper.
+- **Unified Protocols & Technical Deep Dive**: Fully documented the engine's optimized Dio wrapper foundation, REST/GraphQL protocol support, offline mutation queues, background Isolate parsing, and rate limiting (HTTP 429) controls.
+
+### Fixed
+- **Code Hardening & Security Audit**: Audited the entire codebase to purge external branding and variables. Updated deprecated method channel testing APIs and resolved static analysis lints for 100% health.
+
 ## [1.0.7] - 2026-05-11
 
 ### Added
