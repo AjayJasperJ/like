@@ -50,13 +50,7 @@ class LikeHelpers {
     }
 
     // Fallback: This means background mapping failed or was skipped
-    if (res.data is Map<String, dynamic>) {
-      return factory(res.data as Map<String, dynamic>);
-    }
-
-    throw Exception(
-      'Could not extract ${T.toString()} from response. Data type: ${res.data.runtimeType}',
-    );
+    return factory(res.data);
   }
 }
 

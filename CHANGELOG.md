@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2026-05-18
+
+### Added
+- **Multi-Screen UI Demonstration App**: Added a full, robust multi-screen example application within `example/` demonstrating the comprehensive integration of all core package widgets and builders (including `LikeBuilder`, `LikeWhen`, `LikeSelector`, `LikeSelectorSliver`, `LikeMultiBuilder`, `LikeMultiSliverBuilder`, `LikeCacheImage`, `updateNotifier`, and `LikeToast`).
+- **Reactive State Selectors**: Supported granular UI rebuilds via `LikeSelector` and `LikeSelectorSliver` to observe and rebuild on precise state slices.
+- **Combined State Observers**: Introduced `LikeMultiBuilder` and `LikeMultiSliverBuilder` to elegantly bundle and process multiple concurrent state notifier updates.
+- **Background Isolate Parsing**: Standardized `mapAsync` background parsing in repository layers to offload heavy JSON serialization cleanly.
+
 ## [1.1.1] - 2026-05-17
 
 ### Added

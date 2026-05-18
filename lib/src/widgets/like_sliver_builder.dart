@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:like/src/models/like_state_response.dart';
+import 'package:like/src/models/like_notifier_state.dart';
 import 'package:like/src/models/like_error.dart';
 
 /// A sliver version of [LikeBuilder] for rendering states in a [CustomScrollView].
 /// Handles [LikeStateResponse] and provides sticky data support for slivers.
 /// Matches the exact signature of the original StateBuilderSliver.
 class LikeSliverBuilder<T extends Object> extends StatefulWidget {
-  /// A function that returns the current [LikeStateResponse] to observe.
-  final LikeStateResponse<dynamic> Function() observe;
+  /// A function that returns the current [LikeStateResponse] or [LikeNotifierState] to observe.
+  final dynamic Function() observe;
 
   /// Builder function called when data is successfully retrieved.
   /// Returns a list of sliver widgets.
@@ -65,7 +66,10 @@ class _LikeSliverBuilderState<T extends Object>
 
   @override
   Widget build(BuildContext context) {
-    final response = widget.observe();
+    final rawObserved = widget.observe();
+    final response = rawObserved is LikeNotifierState
+        ? rawObserved.value
+        : rawObserved as LikeStateResponse<dynamic>;
 
     if (widget.listener != null && _lastNotifiedResponse != response) {
       _lastNotifiedResponse = response;

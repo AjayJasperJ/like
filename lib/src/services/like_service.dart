@@ -53,7 +53,7 @@ class LikeService {
     // 4. Background Services & Cache Managers
     await LikeBackgroundSyncService().init();
     LikeOfflineSyncManager().init();
-    
+
     // Ensure the disk image cache respects the configured limits on startup
     await AppCacheManager().pruneCacheIfExceedsSize();
   }

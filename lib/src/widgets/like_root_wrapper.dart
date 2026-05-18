@@ -122,10 +122,13 @@ class _LikeState extends State<Like> {
 
     if (widget.toastDelegate != null) {
       LikeToastManager.setDelegate(widget.toastDelegate!);
-    } else if (widget.syncProgressBuilder != null || widget.toastConfig?.syncProgressBuilder != null) {
+    } else if (widget.syncProgressBuilder != null ||
+        widget.toastConfig?.syncProgressBuilder != null) {
       LikeToastManager.setDelegate(
         DefaultLikeToastDelegate(
-          syncProgressBuilder: widget.syncProgressBuilder ?? widget.toastConfig?.syncProgressBuilder,
+          syncProgressBuilder:
+              widget.syncProgressBuilder ??
+              widget.toastConfig?.syncProgressBuilder,
         ),
       );
     }
@@ -245,11 +248,7 @@ class _DefaultLoadingScreen extends StatelessWidget {
     return const Directionality(
       textDirection: TextDirection.ltr,
       child: Material(
-        child: Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
+        child: Scaffold(body: Center(child: CircularProgressIndicator())),
       ),
     );
   }
@@ -267,9 +266,5 @@ class LikeToastConfig {
   final Widget Function(String title, String message, double progress)?
   syncProgressBuilder;
 
-  const LikeToastConfig({
-    this.online,
-    this.offline,
-    this.syncProgressBuilder,
-  });
+  const LikeToastConfig({this.online, this.offline, this.syncProgressBuilder});
 }

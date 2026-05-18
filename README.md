@@ -6,6 +6,25 @@
 
 ---
 
+## 💡 Why Migrate to LIKE? (VS. Traditional HTTP / Dio)
+
+While libraries like **Dio** or standard **HTTP** provide a solid baseline for basic web requests, they require massive amounts of custom boilerplate, caching layers, offline databases, and state handling to support a modern, offline-first production application. 
+
+**LIKE solves this by packing the entire network, cache, security, and state lifecycle into a single high-performance engine.**
+
+| Feature | Traditional HTTP / Dio | LIKE Engine |
+| :--- | :--- | :--- |
+| **Caching Model** | Standard HTTP caching only (or manual DB persistence code). | **3-Tier Hybrid Caching** (RAM + Persistent Hive + Automatic Stale-While-Revalidate). |
+| **State Orchestration** | Manual boolean flags (`isLoading`, `isError`), custom variables, and manual listeners. | **Atomic State Machine** (`LikeNotifierState`) with native loading, success, SWR, error, and exception transitions. |
+| **Request Cancellation** | Manual tracking of individual `CancelToken`s across UI screens and manually calling `.cancel()`. | **Zero-Boilerplate Auto-Cancellation** inside the `fetch` mixin that auto-aborts in-flight calls when a screen or provider is disposed. |
+| **Data Synchronization** | Manual triggers, messy global event busses, or manual polling logic. | **Query-Aware Zero-Config Resync** using overlap checks (including date ranges) to silently update stale views on mutations. |
+| **UI Performance** | Main thread JSON decoding (leads to UI jank/drops frames on payloads >100KB). | **Automated Isolate Parsing** using background Dart Isolates for heavy payloads to guarantee stable 120 FPS. |
+| **Media Caching** | Standard cached network images (prone to leaks or unsecured disk access). | **Secure AES-256 Encrypted Cache** with automatic Least Recently Used (LRU) pruning and dynamic stream decryption. |
+| **Offline Mutations** | App crashes or fails when offline. Requires custom SQLite/Hive sync queues. | **Persistent Offline Sync Queue** (POST/PUT/DELETE are chronologically saved and automatically synced on connection recovery). |
+| **Concurrent Requests** | Duplicate HTTP requests are dispatched to the server, wasting bandwidth. | **Request Deduplication** (multiple matching in-flight calls merge into a single live stream and share the payload). |
+
+---
+
 ## ⚡ Unified Protocol Support (HTTP / REST / GraphQL)
 
 LIKE is built from the ground up to support modern API specifications seamlessly:
@@ -90,9 +109,41 @@ class UserService {
 
 ---
 
-## 🧠 Tier 2: Provider Layer (`LikeStateResponse`)
+## 🧠 Tier 2: Provider Layer (`LikeNotifierState` & `LikeStateResponse`)
 
-Providers convert `LikeApiResult` into `LikeStateResponse`. This is a **UI-aware** state wrapper containing a `LikeState` (loading, success, error, etc.) and **Sticky Data**.
+Providers convert raw `LikeApiResult` data from services into UI-ready states. LIKE provides two patterns to implement the Provider layer:
+
+### Option A: The Modern Way (Recommended: Zero-Boilerplate `LikeNotifierState` & `fetch`)
+
+By utilizing the self-contained `LikeNotifierState<T>` along with the unified `fetch<T>` API from `LikeAutoReconnectMixin`, you eliminate almost all manual state-handling boilerplate:
+*   **Automatic CancelToken Lifecycle**: The engine handles generating, rotating, and canceling tokens under the hood.
+*   **Encapsulated State**: Responses, cancel tokens, request paths, and query parameters are stored cleanly in a single `LikeNotifierState` object.
+*   **Auto-Cancellation**: In-flight requests are automatically aborted when the notifier is disposed.
+*   **Query-Aware Automated Resync**: Set `autoResync: true` to dynamically refresh data in the background when relevant mutations occur on the same endpoint.
+
+```dart
+class TodoNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
+  final _todoRepo = TodoRepository();
+  
+  // Declared as a single self-contained state object!
+  final todosState = LikeNotifierState<List<TodoModel>>();
+
+  /// Fetches the todo list with automated SWR, offline queuing, and resync.
+  Future<void> fetchTodos({ARS? ars}) async {
+    await fetch<List<TodoModel>>(
+      state: todosState,
+      ars: ars,
+      autoResync: true, // Transparently listens for updates and resyncs!
+      priority: LikeSyncPriority.normal,
+      action: (ct, actionArs) => _todoRepo.getTodos(ars: actionArs),
+    );
+  }
+}
+```
+
+### Option B: The Classic Way (Manual `fetcher` & `CancelToken`)
+
+For cases where you prefer manual, discrete properties and custom rotation control:
 
 ```dart
 class UserNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
@@ -116,7 +167,7 @@ class UserNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
 
   @override
   void dispose() {
-    super.dispose(); // CRITICAL: Cancels active sync listeners
+    super.dispose(); // CRITICAL: Cancels active sync listeners and tokens
   }
 }
 ```
@@ -126,11 +177,22 @@ class UserNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
 ## ⚡ Tier 3: Advanced Developer Patterns
 
 ### 🔄 `fetcher`
-**Use in**: Providers/Notifiers.  
+**Use in**: Classic Providers/Notifiers.  
 **Why**: Automates the boilerplate of rotating `CancelToken`s, setting loading states (but only when appropriate), and handling silent Dio cancellations.
 
-### 🔗 `syncWith`
-**Use in**: Provider `initAutoReconnect`.  
+### 🔗 `syncWithState` (Modern)
+**Use in**: Provider initialization.  
+**Why**: A streamlined, zero-boilerplate version of `syncWith` designed specifically for `LikeNotifierState`.
+```dart
+syncWithState<User>(
+  endpoint: '/users/profile',
+  state: userState,
+  action: () => fetchUser(),
+);
+```
+
+### 🔗 `syncWith` (Classic)
+**Use in**: Classic Provider `initAutoReconnect`.  
 **Why**: Declaratively refreshes data when a specific endpoint updates globally.
 ```dart
 syncWith<User>(
@@ -150,17 +212,60 @@ final user = await loadOrFetch(state, () => fetchUser());
 
 ---
 
+## 🧠 Query-Aware Zero-Config State Resync Engine
+
+When utilizing `fetch` with `autoResync: true`, the engine automatically orchestrates non-blocking background refreshes:
+1.  **GET Tracking**: Successful `GET` network requests executed within the `fetch` block automatically bind their endpoint paths and query parameter payloads into the associated `LikeNotifierState` via transparent zone isolation.
+2.  **Mutation Broadcasting**: Success signals from write operations (`POST`, `PUT`, `DELETE`) broadcast a `LikeSyncEvent` containing the endpoint and payload across `syncStream`.
+3.  **Query Parameter Overlap Matching**: The engine intercepts the event and performs granular overlap analysis (including matching specific date parameters and query ranges like `startDate` / `endDate` vs `date`).
+4.  **Resync Triggering**: If a match and parameter overlap is detected, the engine registers a background sync task via `LikeSyncManager` to silently refresh the stale query state without disrupting the active UI!
+
+---
+
 ## 🎨 Tier 4: Reactive UI Widgets
 
 ### `LikeBuilder`
-The primary widget for consuming `LikeStateResponse`. It provides a clean API for handling every state in the lifecycle.
+The primary widget for consuming `LikeStateResponse` or `LikeNotifierState`. It automatically unwraps the state, handles "sticky data" during background revalidations, and supports side-effect listeners.
 
 ```dart
 LikeBuilder<User>(
-  state: userNotifier.state,
-  onSuccess: (data) => UserProfile(user: data),
+  observe: () => userNotifier.userState, // Supports LikeNotifierState or LikeStateResponse
+  onSuccess: (user, isRefreshing, isFromSWR) => UserProfileView(user: user),
   onLoading: () => const ShimmerLoader(),
-  onRefreshing: (data) => Stack(children: [UserProfile(user: data), LinearProgressIndicator()]),
+  onRefreshing: (user) => Stack(
+    children: [UserProfileView(user: user), const LinearProgressIndicator()],
+  ),
+  onError: (error) => ErrorView(message: error.message),
+);
+```
+
+### `LikeSelector` & `LikeSelectorSliver`
+Efficiently rebuilds only when a specific slice of the overall state changes, preventing unnecessary expensive tree updates. Great for CustomScrollViews or shared complex models.
+
+```dart
+LikeSelector<UserNotifier, User>(
+  selector: (context, notifier) => notifier.userDetailResponse,
+  onSuccess: (user, isRefreshing, isFromSWR) {
+    return ProfileCard(user: user);
+  },
+);
+```
+
+### `LikeMultiBuilder` & `LikeMultiSliverBuilder`
+Aggregates multiple concurrent `LikeStateResponse` inputs into a single combined reactive widget, ensuring all payloads are resolved and available synchronously to build unified dashboards.
+
+```dart
+LikeMultiBuilder(
+  observes: [
+    () => userNotifier.userDetailResponse,
+    () => postNotifier.postsResponse,
+  ],
+  onSuccess: (results, isRefreshing, isFromSWR) {
+    final user = results[0] as User;
+    final posts = results[1] as List<Post>;
+    return UserDashboard(user: user, posts: posts);
+  },
+  onLoading: () => const Center(child: CircularProgressIndicator()),
   onError: (error) => ErrorView(message: error.message),
 );
 ```

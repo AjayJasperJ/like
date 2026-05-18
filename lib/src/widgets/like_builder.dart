@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:like/src/models/like_state_response.dart';
+import 'package:like/src/models/like_notifier_state.dart';
 import 'package:like/src/models/like_error.dart';
 
 /// A state management builder widget that handles [LikeStateResponse] with
 /// SWR (stale-while-revalidate) support.
 /// Matches the exact signature of the original StateBuilder for seamless integration.
 class LikeBuilder<T> extends StatefulWidget {
-  /// A function that returns the current [LikeStateResponse] to observe.
+  /// A function that returns the current [LikeStateResponse] or [LikeNotifierState] to observe.
   /// Usually returns a property from a provider or state manager.
-  final LikeStateResponse<dynamic> Function() observe;
+  final dynamic Function() observe;
 
   /// Builder function called when data is successfully retrieved.
   ///
@@ -75,7 +76,10 @@ class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final response = widget.observe();
+    final rawObserved = widget.observe();
+    final response = rawObserved is LikeNotifierState
+        ? rawObserved.value
+        : rawObserved as LikeStateResponse<dynamic>;
 
     if (widget.listener != null && _lastNotifiedResponse != response) {
       _lastNotifiedResponse = response;

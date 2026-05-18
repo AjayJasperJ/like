@@ -10,10 +10,12 @@ export 'src/core/like_helpers.dart';
 
 // Models
 export 'src/models/like_state_response.dart';
+export 'src/models/like_notifier_state.dart';
 export 'src/models/like_error.dart';
 export 'src/models/like_sync_task.dart';
 export 'src/models/like_api_result.dart';
 export 'src/models/like_event.dart';
+export 'src/models/like_sync_event.dart';
 
 // Client
 export 'src/client/like_client.dart';
@@ -61,5 +63,4 @@ export 'src/interceptors/like_retry_interceptor.dart';
 export 'src/interceptors/like_pipeline_interceptor.dart';
 export 'src/interceptors/like_perf_interceptors.dart';
 // Third Party Exports
-export 'package:dio/dio.dart' show CancelToken;
-
+export 'package:dio/dio.dart' show CancelToken, Response;

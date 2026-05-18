@@ -8,6 +8,8 @@ import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/models/like_api_result.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_event.dart';
+import 'package:like/src/models/like_sync_event.dart';
+import 'package:like/src/models/like_notifier_state.dart';
 import 'package:like/src/client/like_error_handler.dart';
 import 'package:like/src/client/like_request_registry.dart';
 import 'package:like/src/client/like_client_factory.dart';
@@ -38,9 +40,15 @@ class LikeClient {
   final StreamController<String> _refreshController =
       StreamController<String>.broadcast();
 
+  final StreamController<LikeSyncEvent> _syncController =
+      StreamController<LikeSyncEvent>.broadcast();
+
   /// A stream of endpoint paths that have been successfully updated or refreshed.
   /// Used by [LikeAutoReconnectMixin] to trigger UI updates.
   Stream<String> get refreshStream => _refreshController.stream;
+
+  /// A stream of query-aware sync events emitted after successful mutations.
+  Stream<LikeSyncEvent> get syncStream => _syncController.stream;
 
   /// The raw event pipeline for the LIKE engine.
   Stream<LikeEvent> get responsePipeline => LikePipeline().stream;
@@ -91,6 +99,14 @@ class LikeClient {
       effectivePath,
       queryParameters,
     );
+
+    if (isGet) {
+      final activeState = Zone.current[#likeActiveState];
+      if (activeState is LikeNotifierState) {
+        activeState.endpointPath = effectivePath;
+        activeState.activeQuery = queryParameters ?? const {};
+      }
+    }
 
     // Absolute URI for box key matching
     final tempOptions = RequestOptions(
@@ -424,7 +440,7 @@ class LikeClient {
         },
       ),
     );
-    if (result.isSuccess) notifyRefresh(path);
+    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
     return result;
   }
 
@@ -459,7 +475,7 @@ class LikeClient {
         },
       ),
     );
-    if (result.isSuccess) notifyRefresh(path);
+    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
     return result;
   }
 
@@ -494,7 +510,7 @@ class LikeClient {
         },
       ),
     );
-    if (result.isSuccess) notifyRefresh(path);
+    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
     return result;
   }
 
@@ -578,7 +594,7 @@ class LikeClient {
         },
       ),
     );
-    if (result.isSuccess) notifyRefresh(path);
+    if (result.isSuccess) notifySync(path, fields ?? const {});
     return result;
   }
 
@@ -598,11 +614,30 @@ class LikeClient {
     );
   }
 
-  void notifyRefresh(String path) {
+  Map<String, dynamic> _extractPayload(
+    Object? body,
+    Map<String, dynamic>? query,
+  ) {
+    final result = <String, dynamic>{};
+    if (query != null) {
+      result.addAll(query);
+    }
+    if (body != null && body is Map<String, dynamic>) {
+      result.addAll(body);
+    }
+    return result;
+  }
+
+  void notifySync(String path, Map<String, dynamic> payload) {
     final effectivePath = path.startsWith('http') || path.startsWith('/')
         ? path
         : '/$path';
     _refreshController.add(effectivePath);
+    _syncController.add(LikeSyncEvent(path: effectivePath, payload: payload));
+  }
+
+  void notifyRefresh(String path) {
+    notifySync(path, const {});
   }
 
   /// Broadcasts a signal to all providers that the connection has been restored.

@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_ars.dart';
 import 'package:like/src/models/like_state_response.dart';
+import 'package:like/src/models/like_notifier_state.dart';
+import 'package:like/src/models/like_sync_event.dart';
 import 'package:like/src/client/like_client.dart';
 import 'package:like/src/services/like_sync_manager.dart';
 import 'package:like/src/models/like_sync_task.dart';
@@ -12,7 +14,10 @@ import 'package:like/src/models/like_sync_task.dart';
 /// Matches the exact logic and contract of enterprise's AutoReconnectMixin.
 mixin LikeAutoReconnectMixin on ChangeNotifier {
   StreamSubscription<String>? _refreshSubscription;
+  StreamSubscription<LikeSyncEvent>? _syncSubscription;
   final Set<_LikeGranularSyncTask> _granularTasks = {};
+  final Set<LikeNotifierState<dynamic>> _registeredStates = {};
+  bool _isDisposed = false;
 
   /// Hook for legacy reconnection logic.
   Future<void> onReconnect() async {}
@@ -64,6 +69,35 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
         }
       }
     });
+
+    _syncSubscription = LikeClient().syncStream.listen((event) {
+      for (final state in _registeredStates) {
+        if (state.autoResync &&
+            state.endpointPath != null &&
+            state.refreshAction != null) {
+          final cleanPath = event.path.split('?').first;
+          final statePath = state.endpointPath!.split('?').first;
+
+          if (cleanPath == statePath ||
+              (cleanPath.startsWith(statePath) &&
+                  cleanPath[statePath.length] == '/')) {
+            final overlap = checkQueryOverlap(
+              state.activeQuery ?? const {},
+              event.payload,
+            );
+            if (overlap) {
+              final isSuccess =
+                  state.value.isSuccess ||
+                  state.value.isRefreshing ||
+                  state.value.isStaleWhileRevalidate;
+              if (isSuccess) {
+                LikeSyncManager().registerTask(_LikeStateSyncTask(state));
+              }
+            }
+          }
+        }
+      }
+    });
   }
 
   /// Registers a specific API call to be automatically refreshed when its data source updates.
@@ -78,6 +112,10 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     required ValueGetter<CancelToken?> cancelToken,
     LikeSyncPriority priority = LikeSyncPriority.normal,
   }) {
+    if (_refreshSubscription == null && _syncSubscription == null) {
+      initAutoReconnect();
+    }
+
     final task = _LikeGranularSyncTask(
       providerId: runtimeType.toString(),
       endpoint: endpoint,
@@ -92,6 +130,24 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     if (task.condition()) {
       LikeSyncManager().registerTask(task);
     }
+  }
+
+  /// Declarative synchronization using [LikeNotifierState].
+  ///
+  /// Automatically extracts the state response and cancel token from [state].
+  void syncWithState<T>({
+    required String endpoint,
+    required Future<void> Function() action,
+    required LikeNotifierState<T> state,
+    LikeSyncPriority priority = LikeSyncPriority.normal,
+  }) {
+    syncWith<T>(
+      endpoint: endpoint,
+      action: action,
+      state: () => state.value,
+      cancelToken: () => state.ct,
+      priority: priority,
+    );
   }
 
   /// Helper to determine if a state requires a refresh (error, exception, or resiliency fallback).
@@ -123,6 +179,49 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     return CancelToken();
   }
 
+  /// An optimized state execution wrapper that manages the lifecycle of a [LikeNotifierState].
+  ///
+  /// This eliminates the need to manually pass:
+  /// * `ct`
+  /// * `onRotate` callback
+  /// * `onUpdate` callback
+  ///
+  /// It automatically registers the state for auto-cancellation when this mixin is disposed.
+  Future<LikeStateResponse<T>> fetch<T>({
+    required LikeNotifierState<T> state,
+    LikeARS? ars,
+    bool autoResync = false,
+    LikeSyncPriority priority = LikeSyncPriority.normal,
+    required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
+    action,
+  }) async {
+    if (_refreshSubscription == null && _syncSubscription == null) {
+      initAutoReconnect();
+    }
+
+    _registeredStates.add(state);
+
+    state.autoResync = autoResync;
+    state.syncPriority = priority;
+    state.refreshAction = () => fetch<T>(
+      state: state,
+      ars: const LikeARS(refresh: true),
+      autoResync: autoResync,
+      priority: priority,
+      action: action,
+    );
+
+    return runZoned(() async {
+      return await fetcher<T>(
+        ars: ars,
+        ct: state.ct,
+        onRotate: (next) => state.ct = next,
+        onUpdate: (newState) => state.value = newState,
+        action: action,
+      );
+    }, zoneValues: {#likeActiveState: state});
+  }
+
   /// A powerful orchestration method that handles the standard fetch lifecycle.
   ///
   /// This method automates:
@@ -150,7 +249,9 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
       // 2. Initial State Handling: Only show loading if NOT a refresh
       if (!ars.refresh) {
         onUpdate(LikeStateResponse<T>.loading());
-        notifyListeners();
+        if (!_isDisposed) {
+          notifyListeners();
+        }
       }
 
       // 3. Execution
@@ -167,7 +268,9 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
       onUpdate(exception);
       return exception;
     } finally {
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
     }
   }
 
@@ -188,10 +291,59 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     });
   }
 
+  /// Checks if the query parameters of a state overlap with a sync event payload.
+  bool checkQueryOverlap(
+    Map<String, dynamic> stateQuery,
+    Map<String, dynamic> eventPayload,
+  ) {
+    if (stateQuery.isEmpty || eventPayload.isEmpty) return true;
+
+    for (final entry in eventPayload.entries) {
+      final key = entry.key;
+      final eventVal = entry.value;
+
+      if (stateQuery.containsKey(key)) {
+        final stateVal = stateQuery[key];
+        if (stateVal?.toString() != eventVal?.toString()) {
+          return false;
+        }
+      }
+
+      if (key == 'date') {
+        final eventDate = _parseDateTime(eventVal);
+        final stateStart = _parseDateTime(stateQuery['startDate']);
+        final stateEnd = _parseDateTime(stateQuery['endDate']);
+
+        if (eventDate != null && stateStart != null && stateEnd != null) {
+          if (eventDate.isBefore(stateStart) || eventDate.isAfter(stateEnd)) {
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    return null;
+  }
+
   @override
   void dispose() {
+    _isDisposed = true;
     _refreshSubscription?.cancel();
+    _syncSubscription?.cancel();
     _granularTasks.clear();
+    for (final state in _registeredStates) {
+      state.cancel('Provider disposed');
+    }
+    _registeredStates.clear();
     super.dispose();
   }
 }
@@ -256,6 +408,28 @@ class _LikeGranularSyncTask extends LikeSyncTask {
   Future<void> run() async {
     if (condition()) {
       await action();
+    }
+  }
+}
+
+class _LikeStateSyncTask extends LikeSyncTask {
+  final LikeNotifierState<dynamic> state;
+
+  _LikeStateSyncTask(this.state);
+
+  @override
+  String get id => 'state_sync_${state.hashCode}';
+
+  @override
+  LikeSyncPriority get priority => state.syncPriority;
+
+  @override
+  bool get isRecovery => false;
+
+  @override
+  Future<void> run() async {
+    if (state.refreshAction != null) {
+      await state.refreshAction!();
     }
   }
 }

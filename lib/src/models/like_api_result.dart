@@ -113,14 +113,9 @@ class LikeApiResult<T> {
   ) async {
     if (isSuccess && data != null) {
       try {
-        final Map<String, dynamic> rawData;
-        if (data is Response) {
-          rawData = (data as Response).data as Map<String, dynamic>;
-        } else if (data is Map<String, dynamic>) {
-          rawData = data as Map<String, dynamic>;
-        } else {
-          return mapSuccess((d) => mapper(d as Map<String, dynamic>));
-        }
+        final dynamic rawData = data is Response
+            ? (data as Response).data
+            : data;
 
         final result = await compute<_IsolateMapperParams<R>, R>(
           _isolateMapper,
@@ -188,17 +183,15 @@ extension LikeApiResultFutureX on Future<LikeApiResult<Response>> {
   }
 
   /// Maps a [Response] to a model [R] synchronously on the main thread.
-  Future<LikeApiResult<R>> mapSync<R>(
-    R Function(Map<String, dynamic> data) mapper,
-  ) async {
+  Future<LikeApiResult<R>> mapSync<R>(LikeModelFactory<R> mapper) async {
     final result = await this;
-    return result.mapSuccess((res) => mapper(res.data as Map<String, dynamic>));
+    return result.mapSuccess((res) => mapper(res.data));
   }
 }
 
 /// Isolate mapper internal helpers
 class _IsolateMapperParams<T> {
-  final Map<String, dynamic> data;
+  final dynamic data;
   final LikeModelFactory<T> factory;
   _IsolateMapperParams(this.data, this.factory);
 }

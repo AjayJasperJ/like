@@ -99,7 +99,7 @@ class LikeAuthInterceptor extends Interceptor {
         try {
           final newToken = await refreshToken!();
           _refreshCompleter?.complete(newToken);
-          
+
           if (newToken != null) {
             return _retryRequest(err.requestOptions, newToken, handler);
           } else {

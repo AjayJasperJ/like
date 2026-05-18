@@ -14,17 +14,15 @@ class AppCacheManager extends CacheManager {
   factory AppCacheManager() => _instance;
 
   AppCacheManager._internal()
-      : super(
-          Config(
-            key,
-            stalePeriod: Duration(
-              days: LikeConstants.imageStalePeriod,
-            ),
-            maxNrOfCacheObjects: LikeConstants.maxImageCacheItems,
-            repo: JsonCacheInfoRepository(databaseName: key),
-            fileService: EncryptedHttpFileService(),
-          ),
-        );
+    : super(
+        Config(
+          key,
+          stalePeriod: Duration(days: LikeConstants.imageStalePeriod),
+          maxNrOfCacheObjects: LikeConstants.maxImageCacheItems,
+          repo: JsonCacheInfoRepository(databaseName: key),
+          fileService: EncryptedHttpFileService(),
+        ),
+      );
 
   @override
   Stream<FileResponse> getFileStream(
@@ -165,12 +163,16 @@ class AppCacheManager extends CacheManager {
       final cacheDir = await getTemporaryDirectory();
       final directory = io.Directory('${cacheDir.path}/$key');
       if (await directory.exists()) {
-        final List<io.FileSystemEntity> entities = await directory.list(recursive: true).toList();
+        final List<io.FileSystemEntity> entities = await directory
+            .list(recursive: true)
+            .toList();
         for (var entity in entities) {
           if (entity is io.File) {
             final path = entity.path.toLowerCase();
             // Do not delete the database/metadata files of flutter_cache_manager itself
-            if (!path.endsWith('.json') && !path.endsWith('.db') && !path.endsWith('.sqlite')) {
+            if (!path.endsWith('.json') &&
+                !path.endsWith('.db') &&
+                !path.endsWith('.sqlite')) {
               try {
                 await entity.delete();
               } catch (_) {}

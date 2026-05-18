@@ -3,7 +3,7 @@ import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_api_result.dart';
 
 /// Function signature for creating models from JSON.
-typedef LikeModelFactory<T> = T Function(Map<String, dynamic> json);
+typedef LikeModelFactory<T> = T Function(dynamic json);
 
 /// Represents the possible states of a network request or data stream.
 enum LikeState {
