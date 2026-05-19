@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2026-05-19
+
+### Added
+- **Repository Optimization**: Updated and pointed the package source repository metadata to the dedicated documentation/repository (`https://github.com/AjayJasperJ/like_docs`).
+- **Modern SDK Support**: Upgraded the package constraints to target the latest stable Dart SDK (`^3.12.0`) and Flutter SDK (`>=3.44.0`) following system environment upgrades.
+
 ## [1.1.2] - 2026-05-18
 
 ### Added

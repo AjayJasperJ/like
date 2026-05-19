@@ -233,7 +233,7 @@
       "name": "flutter",
       "rootUri": "file:///home/ja5p3r/flutter/packages/flutter",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "flutter_cache_manager",
@@ -251,13 +251,13 @@
       "name": "flutter_test",
       "rootUri": "file:///home/ja5p3r/flutter/packages/flutter_test",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "flutter_web_plugins",
       "rootUri": "file:///home/ja5p3r/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "frontend_server_client",
@@ -381,7 +381,7 @@
     },
     {
       "name": "matcher",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/matcher-0.12.18",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/matcher-0.12.19",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -393,7 +393,7 @@
     },
     {
       "name": "meta",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/meta-1.17.0",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/meta-1.18.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
@@ -611,7 +611,7 @@
       "name": "sky_engine",
       "rootUri": "file:///home/ja5p3r/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "source_gen",
@@ -699,7 +699,7 @@
     },
     {
       "name": "test_api",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/test_api-0.7.9",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/test_api-0.7.11",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -815,12 +815,12 @@
       "name": "like",
       "rootUri": "../",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.11"
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.11.0",
+  "generatorVersion": "3.12.0",
   "flutterRoot": "file:///home/ja5p3r/flutter",
-  "flutterVersion": "3.41.1",
+  "flutterVersion": "3.44.0",
   "pubCache": "file:///home/ja5p3r/.pub-cache"
 }
