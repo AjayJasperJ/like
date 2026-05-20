@@ -201,12 +201,6 @@ class LikeConfig {
 
   // --- Misc ---
 
-  /// Minimum duration in seconds to display the splash screen during init.
-  final int minSplashDuration;
-
-  /// Delay in seconds before redirecting to login after an auth failure.
-  final int authRedirectDelay;
-
   /// Host used to check internet reachability (defaults to google.com).
   final String connCheckHost;
 
@@ -273,8 +267,6 @@ class LikeConfig {
     this.boxOfflineQueue = 'like_offline_queue',
     this.boxCacheMetadata = 'like_cache_metadata',
     this.boxEtags = 'like_etags',
-    this.minSplashDuration = 2,
-    this.authRedirectDelay = 2,
     this.connCheckHost = 'google.com',
   }) : verifySSL = verifySSL ?? !kDebugMode;
 
@@ -341,8 +333,6 @@ class LikeConfig {
     String? boxOfflineQueue,
     String? boxCacheMetadata,
     String? boxEtags,
-    int? minSplashDuration,
-    int? authRedirectDelay,
     String? connCheckHost,
   }) {
     return LikeConfig(
@@ -416,8 +406,6 @@ class LikeConfig {
       boxOfflineQueue: boxOfflineQueue ?? this.boxOfflineQueue,
       boxCacheMetadata: boxCacheMetadata ?? this.boxCacheMetadata,
       boxEtags: boxEtags ?? this.boxEtags,
-      minSplashDuration: minSplashDuration ?? this.minSplashDuration,
-      authRedirectDelay: authRedirectDelay ?? this.authRedirectDelay,
       connCheckHost: connCheckHost ?? this.connCheckHost,
     );
   }

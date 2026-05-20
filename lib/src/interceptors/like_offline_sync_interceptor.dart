@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
 import 'package:synchronized/synchronized.dart';
+import 'package:like/src/interceptors/like_auth_interceptor.dart';
 import 'package:like/src/services/like_sync_manager.dart';
-import 'package:like/src/services/like_background_sync_service.dart';
 import 'package:like/src/services/like_logger.dart';
 import 'package:like/src/client/like_client.dart';
 import 'package:like/src/services/like_utils.dart';
@@ -78,9 +78,6 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         submessage: 'Will sync when connection is restored.',
         type: LikeToastType.info,
       );
-
-      // Schedule background sync
-      LikeBackgroundSyncService().scheduleSyncTask();
     }
   }
 
@@ -110,6 +107,24 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     final task = _queueBox.get(key);
     if (task == null) return;
 
+    // Re-build headers and inject a fresh auth token for the replay.
+    // The token may have expired while the device was offline (tokens typically
+    // expire in 15–60 min), so we must re-fetch it rather than using the
+    // stripped version that was stored at queue time.
+    final headers = Map<String, dynamic>.from(task['headers'] ?? {});
+    if (LikeAuthInterceptor.getToken != null) {
+      try {
+        final freshToken = await LikeAuthInterceptor.getToken!();
+        if (freshToken != null && freshToken.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $freshToken';
+        }
+      } catch (_) {
+        // getToken threw — proceed without auth header and let the server
+        // reject it; the 401 handler in LikeAuthInterceptor will then
+        // attempt a refresh via refreshToken before giving up.
+      }
+    }
+
     try {
       await dio.request(
         task['path'],
@@ -117,9 +132,9 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         queryParameters: Map<String, dynamic>.from(task['query'] ?? {}),
         options: Options(
           method: task['method'],
-          headers: Map<String, dynamic>.from(task['headers'] ?? {}),
+          headers: headers,
           contentType: task['contentType'],
-          extra: {'isSyncRequest': true},
+          extra: {'isSyncRequest': true, 'withAuth': true},
         ),
       );
 

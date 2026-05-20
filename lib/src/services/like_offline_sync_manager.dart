@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:like/src/client/like_client.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_logger.dart';
-import 'package:like/src/services/like_background_sync_service.dart';
 
 /// Orchestrates synchronization when connectivity is restored.
 /// Bridge between [LikeConnectivityManager] and [LikeClient].
@@ -29,9 +28,6 @@ class LikeOfflineSyncManager {
             _triggerSync();
           }
         });
-
-    // Schedule background task for redundancy
-    LikeBackgroundSyncService().scheduleSyncTask();
 
     // Check initial state
     if (LikeConnectivityManager().hasConnection) {

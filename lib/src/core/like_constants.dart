@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_config.dart';
 
 /// Centralized configuration and constants for the LIKE networking engine.
@@ -15,6 +16,12 @@ class LikeConstants {
   static void apply(LikeConfig config) {
     _config = config;
   }
+
+  /// Resets the global configuration to defaults.
+  ///
+  /// Use in [setUp]/[tearDown] in tests to prevent config bleed between test cases.
+  @visibleForTesting
+  static void reset() => _config = LikeConfig();
 
   // --- Logs ---
 
@@ -113,12 +120,10 @@ class LikeConstants {
   static bool get disableLoggerByDefault => _config.disableLoggerByDefault;
 
   /// If true, forces a fresh fetch even for endpoints marked for single-fetch logic.
-  static bool get resetSingleFetchByDefault =>
-      _config.singleFetchByDefault; // Mapped
+  static bool get resetSingleFetchByDefault => false; // not reset by default
 
   /// If true, resets the session-stale state for an endpoint on every new call.
-  static bool get resetSessionStaleByDefault =>
-      _config.sessionStaleByDefault; // Mapped
+  static bool get resetSessionStaleByDefault => false; // not reset by default
 
   /// If true, non-critical errors are suppressed and managed through the state engine.
   static bool get suppressErrorsByDefault => _config.suppressErrorsByDefault;
@@ -165,13 +170,7 @@ class LikeConstants {
   /// Debounce duration for connectivity change events to prevent flapping (milliseconds).
   static int get connDebounceMs => _config.connDebounceMs;
 
-  // --- Splash & Auth Configuration ---
-
-  /// Minimum duration to display the splash screen during app initialization (seconds).
-  static int get minSplashDuration => _config.minSplashDuration;
-
-  /// Delay before redirecting to login or home after an authentication status change (seconds).
-  static int get authRedirectDelay => _config.authRedirectDelay;
+  // --- Misc Configuration ---
 
   /// The host used to verify internet reachability during health checks.
   static String get connCheckHost => _config.connCheckHost;

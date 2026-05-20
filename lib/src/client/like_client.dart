@@ -37,6 +37,10 @@ class LikeClient {
   late final Dio _dio;
   late final LikeRequestRegistry _registry;
 
+  /// Exposes the request registry. Primarily used for testing.
+  @visibleForTesting
+  LikeRequestRegistry get registry => _registry;
+
   final StreamController<String> _refreshController =
       StreamController<String>.broadcast();
 
@@ -231,10 +235,12 @@ class LikeClient {
           cached.extra['isFromStaleWhileRevalidate'] = true;
           _registry.addSessionKey(absoluteUriKey, response: cached);
 
-          // Let the background future handle its own completion and emission
+          // Let the background future handle its own completion and emission.
+          // Use async callback and await _handleSuccess so its Future
+          // errors are not silently discarded.
           future
-              .then((resp) {
-                _handleSuccess(resp, requestKey);
+              .then((resp) async {
+                await _handleSuccess(resp, requestKey);
                 _registry.removeInFlight(requestKey);
               })
               .catchError((e) {

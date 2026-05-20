@@ -8,6 +8,24 @@ import 'package:like/src/models/like_sync_event.dart';
 import 'package:like/src/client/like_client.dart';
 import 'package:like/src/services/like_sync_manager.dart';
 import 'package:like/src/models/like_sync_task.dart';
+import 'package:like/src/models/like_event.dart';
+import 'package:like/src/services/like_pipeline.dart';
+
+class _LikePipelineStateBinding {
+  final LikeNotifierState<dynamic> state;
+  final String? Function() getEndpointPath;
+  final Map<String, dynamic> Function() getActiveQuery;
+  final bool exactQueryMatch;
+  final void Function(dynamic rawData) processAndAssign;
+
+  _LikePipelineStateBinding({
+    required this.state,
+    required this.getEndpointPath,
+    required this.getActiveQuery,
+    required this.exactQueryMatch,
+    required this.processAndAssign,
+  });
+}
 
 /// A mixin that provides automatic reconnection and synchronization logic for Notifiers.
 /// Features a declarative [syncWith] API for intelligent data refreshes.
@@ -15,8 +33,10 @@ import 'package:like/src/models/like_sync_task.dart';
 mixin LikeAutoReconnectMixin on ChangeNotifier {
   StreamSubscription<String>? _refreshSubscription;
   StreamSubscription<LikeSyncEvent>? _syncSubscription;
+  StreamSubscription<LikeEvent>? _pipelineSubscription;
   final Set<_LikeGranularSyncTask> _granularTasks = {};
   final Set<LikeNotifierState<dynamic>> _registeredStates = {};
+  final Set<_LikePipelineStateBinding> _pipelineBindings = {};
   bool _isDisposed = false;
 
   /// Hook for legacy reconnection logic.
@@ -93,6 +113,41 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
               if (isSuccess) {
                 LikeSyncManager().registerTask(_LikeStateSyncTask(state));
               }
+            }
+          }
+        }
+      }
+    });
+
+    _pipelineSubscription = LikePipeline().stream.listen((event) {
+      final incomingKey = event.key;
+      final incomingPath = incomingKey.contains(':')
+          ? incomingKey.split(':').last
+          : incomingKey;
+      final cleanIncomingPath = incomingPath.split('?').first;
+      final eventQuery = event.response.requestOptions.queryParameters;
+
+      for (final binding in _pipelineBindings) {
+        final endpointPath = binding.getEndpointPath();
+        if (endpointPath == null) continue;
+
+        final statePath = endpointPath.split('?').first;
+
+        if (cleanIncomingPath == statePath ||
+            (cleanIncomingPath.startsWith(statePath) &&
+                cleanIncomingPath[statePath.length] == '/')) {
+          final overlap = checkQueryOverlap(
+            binding.getActiveQuery(),
+            eventQuery,
+            exact: binding.exactQueryMatch,
+          );
+
+          if (overlap) {
+            try {
+              binding.processAndAssign(event.data);
+              if (!_isDisposed) notifyListeners();
+            } catch (e) {
+              debugPrint('AutoReconnect Pipeline Mapping Error: $e');
             }
           }
         }
@@ -195,11 +250,32 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
     action,
   }) async {
-    if (_refreshSubscription == null && _syncSubscription == null) {
+    if (_refreshSubscription == null && _syncSubscription == null && _pipelineSubscription == null) {
       initAutoReconnect();
     }
 
     _registeredStates.add(state);
+
+    // Auto-wire pipeline binding if the state has a mapper declared.
+    // The endpoint is resolved lazily from state.endpointPath, which is populated
+    // after the first fetch completes — safely before any mutation can fire.
+    if (state.mapper != null) {
+      _pipelineBindings.removeWhere((b) => b.state == state);
+      _pipelineBindings.add(_LikePipelineStateBinding(
+        state: state,
+        getEndpointPath: () => state.endpointPath,
+        getActiveQuery: () => state.activeQuery ?? const {},
+        exactQueryMatch: false,
+        processAndAssign: (rawData) {
+          if (state.value.isLoading || state.value.isRefreshing) return;
+          final mappedData = state.mapper!(rawData);
+          state.value = LikeStateResponse<T>.success(
+            mappedData,
+            isFromCache: false,
+          );
+        },
+      ));
+    }
 
     state.autoResync = autoResync;
     state.syncPriority = priority;
@@ -294,8 +370,17 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
   /// Checks if the query parameters of a state overlap with a sync event payload.
   bool checkQueryOverlap(
     Map<String, dynamic> stateQuery,
-    Map<String, dynamic> eventPayload,
-  ) {
+    Map<String, dynamic> eventPayload, {
+    bool exact = false,
+  }) {
+    if (exact) {
+      if (stateQuery.length != eventPayload.length) return false;
+      for (final key in stateQuery.keys) {
+        if (stateQuery[key]?.toString() != eventPayload[key]?.toString()) return false;
+      }
+      return true;
+    }
+
     if (stateQuery.isEmpty || eventPayload.isEmpty) return true;
 
     for (final entry in eventPayload.entries) {
@@ -339,7 +424,9 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     _isDisposed = true;
     _refreshSubscription?.cancel();
     _syncSubscription?.cancel();
+    _pipelineSubscription?.cancel();
     _granularTasks.clear();
+    _pipelineBindings.clear();
     for (final state in _registeredStates) {
       state.cancel('Provider disposed');
     }

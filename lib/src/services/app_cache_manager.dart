@@ -1,11 +1,16 @@
+import 'dart:convert';
 import 'dart:io' as io;
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:file/file.dart';
 import 'package:file/local.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:like/src/core/like_constants.dart';
+import 'package:like/src/services/like_logger.dart';
 
 class AppCacheManager extends CacheManager {
   static const key = 'universalImageCache';
@@ -72,7 +77,13 @@ class AppCacheManager extends CacheManager {
             if (await response.file.exists()) {
               await response.file.delete();
             }
-          } catch (_) {}
+          } catch (deleteError) {
+            LikeLogger.log(
+              level: LikeLogLevel.error,
+              category: 'cache_manager',
+              message: 'Failed to delete corrupted file: $deleteError',
+            );
+          }
           throw Exception('Decryption failed, corrupted file removed');
         }
       }
@@ -85,7 +96,13 @@ class AppCacheManager extends CacheManager {
       if (await file.exists()) {
         await file.setLastModified(DateTime.now());
       }
-    } catch (_) {}
+    } catch (e) {
+      LikeLogger.log(
+        level: LikeLogLevel.warning,
+        category: 'cache_manager',
+        message: 'Failed to update access time for ${file.path}: $e',
+      );
+    }
   }
 
   /// Checks the total size of the cache and performs LRU pruning if it exceeds [maxMB].
@@ -131,11 +148,23 @@ class AppCacheManager extends CacheManager {
             try {
               await file.delete();
               deletedBytes += length;
-            } catch (_) {}
+            } catch (e) {
+              LikeLogger.log(
+                level: LikeLogLevel.error,
+                category: 'cache_manager',
+                message: 'Failed to delete file during pruning ${file.path}: $e',
+              );
+            }
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      LikeLogger.log(
+        level: LikeLogLevel.error,
+        category: 'cache_manager',
+        message: 'Error during cache pruning: $e',
+      );
+    }
   }
 
   /// Clears the temporary decrypted files
@@ -146,17 +175,35 @@ class AppCacheManager extends CacheManager {
       if (await decryptedDir.exists()) {
         await decryptedDir.delete(recursive: true);
       }
-    } catch (_) {}
+    } catch (e) {
+      LikeLogger.log(
+        level: LikeLogLevel.error,
+        category: 'cache_manager',
+        message: 'Failed to clear decrypted cache: $e',
+      );
+    }
   }
 
   /// Explicitly clears both the flutter_cache_manager encrypted cache and the decrypted files.
   Future<void> clearAll() async {
     try {
       await emptyCache();
-    } catch (_) {}
+    } catch (e) {
+      LikeLogger.log(
+        level: LikeLogLevel.error,
+        category: 'cache_manager',
+        message: 'Failed to empty flutter_cache_manager cache: $e',
+      );
+    }
     try {
       await clearDecryptedCache();
-    } catch (_) {}
+    } catch (e) {
+      LikeLogger.log(
+        level: LikeLogLevel.error,
+        category: 'cache_manager',
+        message: 'Failed to clear decrypted cache in clearAll: $e',
+      );
+    }
 
     // Manually clean up any remaining files in the cache directory to guarantee the disk is completely cleared.
     try {
@@ -175,35 +222,146 @@ class AppCacheManager extends CacheManager {
                 !path.endsWith('.sqlite')) {
               try {
                 await entity.delete();
-              } catch (_) {}
+              } catch (e) {
+                LikeLogger.log(
+                  level: LikeLogLevel.warning,
+                  category: 'cache_manager',
+                  message: 'Could not delete remaining file ${entity.path}: $e',
+                );
+              }
             }
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      LikeLogger.log(
+        level: LikeLogLevel.error,
+        category: 'cache_manager',
+        message: 'Error during deep cleanup in clearAll: $e',
+      );
+    }
   }
 }
 
+/// Handles AES-CBC encryption/decryption for the image cache.
+///
+/// **Design**:
+/// - Key: Derived from the user-provided `LikeConfig.encryptionKey` via SHA-256,
+///   or auto-generated as a cryptographically random 32-byte key persisted in
+///   SharedPreferences (unique per device/install).
+/// - IV: A fresh random 16-byte IV is generated for every file encryption and
+///   prepended to the ciphertext (layout: [16-byte IV][ciphertext]).
+///   This means each file is independently and correctly decryptable with no
+///   shared state or IV reuse weaknesses.
+///
+/// **Initialization**: Call [AppCacheSecurity.init] inside [LikeService.init]
+/// before any file downloads occur.
 class AppCacheSecurity {
-  static final _key = encrypt.Key.fromUtf8(
-    'LikeSecureEncryptionCacheKey1234',
-  ); // 32 chars
-  // USE A FIXED IV FOR PERSISTENT DECRYPTION ACROSS SESSIONS
-  static final _iv = encrypt.IV.fromUtf8('LikeSecureIV1234'); // 16 chars
-  static final _encrypter = encrypt.Encrypter(
-    encrypt.AES(_key, mode: encrypt.AESMode.cbc),
-  );
+  static encrypt.Encrypter? _encrypter;
+  static bool _initialized = false;
+  static const int _ivLength = 16;
+  static const String _deviceKeyPrefKey = 'like_cache_encryption_key_v2';
 
+  /// Initializes the encryption engine.
+  ///
+  /// Uses [LikeConfig.encryptionKey] if set; otherwise generates and persists
+  /// a per-device key in SharedPreferences.
+  /// Safe to call multiple times — subsequent calls are no-ops.
+  static Future<void> init() async {
+    if (_initialized) return;
+
+    final configKey = LikeConstants.current.encryptionKey;
+    final Uint8List keyBytes;
+
+    if (configKey != null && configKey.isNotEmpty) {
+      // Derive a stable 32-byte key from the user-provided string via SHA-256.
+      // This ensures any length of input becomes a valid AES-256 key.
+      keyBytes = Uint8List.fromList(
+        sha256.convert(utf8.encode(configKey)).bytes,
+      );
+    } else {
+      keyBytes = await _getOrCreateDeviceKey();
+    }
+
+    _encrypter = encrypt.Encrypter(
+      encrypt.AES(encrypt.Key(keyBytes), mode: encrypt.AESMode.cbc),
+    );
+    _initialized = true;
+  }
+
+  static Future<Uint8List> _getOrCreateDeviceKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_deviceKeyPrefKey);
+
+    if (stored != null && stored.isNotEmpty) {
+      return base64Decode(stored);
+    }
+
+    // Generate a cryptographically random 32-byte key.
+    final rng = Random.secure();
+    final keyBytes = Uint8List.fromList(
+      List<int>.generate(32, (_) => rng.nextInt(256)),
+    );
+    await prefs.setString(_deviceKeyPrefKey, base64Encode(keyBytes));
+    return keyBytes;
+  }
+
+  static void _assertInitialized() {
+    if (!_initialized || _encrypter == null) {
+      throw StateError(
+        'AppCacheSecurity is not initialized. '
+        'Ensure LikeService.init() is called before using the image cache.',
+      );
+    }
+  }
+
+  /// Encrypts [bytes] with a freshly generated random IV.
+  ///
+  /// Returns [16-byte IV][AES-CBC ciphertext] concatenated.
+  static Uint8List encryptBytes(Uint8List bytes) {
+    if (bytes.isEmpty) return Uint8List(0);
+    _assertInitialized();
+
+    final rng = Random.secure();
+    final ivBytes = Uint8List.fromList(
+      List<int>.generate(_ivLength, (_) => rng.nextInt(256)),
+    );
+    final iv = encrypt.IV(ivBytes);
+    final ciphertext = _encrypter!.encryptBytes(bytes, iv: iv);
+
+    // Layout: [_ivLength bytes of IV][ciphertext bytes]
+    final result = Uint8List(_ivLength + ciphertext.bytes.length);
+    result.setRange(0, _ivLength, ivBytes);
+    result.setRange(_ivLength, result.length, ciphertext.bytes);
+    return result;
+  }
+
+  /// Decrypts a file whose content was produced by [encryptBytes].
+  ///
+  /// Reads the IV from the first 16 bytes, then decrypts the remainder.
+  /// If decryption fails (e.g., file was encrypted with the old hardcoded key),
+  /// the caller ([AppCacheManager.getFileStream]) will delete and re-download it.
   static Future<io.File> decryptFile(File encryptedFile) async {
+    _assertInitialized();
+
     final bytes = await encryptedFile.readAsBytes();
     if (bytes.isEmpty) throw Exception('File is empty');
+    if (bytes.length <= _ivLength) {
+      throw Exception(
+        'File too small to contain IV + ciphertext. Likely from a previous format.',
+      );
+    }
 
-    final decryptedBytes = _encrypter.decryptBytes(
-      encrypt.Encrypted(bytes),
-      iv: _iv,
+    // Extract the per-file IV from the first 16 bytes.
+    final iv = encrypt.IV(Uint8List.fromList(bytes.sublist(0, _ivLength)));
+    final cipherBytes = Uint8List.fromList(bytes.sublist(_ivLength));
+
+    final decryptedBytes = _encrypter!.decryptBytes(
+      encrypt.Encrypted(cipherBytes),
+      iv: iv,
     );
 
-    // Safeguard path logic
+    // Safeguard path logic (unchanged from original)
     final String separator = io.Platform.pathSeparator;
     final String keyMatch = '$separator${AppCacheManager.key}$separator';
     final String decryptedMatch = '${keyMatch}decrypted$separator';
@@ -212,28 +370,26 @@ class AppCacheSecurity {
     if (encryptedFile.path.contains(keyMatch)) {
       decryptedPath = encryptedFile.path.replaceFirst(keyMatch, decryptedMatch);
     } else {
-      // Fallback if path structure is unexpected
       decryptedPath =
           '${encryptedFile.parent.path}${separator}decrypted$separator${encryptedFile.basename}';
     }
 
     if (decryptedPath == encryptedFile.path) {
-      throw Exception(
-        'Decryption path collision detected. Avoiding overwrite.',
-      );
+      throw Exception('Decryption path collision detected. Avoiding overwrite.');
     }
 
     final decryptedFile = io.File(decryptedPath);
     if (!await decryptedFile.parent.exists()) {
       await decryptedFile.parent.create(recursive: true);
     }
-
-    return await decryptedFile.writeAsBytes(decryptedBytes);
+    return decryptedFile.writeAsBytes(decryptedBytes);
   }
 
-  static Uint8List encryptBytes(Uint8List bytes) {
-    if (bytes.isEmpty) return Uint8List(0);
-    return Uint8List.fromList(_encrypter.encryptBytes(bytes, iv: _iv).bytes);
+  /// Resets the encryption state. For testing only.
+  @visibleForTesting
+  static void reset() {
+    _encrypter = null;
+    _initialized = false;
   }
 }
 

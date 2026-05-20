@@ -5,7 +5,6 @@ import 'package:like/src/client/like_client.dart';
 import 'package:like/src/core/like_config.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
-import 'package:like/src/services/like_background_sync_service.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_offline_sync_manager.dart';
 import 'package:like/src/services/like_utils.dart';
@@ -28,7 +27,12 @@ class LikeService {
     // 0. Apply config settings to LikeConstants
     LikeConstants.apply(config);
 
-    // 1. Core Storage
+    // 1a. Initialize encryption FIRST — must be ready before any file cache
+    //     access occurs. Uses config.encryptionKey if provided, otherwise
+    //     generates a per-device key stored in SharedPreferences.
+    await AppCacheSecurity.init();
+
+    // 1b. Core Storage
     await Hive.initFlutter();
     await Future.wait([
       Hive.openBox(LikeConstants.boxApiCache),
@@ -51,7 +55,7 @@ class LikeService {
     }
 
     // 4. Background Services & Cache Managers
-    await LikeBackgroundSyncService().init();
+    // Removed workmanager dependency
     LikeOfflineSyncManager().init();
 
     // Ensure the disk image cache respects the configured limits on startup
@@ -142,7 +146,7 @@ class LikeService {
     await cacheBox.put(key, {
       'data': data,
       'timestamp': timestamp,
-      'storageDurationMs': ?storageDurationMs,
+      if (storageDurationMs != null) 'storageDurationMs': storageDurationMs,
     });
   }
 

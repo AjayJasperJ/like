@@ -30,8 +30,18 @@ class LikeNotifierState<T> {
   /// The stored trigger action to re-run the `fetch` in the background.
   Future<void> Function()? refreshAction;
 
-  LikeNotifierState({LikeStateResponse<T>? initialValue})
-    : value = initialValue ?? LikeStateResponse<T>.idle();
+  /// Optional mapper for automatic pipeline synchronization.
+  ///
+  /// When provided, the [LikeAutoReconnectMixin.fetch] method automatically
+  /// registers this state as a pipeline listener. Any response from the same
+  /// endpoint broadcast on the [LikePipeline] will be parsed using this mapper
+  /// and applied to this state — with no extra configuration needed at the call site.
+  final T Function(dynamic json)? mapper;
+
+  LikeNotifierState({
+    LikeStateResponse<T>? initialValue,
+    this.mapper,
+  }) : value = initialValue ?? LikeStateResponse<T>.idle();
 
   // Convenience state getters
   bool get isSuccess => value.isSuccess;

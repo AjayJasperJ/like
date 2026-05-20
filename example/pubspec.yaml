@@ -3,15 +3,16 @@ description: "Demonstrates how to use the LIKE networking package."
 publish_to: 'none'
 
 environment:
-  sdk: ">=3.11.0"
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.16.0"
 
 dependencies:
   flutter:
     sdk: flutter
   like:
     path: ../
-  provider: ^6.1.5+1
-  toastification: ^3.2.0
+  provider: ">=6.0.0 <7.0.0"
+  toastification: ">=3.0.0 <4.0.0"
 
 dev_dependencies:
   flutter_test:

@@ -31,7 +31,6 @@ export 'src/services/like_sync_manager.dart';
 export 'src/services/like_offline_sync_manager.dart';
 export 'src/services/like_service.dart';
 
-export 'src/services/like_background_sync_service.dart';
 export 'src/services/like_toast_delegate.dart';
 export 'src/services/like_toast_manager.dart';
 export 'src/services/app_cache_manager.dart';

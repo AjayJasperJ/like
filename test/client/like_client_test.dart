@@ -24,7 +24,7 @@ void main() {
     when(() => mockDio.options).thenReturn(BaseOptions(baseUrl: baseUrl));
 
     // Clear registry
-    LikeRequestRegistry().clear();
+    client.registry.clear();
   });
 
   tearDown(() {

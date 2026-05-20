@@ -27,7 +27,7 @@ void main() {
     when(() => mockDio.options).thenReturn(BaseOptions(baseUrl: baseUrl));
 
     // Reset singleton registry
-    LikeRequestRegistry().clear();
+    client.registry.clear();
     LikeConstants.apply(LikeConstants.current.copyWith(cacheOnOffline: false));
   });
 
@@ -52,7 +52,7 @@ void main() {
           statusCode: 200,
         );
 
-        LikeRequestRegistry().addSessionKey(absoluteUriKey, response: response);
+        client.registry.addSessionKey(absoluteUriKey, response: response);
 
         // sessionStale must be true to trigger L1 check
         final result = await client.get(path, sessionStale: true);
@@ -129,8 +129,8 @@ void main() {
 
         // 3. Clear L1 RAM cache but keep the "session fetched" mark
         // We do this by clearing and re-adding only the key
-        LikeRequestRegistry().clear();
-        LikeRequestRegistry().addSessionKey(absoluteUriKey);
+        client.registry.clear();
+        client.registry.addSessionKey(absoluteUriKey);
 
         // 4. Try again - should miss L1 and hit L2
         final result2 = await client.get(path, sessionStale: true);

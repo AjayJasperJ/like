@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-05-20
+
+### Added
+
+- **Zero-Config Pipeline Synchronization**: Introduced a `mapper` field on `LikeNotifierState<T>`. When defined, `fetch()` automatically registers the state as a live pipeline listener — any response for the same endpoint+query broadcast on the `LikePipeline` updates the state instantly across all screens, with no extra parameters at the call site.
+- **`LikePipelineMixin.bindPipeline`**: New zero-argument declarative method. Reads the `mapper` from the `LikeNotifierState` and registers the binding automatically. No endpoint string or mapper lambda needed at bind time.
+- **`LikeAutoReconnectMixin` Pipeline Integration**: `fetch()` now auto-wires a pipeline binding if `state.mapper` is set. Background `autoResync` refresh cycles preserve the binding without re-declaring it.
+- **Automatic Path & Query Verification**: Pipeline matching extracts `endpointPath` and `activeQuery` directly from the live HTTP request via `Zone`-based injection in `LikeClient`. Both path (with prefix-matching) and query parameters are verified automatically before dispatching a pipeline update.
+- **In-Flight Race Guard**: Pipeline `processAndAssign` is suppressed while a state is actively loading or refreshing (`isLoading || isRefreshing`), preventing concurrent writers from corrupting the state.
+
+### Changed
+
+- **Wide SDK Support**: Lowered minimum Dart SDK constraint to `>=3.0.0 <4.0.0` and Flutter SDK to `>=3.16.0` to support older, existing, and modern projects.
+- **Dependency Flexibility**: Widened dependency constraints (such as `dio`, `hive`, `connectivity_plus`, `toastification`, etc.) to use flexible ranges instead of high/pinned versions. This prevents dependency resolution conflicts in client projects.
+- **`LikeUiConfig` Extraction Reverted**: `minSplashDuration` and `authRedirectDelay` were removed entirely from `LikeConfig` and `LikeConstants`. A network package has no business knowing what a splash screen is.
+- **`LikePipelineMixin` Refactored**: Internal listener management unified into a single `_startPipelineListener()` method. `registerPipelineListener` and `unregisterPipelineListener` no longer restart the stream subscription unnecessarily. When all registrations are removed, the subscription is cancelled and nulled instead of being restarted empty.
+
+### Fixed
+
+- **Duplicate Pipeline Bindings**: `_LikePipelineStateBinding` now implements `==` and `hashCode` via an `identity` key. Repeated calls to `bindPipeline` for the same state object replace the prior binding rather than accumulating duplicates that would fire N times per event.
+- **`autoResync` Lost Pipeline Binding**: The `refreshAction` closure stored inside `fetch()` previously called `fetch` without forwarding pipeline configuration, causing the binding to be dropped on background resync. The closure now re-registers the binding correctly.
+- **Removed `workmanager` Dependency**: Fully removed the `workmanager` package and `LikeBackgroundSyncService`. The package is now platform-agnostic and runs on Flutter Web, Windows, macOS, and Linux. Offline sync is driven by `LikeConnectivityManager` reacting to foreground connectivity changes.
+- **Cryptographic Hardening**: Replaced the hardcoded AES key and static IV in `AppCacheSecurity` with a per-device derived key (SHA-256) and a random IV per-file write. Cached data is now genuinely encrypted.
+- **Registry Singleton Removed**: `LikeRequestRegistry` no longer uses a global singleton. Each `LikeClient` instance manages its own registry, preventing state corruption when using multiple clients or running parallel tests.
+- **Auth-Aware Offline Replay**: `LikeOfflineSyncInterceptor` now fetches a fresh auth token before replaying queued mutations, fixing 401 errors for long-lived offline sessions.
+- **SWR Background Future Bug**: `LikeClient._execute` was not awaiting the SWR background future, silently swallowing errors. This has been corrected.
+
 ## [1.1.3] - 2026-05-19
 
 ### Added

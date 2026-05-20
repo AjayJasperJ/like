@@ -102,17 +102,17 @@ class LikeLogger {
       message: message,
       details: {
         'success': success,
-        'requestId': ?requestId,
-        'statusCode': ?statusCode,
-        'method': ?method,
-        'requestHeaders': ?requestHeaders,
-        'responseHeaders': ?responseHeaders,
-        'requestBody': ?requestBody,
-        'requestFields': ?requestFields,
-        'requestQuery': ?requestQuery,
+        if (requestId != null) 'requestId': requestId,
+        if (statusCode != null) 'statusCode': statusCode,
+        if (method != null) 'method': method,
+        if (requestHeaders != null) 'requestHeaders': requestHeaders,
+        if (responseHeaders != null) 'responseHeaders': responseHeaders,
+        if (requestBody != null) 'requestBody': requestBody,
+        if (requestFields != null) 'requestFields': requestFields,
+        if (requestQuery != null) 'requestQuery': requestQuery,
         if (response != null) 'response': response.toString(),
         if (shouldShrink) 'shrink': true,
-        'status': ?statusText,
+        if (statusText != null) 'status': statusText,
       },
     );
   }
@@ -135,11 +135,11 @@ class LikeLogger {
       message: '$endpoint | STARTED',
       details: {
         'requestId': requestId,
-        'method': ?method,
-        'headers': ?headers,
-        'body': ?body,
-        'fields': ?fields,
-        'query': ?query,
+        if (method != null) 'method': method,
+        if (headers != null) 'headers': headers,
+        if (body != null) 'body': body,
+        if (fields != null) 'fields': fields,
+        if (query != null) 'query': query,
       },
     );
   }

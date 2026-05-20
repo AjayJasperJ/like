@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "like",
-      "version": "1.1.3",
+      "version": "1.2.0",
       "dependencies": [
         "cached_network_image",
         "collection",
@@ -27,8 +27,7 @@
         "synchronized",
         "toastification",
         "universal_io",
-        "uuid",
-        "workmanager"
+        "uuid"
       ],
       "devDependencies": [
         "build_runner",
@@ -172,16 +171,6 @@
       "name": "synchronized",
       "version": "3.4.0+1",
       "dependencies": []
-    },
-    {
-      "name": "workmanager",
-      "version": "0.9.0+3",
-      "dependencies": [
-        "flutter",
-        "workmanager_android",
-        "workmanager_apple",
-        "workmanager_platform_interface"
-      ]
     },
     {
       "name": "shared_preferences",
@@ -807,31 +796,6 @@
         "collection",
         "path",
         "term_glyph"
-      ]
-    },
-    {
-      "name": "workmanager_apple",
-      "version": "0.9.1+2",
-      "dependencies": [
-        "flutter",
-        "workmanager_platform_interface"
-      ]
-    },
-    {
-      "name": "workmanager_android",
-      "version": "0.9.0+2",
-      "dependencies": [
-        "flutter",
-        "workmanager_platform_interface"
-      ]
-    },
-    {
-      "name": "workmanager_platform_interface",
-      "version": "0.9.1+1",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "plugin_platform_interface"
       ]
     },
     {

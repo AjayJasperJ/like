@@ -5,10 +5,11 @@ import 'package:like/src/core/like_constants.dart';
 
 /// Registry to track in-flight requests and session-stale keys (L1 Memory Cache).
 /// Matches enterprise's RequestRegistry parity.
+///
+/// Each [LikeClient] instance owns its own [LikeRequestRegistry]. This ensures
+/// that clients with different base URLs (e.g., created via [LikeClient.copyWith])
+/// never share or corrupt each other's cache state.
 class LikeRequestRegistry {
-  static final LikeRequestRegistry _instance = LikeRequestRegistry._internal();
-  factory LikeRequestRegistry() => _instance;
-  LikeRequestRegistry._internal();
 
   bool _disposed = false;
 

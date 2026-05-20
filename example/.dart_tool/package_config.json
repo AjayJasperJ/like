@@ -257,7 +257,7 @@
       "name": "like",
       "rootUri": "../../",
       "packageUri": "lib/",
-      "languageVersion": "3.11"
+      "languageVersion": "3.0"
     },
     {
       "name": "lints",
@@ -590,30 +590,6 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "workmanager",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/workmanager-0.9.0+3",
-      "packageUri": "lib/",
-      "languageVersion": "3.5"
-    },
-    {
-      "name": "workmanager_android",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/workmanager_android-0.9.0+2",
-      "packageUri": "lib/",
-      "languageVersion": "3.5"
-    },
-    {
-      "name": "workmanager_apple",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/workmanager_apple-0.9.1+2",
-      "packageUri": "lib/",
-      "languageVersion": "3.5"
-    },
-    {
-      "name": "workmanager_platform_interface",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/workmanager_platform_interface-0.9.1+1",
-      "packageUri": "lib/",
-      "languageVersion": "3.5"
-    },
-    {
       "name": "xdg_directories",
       "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/xdg_directories-1.1.0",
       "packageUri": "lib/",
@@ -635,7 +611,7 @@
       "name": "like_example",
       "rootUri": "../",
       "packageUri": "lib/",
-      "languageVersion": "3.11"
+      "languageVersion": "3.0"
     }
   ],
   "generator": "pub",
