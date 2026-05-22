@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2026-05-22
+
+### Documentation
+
+- **README Restructured — Clean Architecture Flow**: Replaced the "4-Tier" naming with an explicit, named layer breakdown: Reactive UI → Provider → Repository → Service → Cache layers. The architecture diagram now reflects a clean, reader-friendly ASCII flow with clearly labelled cache lanes (L1 RAM · L2 Hive · SWR · ETag/304).
+- **Cache Layer Naming Clarified**: Renamed `L3 (SWR)` to **SWR** to avoid implying a third physical store. The four cache strategies are now documented as distinct columns: L1 (in-memory), L2 (Hive disk), SWR (stale-while-revalidate background revalidation), and ETag/304 (HTTP conditional requests).
+- **Repository Layer Section Added**: Explicit section showing thin repository call-sites that forward to the service layer and own query-building logic — previously implied but never documented.
+- **`LikeWhen<T>` Expanded**: Clarified the widget is intended for inline `build()` use when a `LikeStateResponse<T>` snapshot is already in scope, not as a live listener.
+- **`updateNotifier` Fully Documented**: Added complete parameter reference — all five toast-control flags (`disableLoadingToast`, `disableSuccessToast`, `disableErrorToast`, `disableExceptionToast`, `disableCancelledToast`), `enableHaptics`, `messageOverrides`, and all lifecycle callbacks (`onInit`, `onSuccess`, `onError`, `onException`). Includes a state-by-state behaviour table (toast type + haptic weight + callback fired).
+- **`likeWhenNotifier` Documented**: Added dedicated section for the raw, side-effect-free state handler — no automatic toasts or haptics. Includes real-world usage patterns (overlay hiding, custom bottom sheets, analytics) and a side-by-side comparison table against `updateNotifier`.
+- **Connect & Contribute Section Improved**: Reformatted as a table with pub.dev, Docs/Wiki, Issues tracker, GitHub, LinkedIn, Instagram, and email — all in one scannable block.
+
 ## [1.2.1] - 2026-05-22
 
 ### Fixed
