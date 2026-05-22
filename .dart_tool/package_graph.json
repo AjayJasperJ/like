@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "like",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "dependencies": [
         "cached_network_image",
         "collection",
