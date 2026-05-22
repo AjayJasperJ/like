@@ -123,9 +123,9 @@
     },
     {
       "name": "code_assets",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/code_assets-1.0.0",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/code_assets-1.1.0",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "code_builder",
@@ -171,7 +171,7 @@
     },
     {
       "name": "dbus",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/dbus-0.7.12",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/dbus-0.7.13",
       "packageUri": "lib/",
       "languageVersion": "2.17"
     },
@@ -297,7 +297,7 @@
     },
     {
       "name": "hooks",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/hooks-1.0.3",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/hooks-2.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     },
@@ -410,12 +410,6 @@
       "languageVersion": "2.12"
     },
     {
-      "name": "native_toolchain_c",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/native_toolchain_c-0.17.6",
-      "packageUri": "lib/",
-      "languageVersion": "3.10"
-    },
-    {
       "name": "nested",
       "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/nested-1.0.0",
       "packageUri": "lib/",
@@ -429,7 +423,7 @@
     },
     {
       "name": "objective_c",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/objective_c-9.3.0",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/objective_c-9.4.1",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     },
@@ -645,7 +639,7 @@
     },
     {
       "name": "sqflite_common",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_common-2.5.7",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_common-2.5.8",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     },
@@ -777,9 +771,9 @@
     },
     {
       "name": "xml",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/xml-6.6.1",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/xml-7.0.1",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.11"
     },
     {
       "name": "yaml",

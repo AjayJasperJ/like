@@ -52,7 +52,47 @@ class LikeSliverBuilder<T extends Object> extends StatefulWidget {
 class _LikeSliverBuilderState<T extends Object>
     extends State<LikeSliverBuilder<T>> {
   LikeStateResponse<dynamic>? _lastNotifiedResponse;
-  T? _lastSuccessfulData;
+  Listenable? _observedListenable;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(covariant LikeSliverBuilder<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _unsubscribe();
+    _subscribe();
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribe() {
+    final rawObserved = widget.observe();
+    if (rawObserved is Listenable) {
+      _observedListenable = rawObserved;
+      _observedListenable!.addListener(_handleUpdate);
+    }
+  }
+
+  void _unsubscribe() {
+    if (_observedListenable != null) {
+      _observedListenable!.removeListener(_handleUpdate);
+      _observedListenable = null;
+    }
+  }
+
+  void _handleUpdate() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   T? _castData(dynamic data) {
     if (data == null) return null;
@@ -78,11 +118,7 @@ class _LikeSliverBuilderState<T extends Object>
       });
     }
 
-    // Update sticky data
     final casted = _castData(response.data);
-    if (casted != null) {
-      _lastSuccessfulData = casted;
-    }
 
     return SliverMainAxisGroup(
       slivers: () {
@@ -91,9 +127,6 @@ class _LikeSliverBuilderState<T extends Object>
             return widget.onIdle?.call() ?? [];
 
           case LikeState.loading:
-            if (_lastSuccessfulData != null) {
-              return widget.onSuccess(_lastSuccessfulData!, true, false);
-            }
             return widget.onLoading?.call() ?? [];
 
           case LikeState.success:

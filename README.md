@@ -1,64 +1,58 @@
-![LIKE Banner](https://raw.githubusercontent.com/AjayJasperJ/like/refs/heads/main/assets/banner.png)
+LIKE: Link Intelligent Kernel Engine 🚀
 
-# LIKE: Link Intelligent Kernel Engine 🚀
+https://raw.githubusercontent.com/AjayJasperJ/like_docs/refs/heads/main/assets/banner.png
 
-**LIKE** is an enterprise-grade, high-performance 4-tier networking engine for Flutter designed for **Offline-First**, **Resilient**, and **Reactive** applications. Built as an advanced, highly improved wrapper on top of **Dio**, it provides standardized request control, multi-layer caching, secure media storage, automatic state orchestration, and comprehensive protocol support.
+**LIKE** is an enterprise-grade, high-performance 4-tier networking engine for Flutter designed for **Offline-First**, **Resilient**, and **Reactive** applications. Built as an advanced wrapper on top of **Dio**, it provides standardized request control, multi-layer caching, secure media storage, automatic state orchestration, real-time pipeline synchronization, and comprehensive protocol support.
 
----
-
-## 💡 Why Migrate to LIKE? (VS. Traditional HTTP / Dio)
-
-While libraries like **Dio** or standard **HTTP** provide a solid baseline for basic web requests, they require massive amounts of custom boilerplate, caching layers, offline databases, and state handling to support a modern, offline-first production application. 
-
-**LIKE solves this by packing the entire network, cache, security, and state lifecycle into a single high-performance engine.**
-
-| Feature | Traditional HTTP / Dio | LIKE Engine |
-| :--- | :--- | :--- |
-| **Caching Model** | Standard HTTP caching only (or manual DB persistence code). | **3-Tier Hybrid Caching** (RAM + Persistent Hive + Automatic Stale-While-Revalidate). |
-| **State Orchestration** | Manual boolean flags (`isLoading`, `isError`), custom variables, and manual listeners. | **Atomic State Machine** (`LikeNotifierState`) with native loading, success, SWR, error, and exception transitions. |
-| **Request Cancellation** | Manual tracking of individual `CancelToken`s across UI screens and manually calling `.cancel()`. | **Zero-Boilerplate Auto-Cancellation** inside the `fetch` mixin that auto-aborts in-flight calls when a screen or provider is disposed. |
-| **Data Synchronization** | Manual triggers, messy global event busses, or manual polling logic. | **Query-Aware Zero-Config Resync** using overlap checks (including date ranges) to silently update stale views on mutations. |
-| **UI Performance** | Main thread JSON decoding (leads to UI jank/drops frames on payloads >100KB). | **Automated Isolate Parsing** using background Dart Isolates for heavy payloads to guarantee stable 120 FPS. |
-| **Media Caching** | Standard cached network images (prone to leaks or unsecured disk access). | **Secure AES-256 Encrypted Cache** with automatic Least Recently Used (LRU) pruning and dynamic stream decryption. |
-| **Offline Mutations** | App crashes or fails when offline. Requires custom SQLite/Hive sync queues. | **Persistent Offline Sync Queue** (POST/PUT/DELETE are chronologically saved and automatically synced on connection recovery). |
-| **Concurrent Requests** | Duplicate HTTP requests are dispatched to the server, wasting bandwidth. | **Request Deduplication** (multiple matching in-flight calls merge into a single live stream and share the payload). |
+**Reference**: https://github.com/AjayJasperJ/like_docs
 
 ---
 
-## ⚡ Unified Protocol Support (HTTP / REST / GraphQL)
+## 💡 Why LIKE? (vs. Traditional HTTP / Dio)
 
-LIKE is built from the ground up to support modern API specifications seamlessly:
-
-*   **REST / HTTP**: Full native abstractions for `GET`, `POST`, `PUT`, `DELETE`, and high-performance `MULTIPART` file uploads (supporting file paths, file lists, and raw in-memory byte streams via `MultipartBytesFile`).
-*   **GraphQL Ready**: Highly optimized for GraphQL query and mutation payloads. By utilizing standard HTTP `POST` structures combined with LIKE's robust persistent caching, in-flight deduplication, and offline queue, you can achieve offline-first GraphQL execution with minimal setup.
+| Feature                  | Traditional HTTP / Dio                     | LIKE Engine                                                                                                         |
+| :----------------------- | :----------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| **Caching Model**        | Standard HTTP only (or manual DB code).    | **3-Tier Hybrid Caching** (RAM + Hive + Stale-While-Revalidate).                                                    |
+| **State Orchestration**  | Manual boolean flags and custom listeners. | **Atomic State Machine** (`LikeNotifierState`) with native loading, success, SWR, error, and exception transitions. |
+| **Live Sync**            | Manual global event buses or polling.      | **Zero-Config Pipeline Sync** — mutations auto-update every screen observing the same endpoint.                     |
+| **Request Cancellation** | Manual `CancelToken` tracking per screen.  | **Zero-Boilerplate Auto-Cancellation** via `fetch` — tokens rotate and cancel on dispose.                           |
+| **UI Performance**       | Main-thread JSON decoding causes jank.     | **Automated Isolate Parsing** for payloads >100 KB — guarantees 120 FPS.                                            |
+| **Media Caching**        | Unsecured disk access.                     | **Per-Device AES-256 Encrypted Cache** with LRU pruning and transparent stream decryption.                          |
+| **Offline Mutations**    | App crashes or needs custom sync queues.   | **Persistent Offline Sync Queue** — POST/PUT/DELETE saved and auto-replayed on reconnect with fresh auth tokens.    |
+| **Concurrent Requests**  | Duplicate requests waste bandwidth.        | **Request Deduplication** — matching in-flight calls merge into a single stream.                                    |
 
 ---
 
-## 🏗️ Deep Technical Architecture
+## ⚡ Unified Protocol Support
 
-LIKE abstracts away the complexities of networking, state management, and offline persistence by structuring the data lifecycle into **4 architectural tiers**:
+- **REST / HTTP**: Full abstractions for `GET`, `POST`, `PUT`, `DELETE`, and high-performance `MULTIPART` file uploads.
+- **GraphQL Ready**: Leverages standard HTTP `POST` with LIKE's persistent caching, deduplication, and offline queue for offline-first GraphQL execution.
+
+---
+
+## 🏗️ 4-Tier Architecture
 
 ```mermaid
 graph TD
     A[UI Layer / LikeBuilder] -->|Triggers Action| B[State Layer / Provider]
     B -->|Calls API| C[Service Layer / LikeClient]
-    C -->|Bypasses/Retrieves Cache| D[L1 Memory Cache]
-    C -->|Verifies ETag / 304| E[L2 Persistent Hive Cache]
+    C -->|Retrieves Cache| D[L1 Memory Cache]
+    C -->|ETag / 304| E[L2 Persistent Hive Cache]
     C -->|Network Down| F[Offline Queue / Sync Manager]
     C -->|Executes Network| G[Enhanced Dio Engine / Interceptors]
+    G -->|Broadcasts| H[LikePipeline / Live Sync]
 ```
 
-### 1. Unified 4-Tier Lifecycle
-*   **Tier 1: Service Layer (`LikeApiResult`)** — A pure data wrapper that captures raw result payloads alongside metadata (cache status, ETag 304 signals, response origin, and exceptions) with zero UI-coupling.
-*   **Tier 2: Provider Layer (`LikeStateResponse`)** — A UI-aware state machine that converts raw API results into rich reactive states (`idle`, `loading`, `refreshing`, `swr`, `success`, `error`, `exception`) coupled with sticky data persistence during refreshes.
-*   **Tier 3: Advanced Developer Helpers** — Boilerplate-free execution blocks like `fetcher` (automatic cancel-token rotation), `syncWith` (declarative global endpoint sync), and `loadOrFetch` (instant access or pull).
-*   **Tier 4: Reactive UI Widgets (`LikeBuilder`)** — Premium widgets and slivers that automatically listen to states and render placeholders, shimmer loaders, success views, and non-blocking background progress overlays.
+- **Tier 1 — Service (`LikeApiResult`)**: Pure data wrapper capturing payload + metadata (cache status, ETag 304, origin).
+- **Tier 2 — Provider (`LikeStateResponse`)**: UI-aware state machine converting API results into reactive states with correct loading/refreshing/SWR transitions.
+- **Tier 3 — Developer Helpers**: `fetch`, `fetcher`, `syncWith`, `syncWithState`, `loadOrFetch` — zero-boilerplate orchestration blocks.
+- **Tier 4 — Reactive Widgets**: `LikeBuilder`, `LikeSliverBuilder`, `LikeSelector`, `LikeMultiBuilder` — automatically render placeholders, loaders, success views, and SWR overlays.
 
 ---
 
 ## 🛠 1. Initialization
 
-Wrap your `MaterialApp` with the `Like` root wrapper. This widget handles the initialization of the engine (Hive, connectivity, sync) and provides global services like authentication hooks, toast notifications, and optional developer tool hooks.
+Wrap your `MaterialApp` with the `Like` root wrapper. It initializes Hive, connectivity, image cache encryption, auth interceptors, and toast services in one call.
 
 ```dart
 void main() {
@@ -67,37 +61,40 @@ void main() {
       baseUrl: 'https://api.example.com',
       getToken: () async => 'current_session_token',
       refreshToken: () async => 'new_session_token',
-      // Optional: Wrap the core app tree with a debug/devtool overlay
-      devTool: (child) => LikeDevTool(child: child), 
+      devTool: (child) => LikeDevTool(child: child), // optional debug overlay
       child: const MyApp(),
     ),
   );
 }
 ```
 
-### ⚙️ Runtime Configuration
-The `Like` widget manages the entire lifecycle of the networking engine. It automatically:
-- Initializes **Persistent Storage** (Hive).
-- Sets up **Connectivity Monitoring**.
-- Configures **Authentication Interceptors**.
-- Registers **Global Toast** listeners.
-- Injects a debug-only `devTool` wrapper if supplied.
+### ⚙️ What `Like` Sets Up Automatically
 
-### ⏳ Manual or Deferred Initialization
-If you need to initialize the engine manually (e.g., inside a splash screen or custom setup flow), you can use the `LikeService` directly. It is recommended to use `addPostFrameCallback` to avoid blocking the initial render:
+- **Persistent Storage** (Hive)
+- **Per-Device Image Cache Encryption** (`AppCacheSecurity.init()` — AES-256, unique key per install)
+- **Connectivity Monitoring**
+- **Authentication Interceptors**
+- **Global Toast Listeners**
+
+### ⏳ Manual Initialization
 
 ```dart
 WidgetsBinding.instance.addPostFrameCallback((_) async {
-  // Required to open Hive cache boxes and setup connectivity
-  await LikeService.init(config: LikeConfig());
+  await LikeService.init(config: LikeConfig(
+    baseUrl: 'https://api.example.com',
+    encryptionKey: 'your-optional-app-key', // SHA-256 derived; omit for per-device key
+  ));
 });
 ```
 
+> [!IMPORTANT]
+> `LikeService.init()` initializes image-cache encryption **before** Hive storage, so `AppCacheManager` is always ready before any file access occurs.
+
 ---
 
-## 🏗 Tier 1: Service Layer (`LikeApiResult`)
+## 🏗 Tier 1: Service Layer
 
-Services return `LikeApiResult<T>`. This is a pure data wrapper that captures result metadata (cache, 304, success/error) without UI state.
+Services return `LikeApiResult<T>` — a pure data wrapper with no UI coupling.
 
 ```dart
 class UserService {
@@ -109,51 +106,47 @@ class UserService {
 
 ---
 
-## 🧠 Tier 2: Provider Layer (`LikeNotifierState` & `LikeStateResponse`)
+## 🧠 Tier 2: Provider Layer
 
-Providers convert raw `LikeApiResult` data from services into UI-ready states. LIKE provides two patterns to implement the Provider layer:
+### Option A — Recommended: Zero-Boilerplate `LikeNotifierState` + `fetch`
 
-### Option A: The Modern Way (Recommended: Zero-Boilerplate `LikeNotifierState` & `fetch`)
-
-By utilizing the self-contained `LikeNotifierState<T>` along with the unified `fetch<T>` API from `LikeAutoReconnectMixin`, you eliminate almost all manual state-handling boilerplate:
-*   **Automatic CancelToken Lifecycle**: The engine handles generating, rotating, and canceling tokens under the hood.
-*   **Encapsulated State**: Responses, cancel tokens, request paths, and query parameters are stored cleanly in a single `LikeNotifierState` object.
-*   **Auto-Cancellation**: In-flight requests are automatically aborted when the notifier is disposed.
-*   **Query-Aware Automated Resync**: Set `autoResync: true` to dynamically refresh data in the background when relevant mutations occur on the same endpoint.
+`LikeNotifierState<T>` is now a **reactive `ChangeNotifier`** — calling `.clear()` or any state mutation instantly drives all observing `LikeBuilder` widgets to rebuild without a manual `notifyListeners()` call.
 
 ```dart
 class TodoNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
-  final _todoRepo = TodoRepository();
-  
-  // Declared as a single self-contained state object!
-  final todosState = LikeNotifierState<List<TodoModel>>();
+  final _repo = TodoRepository();
 
-  /// Fetches the todo list with automated SWR, offline queuing, and resync.
+  // Self-contained, reactive state object
+  final todosState = LikeNotifierState<List<TodoModel>>(
+    // Optional: provide a mapper to enable zero-config pipeline sync
+    mapper: (json) => (json as List).map(TodoModel.fromJson).toList(),
+  );
+
   Future<void> fetchTodos({ARS? ars}) async {
     await fetch<List<TodoModel>>(
       state: todosState,
       ars: ars,
-      autoResync: true, // Transparently listens for updates and resyncs!
+      autoResync: true,
       priority: LikeSyncPriority.normal,
-      action: (ct, actionArs) => _todoRepo.getTodos(ars: actionArs),
+      action: (ct, actionArs) => _repo.getTodos(ars: actionArs),
     );
   }
 }
 ```
 
-### Option B: The Classic Way (Manual `fetcher` & `CancelToken`)
+**When `mapper` is defined on `LikeNotifierState`**, `fetch()` automatically wires a pipeline binding — any network response for the same endpoint/query broadcast on the internal `LikePipeline` updates the state instantly on every screen, with no extra code at the call site.
 
-For cases where you prefer manual, discrete properties and custom rotation control:
+### Option B — Classic: Manual `fetcher` + `CancelToken`
 
 ```dart
 class UserNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
-  final _userService = UserService();
-  
+  final _service = UserService();
+
   LikeStateResponse<User> state = LikeStateResponse.idle();
   CancelToken? _ct;
 
   UserNotifier() {
-    initAutoReconnect(); // Required for syncWith and onReconnect
+    initAutoReconnect();
   }
 
   Future<void> fetchUser(String id) async {
@@ -161,28 +154,34 @@ class UserNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
       ct: _ct,
       onRotate: (next) => _ct = next,
       onUpdate: (s) => state = s,
-      action: (ct, ars) => _userService.getUser(id),
+      action: (ct, ars) => _service.getUser(id),
     );
   }
 
   @override
   void dispose() {
-    super.dispose(); // CRITICAL: Cancels active sync listeners and tokens
+    super.dispose(); // Cancels active sync listeners and tokens
   }
 }
 ```
 
+**Correct state transitions in `fetcher`:**
+
+- `ars.refresh == false` (clean/initial load) → immediately transitions to `LikeStateResponse.loading()`.
+- `ars.refresh == true` + existing data → transitions to `LikeStateResponse.refreshing(currentData)` so sticky data stays visible.
+
 ---
 
-## ⚡ Tier 3: Advanced Developer Patterns
+## ⚡ Tier 3: Developer Helpers
 
 ### 🔄 `fetcher`
-**Use in**: Classic Providers/Notifiers.  
-**Why**: Automates the boilerplate of rotating `CancelToken`s, setting loading states (but only when appropriate), and handling silent Dio cancellations.
+
+Automates `CancelToken` rotation, loading/refreshing state transitions, and silent Dio cancellation handling.
 
 ### 🔗 `syncWithState` (Modern)
-**Use in**: Provider initialization.  
-**Why**: A streamlined, zero-boilerplate version of `syncWith` designed specifically for `LikeNotifierState`.
+
+Declaratively refreshes a `LikeNotifierState` when a specific endpoint is mutated globally.
+
 ```dart
 syncWithState<User>(
   endpoint: '/users/profile',
@@ -192,8 +191,7 @@ syncWithState<User>(
 ```
 
 ### 🔗 `syncWith` (Classic)
-**Use in**: Classic Provider `initAutoReconnect`.  
-**Why**: Declaratively refreshes data when a specific endpoint updates globally.
+
 ```dart
 syncWith<User>(
   endpoint: '/users/profile',
@@ -204,61 +202,89 @@ syncWith<User>(
 ```
 
 ### 📥 `loadOrFetch`
-**Use in**: UI or Actions.  
-**Why**: "Get me the data now if you have it, otherwise fetch it and return it."
+
+Returns cached data instantly or fetches if unavailable.
+
 ```dart
 final user = await loadOrFetch(state, () => fetchUser());
 ```
 
 ---
 
-## 🧠 Query-Aware Zero-Config State Resync Engine
+## 🔁 Zero-Config Pipeline Synchronization
 
-When utilizing `fetch` with `autoResync: true`, the engine automatically orchestrates non-blocking background refreshes:
-1.  **GET Tracking**: Successful `GET` network requests executed within the `fetch` block automatically bind their endpoint paths and query parameter payloads into the associated `LikeNotifierState` via transparent zone isolation.
-2.  **Mutation Broadcasting**: Success signals from write operations (`POST`, `PUT`, `DELETE`) broadcast a `LikeSyncEvent` containing the endpoint and payload across `syncStream`.
-3.  **Query Parameter Overlap Matching**: The engine intercepts the event and performs granular overlap analysis (including matching specific date parameters and query ranges like `startDate` / `endDate` vs `date`).
-4.  **Resync Triggering**: If a match and parameter overlap is detected, the engine registers a background sync task via `LikeSyncManager` to silently refresh the stale query state without disrupting the active UI!
+When `LikeNotifierState` is given a `mapper`, LIKE's `LikePipeline` handles cross-screen live sync automatically:
+
+1. A successful network `GET` inside `fetch()` binds the endpoint path + query to the state via Zone injection.
+2. Any write (`POST`/`PUT`/`DELETE`) on that endpoint broadcasts a pipeline event.
+3. Path + query overlap is verified — if matched, the state is updated instantly on **every screen** observing it.
+4. The in-flight race guard suppresses updates while the state is actively loading or refreshing.
 
 ---
 
 ## 🎨 Tier 4: Reactive UI Widgets
 
-### `LikeBuilder`
-The primary widget for consuming `LikeStateResponse` or `LikeNotifierState`. It automatically unwraps the state, handles "sticky data" during background revalidations, and supports side-effect listeners.
+### `LikeBuilder<T>`
+
+The primary widget for consuming `LikeStateResponse` or `LikeNotifierState`. It subscribes directly to `LikeNotifierState` as a `Listenable`, rebuilding automatically on any mutation.
+
+**Correct loading behavior (v1.2.1):**
+
+- `LikeState.loading` → **always** renders `onLoading` (no sticky data leak from a previous session).
+- `LikeState.refreshing` → renders `onSuccess(data, isRefreshing: true, ...)` keeping old data visible.
+- `LikeState.staleWhileRevalidate` → renders `onSuccess(data, ..., isFromSWR: true)`.
 
 ```dart
 LikeBuilder<User>(
-  observe: () => userNotifier.userState, // Supports LikeNotifierState or LikeStateResponse
-  onSuccess: (user, isRefreshing, isFromSWR) => UserProfileView(user: user),
+  observe: () => userNotifier.userState, // LikeNotifierState or LikeStateResponse
+  onSuccess: (user, isRefreshing, isFromSWR) {
+    return Stack(children: [
+      UserProfileView(user: user),
+      if (isRefreshing) const LinearProgressIndicator(),
+    ]);
+  },
   onLoading: () => const ShimmerLoader(),
-  onRefreshing: (user) => Stack(
-    children: [UserProfileView(user: user), const LinearProgressIndicator()],
-  ),
   onError: (error) => ErrorView(message: error.message),
 );
 ```
 
+### `LikeSliverBuilder<T>`
+
+Same semantics as `LikeBuilder` but returns `List<Widget>` slivers for use inside `CustomScrollView`.
+
+```dart
+LikeSliverBuilder<List<Todo>>(
+  observe: () => todoNotifier.todosState,
+  onSuccess: (todos, isRefreshing, isFromSWR) => [
+    SliverList(delegate: SliverChildBuilderDelegate(
+      (ctx, i) => TodoTile(todo: todos[i]),
+      childCount: todos.length,
+    )),
+  ],
+  onLoading: () => [const SliverFillRemaining(child: ShimmerLoader())],
+);
+```
+
 ### `LikeSelector` & `LikeSelectorSliver`
-Efficiently rebuilds only when a specific slice of the overall state changes, preventing unnecessary expensive tree updates. Great for CustomScrollViews or shared complex models.
+
+Rebuilds only when a specific slice of state changes — ideal for shared complex models.
 
 ```dart
 LikeSelector<UserNotifier, User>(
-  selector: (context, notifier) => notifier.userDetailResponse,
-  onSuccess: (user, isRefreshing, isFromSWR) {
-    return ProfileCard(user: user);
-  },
+  selector: (context, notifier) => notifier.userState,
+  onSuccess: (user, isRefreshing, isFromSWR) => ProfileCard(user: user),
 );
 ```
 
 ### `LikeMultiBuilder` & `LikeMultiSliverBuilder`
-Aggregates multiple concurrent `LikeStateResponse` inputs into a single combined reactive widget, ensuring all payloads are resolved and available synchronously to build unified dashboards.
+
+Aggregates multiple states into one unified widget.
 
 ```dart
 LikeMultiBuilder(
   observes: [
-    () => userNotifier.userDetailResponse,
-    () => postNotifier.postsResponse,
+    () => userNotifier.userState,
+    () => postNotifier.postsState,
   ],
   onSuccess: (results, isRefreshing, isFromSWR) {
     final user = results[0] as User;
@@ -270,143 +296,125 @@ LikeMultiBuilder(
 );
 ```
 
+### `LikeWhen<T>`
+
+Pattern-matching shorthand for simple state-to-widget mapping.
+
 ### `LikeStateResponse` State Machine
-- **`isIdle`**: Initial state.
-- **`isLoading`**: First-time fetch (no data yet).
-- **`isRefreshing`**: Explicit refresh (data is visible/sticky).
-- **`isSWR`**: Background update (cached data is visible).
-- **`isSuccess`**: Request completed with data.
-- **`isError`**: API error (e.g., 500).
-- **`isException`**: Client-side failure (e.g., No Internet).
+
+| State                  | Meaning                 | `LikeBuilder` renders                 |
+| ---------------------- | ----------------------- | ------------------------------------- |
+| `idle`                 | Initial / cleared       | `onIdle`                              |
+| `loading`              | First fetch, no data    | `onLoading` (always — no sticky leak) |
+| `refreshing`           | Explicit refresh        | `onSuccess(data, true, false)`        |
+| `staleWhileRevalidate` | Background revalidation | `onSuccess(data, false, true)`        |
+| `success`              | Fresh data              | `onSuccess(data, false, false)`       |
+| `error`                | API error               | `onError`                             |
+| `exception`            | Client-side failure     | `onException`                         |
 
 ---
 
-## 🛠️ Advanced Core Features & Capabilities
+## 💾 Hybrid Multi-Layer Cache System
 
-### 💾 1. Hybrid Multi-Layer Cache System
-LIKE implements a highly optimized, 3-tier caching structure:
-1.  **L1 Cache (RAM)**: Fast-access memory store managed inside `LikeRequestRegistry` for instant screen transition retrieval.
-2.  **L2 Cache (Disk)**: Persistent Hive storage. Automatically extracts and stores **ETag** headers, enabling network-level validation via **HTTP 304 Not Modified** responses to save bandwidth.
-3.  **L3 (Stale-While-Revalidate / SWR)**: Returns local cached data immediately to keep the UI interactive while initiating a silent background network fetch to revalidate and update the local store.
-
-### 🔄 2. Resiliency & Graceful Degradation
-*   **Offline Fallback**: Serves stale cache data automatically if a user makes a query while offline.
-*   **Error / Exception Fallback**: If a live request fails due to a server crash (5xx) or timeout, LIKE automatically intercepts the failure and serves the last-known cache as a resiliency fallback.
-
-### 📥 3. Persistent Offline Synchronization Queue
-All data mutations (`POST`, `PUT`, `DELETE`) are queued inside a persistent Hive offline box if the network is down.
-*   **Background Synchronization**: Syncs tasks automatically in the background using `Workmanager` or during runtime when network connectivity is recovered.
-*   **Idempotency**: Requests are retried in chronological order with smart status verification to prevent duplicate server actions.
-
-### 🚀 4. Performance & High-Concurrency Controls
-*   **Background Parsing (Isolates)**: Automatically offloads heavy JSON string parsing (>100KB) from the main UI thread to a background Dart Isolate using the `compute` API, ensuring consistent 120 FPS rendering.
-*   **Concurrent Request Deduplication**: Prevents multiple in-flight requests for the identical resource. Subsequent matching calls join the active in-flight request, sharing the final network payload.
-*   **Throttling & Rate-Limiting**: Throttles rapid identical requests and provides native **HTTP 429 Too Many Requests** handling by honoring server `Retry-After` headers.
+1. **L1 Cache (RAM)** — Per-client `LikeRequestRegistry` (not a global singleton) for instant screen-transition retrieval.
+2. **L2 Cache (Disk / Hive)** — Persistent storage with ETag extraction and HTTP 304 validation.
+3. **L3 (Stale-While-Revalidate)** — Returns cached data immediately, then silently revalidates in the background.
 
 ---
 
-## 🔒 5. Encrypted Image Cache (L2 Disk Caching)
+## 🔒 Encrypted Image Cache
 
-LIKE includes a built-in secure disk and memory caching system tailored for images to prevent sensitive user data exposure.
+### Per-Device AES-256 Encryption
 
-### 🛡️ AES-CBC 256-Bit Secure Caching
-Through `AppCacheManager` and `EncryptedHttpFileService`, images downloaded over HTTP are encrypted on-the-fly via AES-CBC 256-bit cryptography using a secure 32-character key before writing to disk.
+`AppCacheSecurity` generates a cryptographically random 32-byte key on first install and persists it in `SharedPreferences`. A fresh random 16-byte IV is generated **per file** at write time (format: `[16-byte IV][AES-CBC ciphertext]`), so every cached image is independently decryptable.
 
-```dart
-// The engine handles decryption transparently inside temporary application directories
-final stream = AppCacheManager().getFileStream(imageUrl);
-```
+You can supply your own key via `LikeConfig.encryptionKey` — LIKE derives a stable 32-byte key from it via SHA-256.
 
-### 🧹 Automatic LRU Pruning
-To keep the app's footprint small, the image caching system monitors disk size at startup and automatically prunes files based on Least Recently Used (LRU) order when limits are reached:
-- **`maxImageCacheMB`** (Default: `500.0`): Maximum storage limit.
-- **`minImageCacheMB`** (Default: `400.0`): Pruning target when size is exceeded.
-- **`imageStalePeriod`** (Default: `90` days): Retention threshold.
+### `LikeCacheImage` Widget
 
-### 🖼️ `LikeCacheImage` Drop-In Widget
-Use `LikeCacheImage` as a premium network image widget. It removes query parameters (such as tokens or tracking identifiers) automatically using `AppCacheUtils.normalizeUrl` to ensure consistent cache hits.
+Drop-in widget that removes query tokens automatically for consistent cache hits.
 
 ```dart
 LikeCacheImage(
-  imageUrl: 'https://example.com/avatar.png?token=xyz123',
+  imageUrl: 'https://example.com/avatar.png?token=xyz',
   fit: BoxFit.cover,
   width: 100,
   height: 100,
-  placeholder: (context, url) => const ShimmerLoader(),
-  errorWidget: (context, url, err) => const Icon(Icons.broken_image),
+  placeholder: (ctx, url) => const ShimmerLoader(),
+  errorWidget: (ctx, url, err) => const Icon(Icons.broken_image),
 );
 ```
 
+### LRU Pruning
+
+| Config               | Default    | Description                     |
+| -------------------- | ---------- | ------------------------------- |
+| `maxImageCacheMB`    | `500.0` MB | Pruning is triggered above this |
+| `minImageCacheMB`    | `400.0` MB | Pruning target                  |
+| `imageStalePeriod`   | `90` days  | Retention threshold             |
+| `maxImageCacheItems` | `5000`     | Max unique cached images        |
+
 ---
 
-## 🎭 6. Network Mocking System (API Simulations)
+## 📡 Persistent Offline Sync Queue
 
-LIKE provides a persistent, Hive-backed mocking engine allowing developers to intercept API calls and return custom mock payloads inside testing, staging, or dev environments.
+All `POST`/`PUT`/`DELETE` mutations are persisted in a Hive box when the network is down and auto-replayed in chronological order when connectivity is restored.
 
-### 🧭 Matching Mock Rules
-A `MockRule` defines what requests to hijack. It supports matching against:
-1. **HTTP Method**: `GET`, `POST`, `PUT`, `DELETE` (or `ANY`).
-2. **Base URL / Paths**: Literal match or custom RegEx matching.
-3. **Query Parameters / Headers / Request Body**: Matches substrings or custom RegEx targets.
+**Auth-aware replay (v1.2.0+):** Before replaying each queued request, a fresh auth token is fetched via `LikeAuthInterceptor.getToken`. If the token has expired (tokens typically live 15–60 min), the replay uses the refreshed credential — fixing 401 errors for long-lived offline sessions.
 
-### 🎛️ Registering Mock Rules via `MockController`
-Register rules dynamically. Once configured and enabled, `LikeMockInterceptor` intercepts requests immediately in the client pipeline.
+> [!NOTE]
+> `workmanager` is no longer a dependency. Offline sync is driven entirely by `LikeConnectivityManager` reacting to foreground connectivity changes, making LIKE fully platform-agnostic (Android, iOS, Web, macOS, Windows, Linux).
+
+---
+
+## 🎭 Network Mocking System
+
+LIKE includes a persistent, Hive-backed mocking engine for intercepting API calls in dev/staging.
 
 ```dart
 final mockCtrl = MockController();
-await mockCtrl.init(); // Opens storage and loads active rules
+await mockCtrl.init();
 
-// Register a new mock endpoint
 await mockCtrl.addRule(
   MockRule(
-    id: 'mock_profile_fetch',
+    id: 'mock_profile',
     name: 'Get User Profile',
     pathPattern: '/users/profile',
     method: 'GET',
     statusCode: 200,
-    responseBody: jsonEncode({
-      'status': 200,
-      'data': {'id': '123', 'name': 'Jane Doe', 'role': 'Lead Dev'},
-      'message': 'Success'
-    }),
+    responseBody: jsonEncode({'status': 200, 'data': {'id': '1', 'name': 'Jane'}}),
   ),
 );
 
-// Toggle mocking engine globally
 await mockCtrl.setEngineEnabled(true);
 ```
 
 ---
 
-## 📝 7. Enhanced API & FormData Logging
-
-The built-in `LikeLoggerInterceptor` has been upgraded to automatically parse, structure, and print **Query Parameters** and **Multipart Form Data (`FormData`)** to the developer console, significantly speeding up multipart file uploads and search endpoint debugging.
-
----
-
-## 🧪 8. Customizing Response Unpacking
-
-By default, LIKE expects a flat JSON response. If your API wraps data in a standard envelope (e.g., JSend or similar), use `DefaultLikeUnpacker`. 
-
-> [!IMPORTANT]
-> This is critical for **Error Handling**. Without these keys, the engine cannot extract the `message` or `status` from your API's custom envelope, leading to generic "Unknown Error" states.
+## 🧪 Customizing Response Unpacking
 
 ```dart
-// Handles: { "status": 200, "data": { "id": 1 }, "message": "Success" }
 LikeConfig(
   unpacker: const DefaultLikeUnpacker(
-    dataKey: 'data',        // Where the payload lives
-    messageKey: 'message',  // Where the error/success message lives
-    statusKey: 'status',    // Where the business status code lives
+    dataKey: 'data',       // Where payload lives
+    messageKey: 'message', // Error/success message key
+    statusKey: 'status',   // Business status code key
   ),
 )
 ```
 
+> [!IMPORTANT]
+> Without `unpacker`, LIKE cannot extract `message` or `status` from custom API envelopes, leading to generic "Unknown Error" states.
+
+---
+
+## 📝 Logging
+
+`LikeLoggerInterceptor` structures and prints request/response details — query parameters, headers, multipart form data — to the developer console. Sensitive headers (e.g., `Authorization`) are masked automatically.
+
 ---
 
 ## 🤝 Connect & Contribute
-
-Support the project or reach out for collaboration:
 
 - **GitHub**: [@AjayJasperJ](https://github.com/AjayJasperJ)
 - **LinkedIn**: [Ajay Jasper J](https://in.linkedin.com/in/ajay-jasper-j-8563852b4)

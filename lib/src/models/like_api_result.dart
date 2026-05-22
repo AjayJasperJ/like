@@ -151,6 +151,12 @@ class LikeApiResult<T> {
   /// Converts this result to a [LikeStateResponse].
   LikeStateResponse<T> toStateResponse() {
     if (isSuccess && data != null) {
+      if (isFromStaleWhileRevalidate) {
+        return LikeStateResponse.staleWhileRevalidate(
+          data as T,
+          message: 'Serving from cache...',
+        );
+      }
       return LikeStateResponse.success(
         data as T,
         isFromCache: isFromCache,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/models/like_error.dart';
@@ -8,9 +9,16 @@ import 'package:like/src/models/like_sync_task.dart';
 /// This eliminates the boilerplate of declaring separate private backing fields,
 /// getters, and cancel tokens in providers. Instead, you declare a single
 /// final [LikeNotifierState] property and use the new `fetch` method.
-class LikeNotifierState<T> {
+class LikeNotifierState<T> extends ChangeNotifier {
   /// The current state response.
-  LikeStateResponse<T> value;
+  LikeStateResponse<T> _value;
+
+  LikeStateResponse<T> get value => _value;
+  set value(LikeStateResponse<T> newValue) {
+    if (_value == newValue) return;
+    _value = newValue;
+    notifyListeners();
+  }
 
   /// The active cancel token for the request.
   CancelToken? ct;
@@ -41,7 +49,7 @@ class LikeNotifierState<T> {
   LikeNotifierState({
     LikeStateResponse<T>? initialValue,
     this.mapper,
-  }) : value = initialValue ?? LikeStateResponse<T>.idle();
+  }) : _value = initialValue ?? LikeStateResponse<T>.idle();
 
   // Convenience state getters
   bool get isSuccess => value.isSuccess;

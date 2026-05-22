@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-05-22
+
+### Fixed
+
+- **`LikeBuilder` / `LikeSliverBuilder` Sticky Data Leak**: When the state transitioned to `LikeState.loading` (primary loading), both builders checked `_lastSuccessfulData != null` and — if true — bypassed `onLoading` entirely, rendering stale data instead. `_lastSuccessfulData` is now reset to `null` on `LikeState.loading` transitions, and `onLoading` is always rendered when the state is `loading`, regardless of prior data.
+- **Incorrect Initial-State Transition in `LikeAutoReconnectMixin.fetcher`**: The orchestration method did not differentiate between a background refresh (`ars.refresh == true`) and a clean/initial load. It now reads the active `LikeNotifierState` via a Zone-bound lookup: if `ars.refresh == true` and current data exists, the state transitions immediately to `LikeStateResponse.refreshing(currentData)`; otherwise it transitions cleanly to `LikeStateResponse.loading()` before the request fires.
+- **Inaccurate SWR Cache State Mapping in `LikeApiResult.toStateResponse`**: When `isFromStaleWhileRevalidate == true`, the converter was returning a generic `LikeState.success` response with only a boolean flag, preventing downstream listeners from detecting the `LikeState.staleWhileRevalidate` state. It now returns `LikeStateResponse.staleWhileRevalidate(data, message: 'Serving from cache...')` explicitly.
+- **`LikeNotifierState` Reactivity / `.clear()` Not Updating UI**: `LikeNotifierState` now extends `ChangeNotifier` and uses a backing-field getter/setter that calls `notifyListeners()` on every mutation. `LikeBuilder` and `LikeSliverBuilder` subscribe to the observed object as a `Listenable` (if applicable), rebuild on every notification, and cancel the subscription in `dispose()`. Calling `.clear()` now instantly drives the UI to `onIdle`/`onLoading` without requiring an external `notifyListeners()` call.
+
 ## [1.2.0] - 2026-05-20
 
 ### Added
@@ -18,6 +27,14 @@ All notable changes to this project will be documented in this file.
 - **Dependency Flexibility**: Widened dependency constraints (such as `dio`, `hive`, `connectivity_plus`, `toastification`, etc.) to use flexible ranges instead of high/pinned versions. This prevents dependency resolution conflicts in client projects.
 - **`LikeUiConfig` Extraction Reverted**: `minSplashDuration` and `authRedirectDelay` were removed entirely from `LikeConfig` and `LikeConstants`. A network package has no business knowing what a splash screen is.
 - **`LikePipelineMixin` Refactored**: Internal listener management unified into a single `_startPipelineListener()` method. `registerPipelineListener` and `unregisterPipelineListener` no longer restart the stream subscription unnecessarily. When all registrations are removed, the subscription is cancelled and nulled instead of being restarted empty.
+- **`AppCacheSecurity` — Complete Encryption Redesign**: Replaced the hardcoded 32-character AES key (`LikeSecureEncryptionCacheKey1234`) and static IV (`LikeSecureIV1234`) with a proper async lifecycle. A fresh cryptographically random 16-byte IV is generated per file and prepended to the ciphertext (`[16-byte IV][AES-CBC ciphertext]`). `AppCacheSecurity.init()` reads `LikeConfig.encryptionKey` (SHA-256 derived to 32 bytes) or generates a per-device key persisted in `SharedPreferences` under `like_cache_encryption_key_v2`. Added `AppCacheSecurity.reset()` (`@visibleForTesting`).
+- **`LikeService.init()` — Encryption First**: `AppCacheSecurity.init()` is now called as step `1a`, before Hive storage initialization, guaranteeing the encrypter is ready before any file cache access occurs.
+- **`AppCacheManager.getFileStream` Override**: Stream transform now (a) skips files already in the `decrypted/` subdirectory, (b) calls `_updateAccessTime` on every cache hit to reset the stale-period clock, and (c) auto-deletes corrupted or legacy-format files on decryption failure so they are re-downloaded correctly.
+- **`AppCacheManager.clearAll` — Structured Error Logging**: Replaced all silent `catch (_) {}` blocks with categorized `LikeLogger` calls (`error`/`warning`, category `'cache_manager'`).
+- **`LikeAutoReconnectMixin` — Embedded Pipeline Listener**: `_pipelineSubscription` and `_pipelineBindings` are now managed directly inside `LikeAutoReconnectMixin`, removing the need for a separate `LikePipelineMixin` on providers that already use this mixin.
+- **`LikeAutoReconnectMixin.checkQueryOverlap` — `exact` Parameter**: Now accepts `bool exact = false`. When `true`, query maps must be identical in length and value; `false` (default) uses subset/overlap matching.
+- **`LikeLogger` — Null-Safe Map Entry Syntax**: Replaced deprecated null-conditional spread (`?key`) with Dart collection-if syntax (`if (key != null) 'key': key`) in `logHttp`, `logRequest`, and `LikeService._writeToDiskCache`.
+- **`LikePipeline` — Internal Only**: Removed from the public `like.dart` barrel export; it is an internal broadcast bus.
 
 ### Fixed
 

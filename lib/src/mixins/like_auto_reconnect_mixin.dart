@@ -321,13 +321,26 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     final next = newCT(ct);
     onRotate(next);
 
+    final activeState = Zone.current[#likeActiveState];
+    T? currentData;
+    if (activeState is LikeNotifierState) {
+      try {
+        currentData = activeState.data as T?;
+      } catch (_) {}
+    }
+
     try {
-      // 2. Initial State Handling: Only show loading if NOT a refresh
-      if (!ars.refresh) {
-        onUpdate(LikeStateResponse<T>.loading());
-        if (!_isDisposed) {
-          notifyListeners();
+      // 2. Initial State Handling: Differentiate between a clean load and a background refresh
+      if (ars.refresh) {
+        if (currentData != null) {
+          onUpdate(LikeStateResponse<T>.refreshing(currentData));
         }
+        // If currentData is null (e.g., legacy raw fetcher), preserve current state instead of forcing a clean loading transition.
+      } else {
+        onUpdate(LikeStateResponse<T>.loading());
+      }
+      if (!_isDisposed) {
+        notifyListeners();
       }
 
       // 3. Execution

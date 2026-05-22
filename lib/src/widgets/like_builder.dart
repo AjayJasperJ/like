@@ -62,7 +62,47 @@ class LikeBuilder<T> extends StatefulWidget {
 
 class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
   LikeStateResponse<dynamic>? _lastNotifiedResponse;
-  T? _lastSuccessfulData;
+  Listenable? _observedListenable;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(covariant LikeBuilder<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _unsubscribe();
+    _subscribe();
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribe() {
+    final rawObserved = widget.observe();
+    if (rawObserved is Listenable) {
+      _observedListenable = rawObserved;
+      _observedListenable!.addListener(_handleUpdate);
+    }
+  }
+
+  void _unsubscribe() {
+    if (_observedListenable != null) {
+      _observedListenable!.removeListener(_handleUpdate);
+      _observedListenable = null;
+    }
+  }
+
+  void _handleUpdate() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   T? _castData(dynamic data) {
     if (data == null) return null;
@@ -88,21 +128,13 @@ class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
       });
     }
 
-    // Update sticky data
     final casted = _castData(response.data);
-    if (casted != null) {
-      _lastSuccessfulData = casted;
-    }
 
     switch (response.state) {
       case LikeState.idle:
         return widget.onIdle?.call() ?? const SizedBox.shrink();
 
       case LikeState.loading:
-        if (_lastSuccessfulData != null) {
-          return widget.onSuccess(_lastSuccessfulData as T, true, false);
-        }
-
         return widget.onLoading?.call() ??
             const Center(child: CircularProgressIndicator());
 

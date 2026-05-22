@@ -168,6 +168,16 @@ void main() {
         expect(stateNotifier.stringState.data, isNull);
         expect(stateNotifier.stringState.message, 'Cleared');
       });
+
+      test('clear should notify listeners', () async {
+        var notified = false;
+        stateNotifier.stringState.addListener(() {
+          notified = true;
+        });
+
+        stateNotifier.stringState.clear(message: 'Cleared');
+        expect(notified, true);
+      });
     });
 
     group('checkQueryOverlap & temporal matching', () {
