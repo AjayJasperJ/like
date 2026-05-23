@@ -16,6 +16,7 @@ class LikeCacheImage extends StatelessWidget {
   final int? memCacheHeight;
   final Duration fadeInDuration;
   final Duration fadeOutDuration;
+  final bool normalizeUrl;
 
   const LikeCacheImage({
     super.key,
@@ -30,6 +31,7 @@ class LikeCacheImage extends StatelessWidget {
     this.memCacheHeight,
     this.fadeInDuration = const Duration(milliseconds: 500),
     this.fadeOutDuration = const Duration(milliseconds: 1000),
+    this.normalizeUrl = true,
   });
 
   @override
@@ -39,8 +41,12 @@ class LikeCacheImage extends StatelessWidget {
           const Center(child: Icon(Icons.error_outline));
     }
 
+    final resolvedUrl = normalizeUrl
+        ? AppCacheUtils.normalizeUrl(imageUrl)
+        : imageUrl;
+
     return CachedNetworkImage(
-      imageUrl: AppCacheUtils.normalizeUrl(imageUrl),
+      imageUrl: resolvedUrl,
       cacheManager: AppCacheManager(),
       fit: fit,
       width: width,

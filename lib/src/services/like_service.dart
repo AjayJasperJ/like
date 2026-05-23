@@ -9,6 +9,7 @@ import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_offline_sync_manager.dart';
 import 'package:like/src/services/like_utils.dart';
 import 'package:like/src/services/app_cache_manager.dart';
+import 'package:like/src/debug/like_suggestions.dart';
 
 /// Low-level service for interacting with LIKE's persistent Hive boxes.
 /// Handles caching, ETags, and the offline queue.
@@ -60,6 +61,10 @@ class LikeService {
 
     // Ensure the disk image cache respects the configured limits on startup
     await AppCacheManager().pruneCacheIfExceedsSize();
+
+    if (kDebugMode) {
+      printRandomSuggestion();
+    }
   }
 
   static Box getBox(String name) {
@@ -98,8 +103,7 @@ class LikeService {
       final timestamp = DateTime.tryParse(timestampStr ?? '');
       if (timestamp == null) return null;
 
-      final storageDurationMs =
-          (entry['storageDurationMs'] as int?) ??
+      final storageDurationMs = (entry['storageDurationMs'] as int?) ??
           (metadataBox.get(key) as int?);
 
       final maxAge = storageDurationMs != null

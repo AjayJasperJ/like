@@ -158,7 +158,7 @@ class LikeToastManager {
 /// }
 /// ```
 class LikeToastType {
-  const LikeToastType._();
+  const LikeToastType();
 }
 
 /// Default connectivity actions for LIKE toasts.
@@ -184,4 +184,4 @@ extension LikeConnectivityActions on LikeToastType {
 
 /// Global accessor for LIKE toast types and actions.
 // ignore: constant_identifier_names
-const LikeToast = LikeToastType._();
+const LikeToast = LikeToastType();

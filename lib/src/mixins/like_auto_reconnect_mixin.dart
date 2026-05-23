@@ -106,8 +106,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
               event.payload,
             );
             if (overlap) {
-              final isSuccess =
-                  state.value.isSuccess ||
+              final isSuccess = state.value.isSuccess ||
                   state.value.isRefreshing ||
                   state.value.isStaleWhileRevalidate;
               if (isSuccess) {
@@ -121,9 +120,8 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
 
     _pipelineSubscription = LikePipeline().stream.listen((event) {
       final incomingKey = event.key;
-      final incomingPath = incomingKey.contains(':')
-          ? incomingKey.split(':').last
-          : incomingKey;
+      final incomingPath =
+          incomingKey.contains(':') ? incomingKey.split(':').last : incomingKey;
       final cleanIncomingPath = incomingPath.split('?').first;
       final eventQuery = event.response.requestOptions.queryParameters;
 
@@ -248,9 +246,11 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     bool autoResync = false,
     LikeSyncPriority priority = LikeSyncPriority.normal,
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
-    action,
+        action,
   }) async {
-    if (_refreshSubscription == null && _syncSubscription == null && _pipelineSubscription == null) {
+    if (_refreshSubscription == null &&
+        _syncSubscription == null &&
+        _pipelineSubscription == null) {
       initAutoReconnect();
     }
 
@@ -280,12 +280,12 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     state.autoResync = autoResync;
     state.syncPriority = priority;
     state.refreshAction = () => fetch<T>(
-      state: state,
-      ars: const LikeARS(refresh: true),
-      autoResync: autoResync,
-      priority: priority,
-      action: action,
-    );
+          state: state,
+          ars: const LikeARS(refresh: true),
+          autoResync: autoResync,
+          priority: priority,
+          action: action,
+        );
 
     return runZoned(() async {
       return await fetcher<T>(
@@ -312,7 +312,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     required CancelToken? ct,
     required void Function(CancelToken next) onRotate,
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
-    action,
+        action,
     required void Function(LikeStateResponse<T> state) onUpdate,
   }) async {
     ars ??= const ARS();
@@ -389,7 +389,9 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     if (exact) {
       if (stateQuery.length != eventPayload.length) return false;
       for (final key in stateQuery.keys) {
-        if (stateQuery[key]?.toString() != eventPayload[key]?.toString()) return false;
+        if (stateQuery[key]?.toString() != eventPayload[key]?.toString()) {
+          return false;
+        }
       }
       return true;
     }
@@ -461,7 +463,15 @@ class _LikeProviderSyncTask extends LikeSyncTask {
   LikeSyncPriority get priority => _mixin.syncPriority;
 
   @override
-  bool get isRecovery => !isInitial && _mixin.shouldRetry;
+  bool get isRecovery {
+    if (!isInitial && _mixin.shouldRetry) return true;
+    for (final state in _mixin._registeredStates) {
+      if (state.autoResync && _mixin.regularRetry(state.value, state.ct)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @override
   Future<void> run() async {
@@ -472,6 +482,14 @@ class _LikeProviderSyncTask extends LikeSyncTask {
     for (final task in _mixin._granularTasks) {
       if (task.condition()) {
         LikeSyncManager().registerTask(task);
+      }
+    }
+
+    for (final state in _mixin._registeredStates) {
+      if (state.autoResync && state.refreshAction != null) {
+        if (_mixin.regularRetry(state.value, state.ct)) {
+          LikeSyncManager().registerTask(_LikeStateSyncTask(state));
+        }
       }
     }
   }

@@ -21,16 +21,16 @@
 
 ## Why LIKE?
 
-| Capability | Raw Dio / HTTP | LIKE |
-|:--|:--|:--|
-| **Cache** | Manual or none | L1 RAM → L2 Hive disk → SWR → ETag/304 |
-| **State machine** | Hand-rolled booleans | `LikeNotifierState` — loading / refreshing / SWR / error |
-| **Cross-screen sync** | Global event buses | Zero-config `LikePipeline` — mutations fan-out automatically |
-| **Request cancellation** | `CancelToken` per screen | Auto-rotation & disposal via `fetch` |
-| **JSON parsing** | Main thread → jank | Isolate parsing for payloads > 100 KB |
-| **Image cache** | Plain disk | Per-device AES-256, per-file IV, LRU pruning |
-| **Offline mutations** | Crash or custom queues | Persistent Hive queue, auth-aware replay on reconnect |
-| **Duplicate requests** | Wasted bandwidth | In-flight deduplication via `LikeRequestRegistry` |
+| Capability               | Raw Dio / HTTP           | LIKE                                                         |
+| :----------------------- | :----------------------- | :----------------------------------------------------------- |
+| **Cache**                | Manual or none           | L1 RAM → L2 Hive disk → SWR → ETag/304                       |
+| **State machine**        | Hand-rolled booleans     | `LikeNotifierState` — loading / refreshing / SWR / error     |
+| **Cross-screen sync**    | Global event buses       | Zero-config `LikePipeline` — mutations fan-out automatically |
+| **Request cancellation** | `CancelToken` per screen | Auto-rotation & disposal via `fetch`                         |
+| **JSON parsing**         | Main thread → jank       | Isolate parsing for payloads > 100 KB                        |
+| **Image cache**          | Plain disk               | Per-device AES-256, per-file IV, LRU pruning                 |
+| **Offline mutations**    | Crash or custom queues   | Persistent Hive queue, auth-aware replay on reconnect        |
+| **Duplicate requests**   | Wasted bandwidth         | In-flight deduplication via `LikeRequestRegistry`            |
 
 ---
 
@@ -67,12 +67,12 @@
 
 ### Cache Flow — L1 · L2 · SWR · ETag
 
-| Layer | Store | Hit Behaviour |
-|:--|:--|:--|
-| **L1** | In-memory (`LikeRequestRegistry`) | Instant return, no I/O |
-| **L2** | Hive box (disk-persistent) | Sub-ms retrieval across restarts |
-| **SWR** | L2 data + background refetch | Returns stale data immediately, silently revalidates |
-| **ETag / 304** | HTTP conditional request | Saves bandwidth; server confirms freshness |
+| Layer          | Store                             | Hit Behaviour                                        |
+| :------------- | :-------------------------------- | :--------------------------------------------------- |
+| **L1**         | In-memory (`LikeRequestRegistry`) | Instant return, no I/O                               |
+| **L2**         | Hive box (disk-persistent)        | Sub-ms retrieval across restarts                     |
+| **SWR**        | L2 data + background refetch      | Returns stale data immediately, silently revalidates |
+| **ETag / 304** | HTTP conditional request          | Saves bandwidth; server confirms freshness           |
 
 ---
 
@@ -242,15 +242,15 @@ LikeBuilder<User>(
 
 **Rendering guarantees (v1.2.1+):**
 
-| State | Renders |
-|:--|:--|
-| `loading` | Always `onLoading` — no sticky-data leak |
-| `refreshing` | `onSuccess(data, isRefreshing: true)` — keeps old data visible |
-| `staleWhileRevalidate` | `onSuccess(data, isFromSWR: true)` |
-| `success` | `onSuccess(data, false, false)` |
-| `error` | `onError` |
-| `exception` | `onException` |
-| `idle` | `onIdle` |
+| State                  | Renders                                                        |
+| :--------------------- | :------------------------------------------------------------- |
+| `loading`              | Always `onLoading` — no sticky-data leak                       |
+| `refreshing`           | `onSuccess(data, isRefreshing: true)` — keeps old data visible |
+| `staleWhileRevalidate` | `onSuccess(data, isFromSWR: true)`                             |
+| `success`              | `onSuccess(data, false, false)`                                |
+| `error`                | `onError`                                                      |
+| `exception`            | `onException`                                                  |
+| `idle`                 | `onIdle`                                                       |
 
 ### `LikeSliverBuilder<T>`
 
@@ -356,13 +356,13 @@ await updateNotifier<User>(
 
 **Built-in behaviour by state:**
 
-| State | Toast | Haptic | Callback |
-|:--|:--|:--|:--|
-| `loading` | Optional loading toast | — | `onInit` |
-| `success` | ✅ Green (if enabled) | Light | `onSuccess(data)` |
-| `refreshing` / `SWR` | — | — | `onSuccess(data)` |
-| `error` | ⚠️ Warning (if enabled) | Medium | `onError(LikeError)` |
-| `exception` | ❌ Red (if enabled) | Heavy | `onException(message)` |
+| State                | Toast                  | Haptic | Callback               |
+| :------------------- | :--------------------- | :----- | :--------------------- |
+| `loading`            | Optional loading toast | —      | `onInit`               |
+| `success`            | ✅ Green (if enabled)   | Light  | `onSuccess(data)`      |
+| `refreshing` / `SWR` | —                      | —      | `onSuccess(data)`      |
+| `error`              | ⚠️ Warning (if enabled) | Medium | `onError(LikeError)`   |
+| `exception`          | ❌ Red (if enabled)     | Heavy  | `onException(message)` |
 
 ---
 
@@ -389,12 +389,12 @@ await likeWhenNotifier<List<Todo>>(
 
 **Key differences from `updateNotifier`:**
 
-| | `updateNotifier` | `likeWhenNotifier` |
-|:--|:--|:--|
-| Toasts | Auto-managed, toggleable | None |
-| Haptics | Auto by state | None |
-| `refreshing` / `SWR` callback | Fires `onSuccess` | Silent (skipped) |
-| Use case | Primary actions | Analytics, navigation, custom UI |
+|                               | `updateNotifier`         | `likeWhenNotifier`               |
+| :---------------------------- | :----------------------- | :------------------------------- |
+| Toasts                        | Auto-managed, toggleable | None                             |
+| Haptics                       | Auto by state            | None                             |
+| `refreshing` / `SWR` callback | Fires `onSuccess`        | Silent (skipped)                 |
+| Use case                      | Primary actions          | Analytics, navigation, custom UI |
 
 ---
 
@@ -427,12 +427,12 @@ LikeCacheImage(
 
 ### LRU Pruning Defaults
 
-| Config | Default | Description |
-|:--|:--|:--|
-| `maxImageCacheMB` | `500.0 MB` | Pruning triggered above this |
-| `minImageCacheMB` | `400.0 MB` | Pruning target floor |
-| `imageStalePeriod` | `90 days` | Retention threshold |
-| `maxImageCacheItems` | `5 000` | Max unique cached images |
+| Config               | Default    | Description                  |
+| :------------------- | :--------- | :--------------------------- |
+| `maxImageCacheMB`    | `500.0 MB` | Pruning triggered above this |
+| `minImageCacheMB`    | `400.0 MB` | Pruning target floor         |
+| `imageStalePeriod`   | `90 days`  | Retention threshold          |
+| `maxImageCacheItems` | `5 000`    | Max unique cached images     |
 
 ---
 
@@ -511,15 +511,15 @@ All `POST` / `PUT` / `DELETE` mutations are persisted in a Hive box when the net
 
 ## Connect & Contribute
 
-| | |
-|:--|:--|
-| 📦 **pub.dev** | [pub.dev/packages/like](https://pub.dev/packages/like) |
-| 📖 **Docs / Wiki** | [github.com/AjayJasperJ/like_docs](https://github.com/AjayJasperJ/like_docs) |
-| 🐛 **Issues** | [github.com/AjayJasperJ/like_docs/issues](https://github.com/AjayJasperJ/like_docs/issues) |
-| 💻 **GitHub** | [@AjayJasperJ](https://github.com/AjayJasperJ) |
-| 💼 **LinkedIn** | [Ajay Jasper J](https://in.linkedin.com/in/ajay-jasper-j-8563852b4) |
-| 📸 **Instagram** | [@ajayjasper.j](https://www.instagram.com/ajayjasper.j) |
-| ✉️ **Email** | [ajayjasperj@outlook.com](mailto:ajayjasperj@outlook.com) |
+|                   |                                                                                            |
+| :---------------- | :----------------------------------------------------------------------------------------- |
+| 📦 **pub.dev**     | [pub.dev/packages/like](https://pub.dev/packages/like)                                     |
+| 📖 **Docs / Wiki** | [github.com/AjayJasperJ/like_docs](https://github.com/AjayJasperJ/like_docs)               |
+| 🐛 **Issues**      | [github.com/AjayJasperJ/like_docs/issues](https://github.com/AjayJasperJ/like_docs/issues) |
+| 💻 **GitHub**      | [@AjayJasperJ](https://github.com/AjayJasperJ)                                             |
+| 💼 **LinkedIn**    | [Ajay Jasper J](https://in.linkedin.com/in/ajay-jasper-j-8563852b4)                        |
+| 📸 **Instagram**   | [@ajayjasper.j](https://www.instagram.com/ajayjasper.j)                                    |
+| ✉️ **Email**       | [ajayjasperj@outlook.com](mailto:ajayjasperj@outlook.com)                                  |
 
 ### Contributing
 

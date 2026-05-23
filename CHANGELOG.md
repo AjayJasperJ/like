@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4] - 2026-05-23
+
+### Changed
+
+- **Synchronized Release**: Bumped version to `1.2.4` to maintain version alignment with `like_devtool`.
+
 ## [1.2.2] - 2026-05-22
 
 ### Documentation

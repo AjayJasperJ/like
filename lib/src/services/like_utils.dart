@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:toastification/toastification.dart';
 
-/// Enum for standardized LIKE toast types.
-enum LikeToastType { success, info, warning, error }
+/// Enum for standardized LIKE toast styles.
+enum LikeToastStyle { success, info, warning, error }
 
 /// Internal utilities for the LIKE networking engine.
 /// Matches enterprise's NetworkUtils parity.
@@ -24,7 +24,7 @@ class LikeUtils {
   static void showToast({
     required String message,
     String? submessage,
-    required LikeToastType type,
+    required LikeToastStyle type,
     BuildContext? context,
   }) {
     // If context is null, it will use global toastification if available,
@@ -42,15 +42,15 @@ class LikeUtils {
     );
   }
 
-  static ToastificationType _mapType(LikeToastType type) {
+  static ToastificationType _mapType(LikeToastStyle type) {
     switch (type) {
-      case LikeToastType.success:
+      case LikeToastStyle.success:
         return ToastificationType.success;
-      case LikeToastType.info:
+      case LikeToastStyle.info:
         return ToastificationType.info;
-      case LikeToastType.warning:
+      case LikeToastStyle.warning:
         return ToastificationType.warning;
-      case LikeToastType.error:
+      case LikeToastStyle.error:
         return ToastificationType.error;
     }
   }
@@ -59,7 +59,7 @@ class LikeUtils {
   static void notifyCacheUse(BuildContext context) {
     showToast(
       message: 'You are viewing offline data',
-      type: LikeToastType.info,
+      type: LikeToastStyle.info,
       context: context,
     );
   }
@@ -68,7 +68,7 @@ class LikeUtils {
   static void notifySwrUse(BuildContext context) {
     showToast(
       message: 'Loading fresh data in background...',
-      type: LikeToastType.info,
+      type: LikeToastStyle.info,
       context: context,
     );
   }

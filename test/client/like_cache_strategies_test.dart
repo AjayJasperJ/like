@@ -227,7 +227,7 @@ void main() {
           ),
         );
 
-        LikeConnectivityManager().debugSetStatus(internet: false);
+        LikeConnectivityManager().debugSetStatus(internet: false, server: false);
         LikeConstants.apply(
           LikeConstants.current.copyWith(cacheOnOffline: true),
         );

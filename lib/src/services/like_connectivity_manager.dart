@@ -32,7 +32,7 @@ class LikeConnectivityManager {
 
   /// Combined status: returns true if the device is currently online.
   /// We prioritize internet reachability for reconnection events.
-  bool get hasConnection => isInternetConnected;
+  bool get hasConnection => isInternetConnected || isServerAvailable;
 
   /// Alias for [hasConnection] to match enterprise resiliency naming.
   bool get isOnline => hasConnection;

@@ -73,8 +73,7 @@ class LikeClient {
 
   LikeClient._internal({String? baseUrl, Duration? timeout, Dio? dio}) {
     _registry = LikeRequestRegistry();
-    _dio =
-        dio ??
+    _dio = dio ??
         LikeClientFactory.create(
           baseUrl: baseUrl ?? '', // Should be provided or set via updateBaseUrl
           timeout: timeout,
@@ -96,9 +95,8 @@ class LikeClient {
   }) async {
     final extra = options?.extra ?? {};
     final bool isGet = method == 'GET';
-    final effectivePath = path.startsWith('http') || path.startsWith('/')
-        ? path
-        : '/$path';
+    final effectivePath =
+        path.startsWith('http') || path.startsWith('/') ? path : '/$path';
     final requestKey = LikeHelpers.generateRequestKey(
       effectivePath,
       queryParameters,
@@ -134,8 +132,7 @@ class LikeClient {
         extra['singleFetch'] ?? LikeConstants.singleFetchByDefault;
     final bool sessionStale =
         extra['sessionStale'] ?? LikeConstants.sessionStaleByDefault;
-    final bool staleWhileRevalidate =
-        extra['staleWhileRevalidate'] ??
+    final bool staleWhileRevalidate = extra['staleWhileRevalidate'] ??
         LikeConstants.staleWhileRevalidateByDefault;
 
     if (isGet && !disableCache) {
@@ -238,14 +235,12 @@ class LikeClient {
           // Let the background future handle its own completion and emission.
           // Use async callback and await _handleSuccess so its Future
           // errors are not silently discarded.
-          future
-              .then((resp) async {
-                await _handleSuccess(resp, requestKey);
-                _registry.removeInFlight(requestKey);
-              })
-              .catchError((e) {
-                _registry.removeInFlight(requestKey);
-              });
+          future.then((resp) async {
+            await _handleSuccess(resp, requestKey);
+            _registry.removeInFlight(requestKey);
+          }).catchError((e) {
+            _registry.removeInFlight(requestKey);
+          });
 
           return await _handleSuccess(cached, requestKey);
         }
@@ -266,8 +261,7 @@ class LikeClient {
       final isNetworkError = e.type != DioExceptionType.badResponse;
       final bool isOnline = LikeConnectivityManager().hasConnection;
 
-      final shouldFallback =
-          (isNetworkError &&
+      final shouldFallback = (isNetworkError &&
               (isOnline
                   ? LikeConstants.cacheOnException
                   : LikeConstants.cacheOnOffline)) ||
@@ -362,7 +356,7 @@ class LikeClient {
     String path, {
     Map<String, dynamic>? query,
     Map<String, String>? headers,
-    bool withAuth = true,
+    bool withAuth = false,
     bool disableCache = false,
     bool staleWhileRevalidate = false,
     bool sessionStale = true,
@@ -375,8 +369,7 @@ class LikeClient {
     CancelToken? cancelToken,
     ARS? ars,
   }) async {
-    final finalARS =
-        ars ??
+    final finalARS = ars ??
         ARS(
           staleWhileRevalidate: staleWhileRevalidate,
           disableCache: disableCache,
@@ -421,7 +414,7 @@ class LikeClient {
     Object? body,
     Map<String, dynamic>? query,
     Map<String, String>? headers,
-    bool withAuth = true,
+    bool withAuth = false,
     bool offlineSync = true,
     bool disableCache = false,
     CancelToken? cancelToken,
@@ -456,7 +449,7 @@ class LikeClient {
     Object? body,
     Map<String, dynamic>? query,
     Map<String, String>? headers,
-    bool withAuth = true,
+    bool withAuth = false,
     bool offlineSync = true,
     bool disableCache = false,
     CancelToken? cancelToken,
@@ -491,7 +484,7 @@ class LikeClient {
     Object? body,
     Map<String, dynamic>? query,
     Map<String, String>? headers,
-    bool withAuth = true,
+    bool withAuth = false,
     bool offlineSync = true,
     bool disableCache = false,
     CancelToken? cancelToken,
@@ -532,7 +525,7 @@ class LikeClient {
     dynamic filePaths,
     List<MultipartBytesFile>? files,
     Map<String, String>? headers,
-    bool withAuth = true,
+    bool withAuth = false,
     bool offlineSync = false,
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
@@ -635,9 +628,8 @@ class LikeClient {
   }
 
   void notifySync(String path, Map<String, dynamic> payload) {
-    final effectivePath = path.startsWith('http') || path.startsWith('/')
-        ? path
-        : '/$path';
+    final effectivePath =
+        path.startsWith('http') || path.startsWith('/') ? path : '/$path';
     _refreshController.add(effectivePath);
     _syncController.add(LikeSyncEvent(path: effectivePath, payload: payload));
   }
@@ -655,9 +647,8 @@ class LikeClient {
   /// Manually triggers a synchronization of the offline mutation queue.
   /// This will attempt to re-send all queued POST/PUT/DELETE requests.
   Future<void> syncOfflineData() async {
-    final interceptor = _dio.interceptors
-        .whereType<LikeOfflineSyncInterceptor>()
-        .firstOrNull;
+    final interceptor =
+        _dio.interceptors.whereType<LikeOfflineSyncInterceptor>().firstOrNull;
     if (interceptor != null) {
       await interceptor.syncQueue();
     }

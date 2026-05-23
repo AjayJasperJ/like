@@ -336,6 +336,28 @@ class AppCacheSecurity {
     return result;
   }
 
+  /// Decrypts encrypted bytes in-memory and returns the raw decrypted bytes.
+  static Uint8List decryptBytes(Uint8List encryptedBytes) {
+    if (encryptedBytes.isEmpty) return Uint8List(0);
+    _assertInitialized();
+
+    if (encryptedBytes.length <= _ivLength) {
+      throw Exception(
+        'Bytes too small to contain IV + ciphertext. Likely from an old format.',
+      );
+    }
+
+    final ivBytes = Uint8List.fromList(encryptedBytes.sublist(0, _ivLength));
+    final cipherBytes = Uint8List.fromList(encryptedBytes.sublist(_ivLength));
+    final iv = encrypt.IV(ivBytes);
+
+    final decryptedBytes = _encrypter!.decryptBytes(
+      encrypt.Encrypted(cipherBytes),
+      iv: iv,
+    );
+    return Uint8List.fromList(decryptedBytes);
+  }
+
   /// Decrypts a file whose content was produced by [encryptBytes].
   ///
   /// Reads the IV from the first 16 bytes, then decrypts the remainder.

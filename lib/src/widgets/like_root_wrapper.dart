@@ -21,7 +21,7 @@ class Like extends StatefulWidget {
 
   /// Custom builder for the synchronization progress toast.
   final Widget Function(String title, String message, double progress)?
-  syncProgressBuilder;
+      syncProgressBuilder;
 
   /// Custom widget to display when [isSyncing] is true.
   final Widget? syncOverlay;
@@ -126,8 +126,7 @@ class _LikeState extends State<Like> {
         widget.toastConfig?.syncProgressBuilder != null) {
       LikeToastManager.setDelegate(
         DefaultLikeToastDelegate(
-          syncProgressBuilder:
-              widget.syncProgressBuilder ??
+          syncProgressBuilder: widget.syncProgressBuilder ??
               widget.toastConfig?.syncProgressBuilder,
         ),
       );
@@ -193,9 +192,8 @@ class _LikeState extends State<Like> {
         );
 
         // Wrap with devTool overlay if provided (debug-only by convention)
-        final appTree = widget.devTool != null
-            ? widget.devTool!(coreStack)
-            : coreStack;
+        final appTree =
+            widget.devTool != null ? widget.devTool!(coreStack) : coreStack;
 
         return ToastificationWrapper(child: appTree);
       },
@@ -264,7 +262,7 @@ class LikeToastConfig {
 
   /// Custom builder for synchronization progress.
   final Widget Function(String title, String message, double progress)?
-  syncProgressBuilder;
+      syncProgressBuilder;
 
   const LikeToastConfig({this.online, this.offline, this.syncProgressBuilder});
 }

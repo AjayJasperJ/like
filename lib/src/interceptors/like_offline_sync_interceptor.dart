@@ -76,7 +76,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
       LikeUtils.showToast(
         message: 'Action saved offline',
         submessage: 'Will sync when connection is restored.',
-        type: LikeToastType.info,
+        type: LikeToastStyle.info,
       );
     }
   }
