@@ -16,8 +16,7 @@ class LikeSliverBuilder<T extends Object> extends StatefulWidget {
     T data,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
-  )
-  onSuccess;
+  ) onSuccess;
 
   /// Optional builder called when the initial load is in progress.
   final List<Widget> Function()? onLoading;
@@ -168,8 +167,7 @@ class LikeStateResponseBuilderSliver<T extends Object> extends StatelessWidget {
     T data,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
-  )
-  onSuccess;
+  ) onSuccess;
 
   /// Optional builder called when the initial load is in progress.
   final List<Widget> Function()? onLoading;

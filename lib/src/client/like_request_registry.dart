@@ -10,14 +10,13 @@ import 'package:like/src/core/like_constants.dart';
 /// that clients with different base URLs (e.g., created via [LikeClient.copyWith])
 /// never share or corrupt each other's cache state.
 class LikeRequestRegistry {
-
   bool _disposed = false;
 
   final LinkedHashSet<String> _sessionFetchedKeys = LinkedHashSet();
   final LinkedHashMap<String, Response> _l1Cache = LinkedHashMap();
 
   final LinkedHashMap<String, (Future<Response>, CancelToken?)>
-  _inFlightRequests = LinkedHashMap();
+      _inFlightRequests = LinkedHashMap();
 
   final LinkedHashMap<String, DateTime> _lastFetchedTimestamps =
       LinkedHashMap();

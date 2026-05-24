@@ -11,7 +11,8 @@ class LikeToastManager {
 
   /// Global navigator key that can be passed to [MaterialApp.navigatorKey]
   /// to enable contextless toasts to inherit the application's theme and navigator.
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   /// Global registry for connectivity widgets.
   static Widget? onlineWidget;

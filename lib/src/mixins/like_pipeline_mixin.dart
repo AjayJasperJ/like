@@ -35,15 +35,13 @@ class _LikePipelineStateBinding {
 mixin LikePipelineMixin on ChangeNotifier {
   StreamSubscription? _pipelineSubscription;
   final Map<
-    String,
-    void Function(
-      String key,
-      dynamic data, {
-      bool isSyncing,
-      DateTime? timestamp,
-    })
-  >
-  _pipelineListeners = {};
+      String,
+      void Function(
+        String key,
+        dynamic data, {
+        bool isSyncing,
+        DateTime? timestamp,
+      })> _pipelineListeners = {};
 
   final Set<_LikePipelineStateBinding> _pipelineBindings = {};
 
@@ -87,15 +85,14 @@ mixin LikePipelineMixin on ChangeNotifier {
   /// Initializes the pipeline listener with a set of URI patterns and their corresponding callbacks.
   void initPipeline(
     Map<
-      String,
-      void Function(
-        String key,
-        dynamic data, {
-        bool isSyncing,
-        DateTime? timestamp,
-      })
-    >
-    registrations,
+            String,
+            void Function(
+              String key,
+              dynamic data, {
+              bool isSyncing,
+              DateTime? timestamp,
+            })>
+        registrations,
   ) {
     _pipelineListeners.clear();
     _pipelineListeners.addAll(registrations);
@@ -110,8 +107,7 @@ mixin LikePipelineMixin on ChangeNotifier {
       dynamic data, {
       bool isSyncing,
       DateTime? timestamp,
-    })
-    callback,
+    }) callback,
   ) {
     _pipelineListeners[pattern] = callback;
     _startPipelineListener();
@@ -135,11 +131,10 @@ mixin LikePipelineMixin on ChangeNotifier {
       final incomingKey = event.key;
 
       // Extract path for matching
-      final incomingPath = incomingKey.contains(':')
-          ? incomingKey.split(':').last
-          : incomingKey;
+      final incomingPath =
+          incomingKey.contains(':') ? incomingKey.split(':').last : incomingKey;
       final cleanIncomingPath = incomingPath.split('?').first;
-      
+
       // Extract query from event
       final eventQuery = event.response.requestOptions.queryParameters;
 
@@ -171,13 +166,10 @@ mixin LikePipelineMixin on ChangeNotifier {
         if (cleanIncomingPath == statePath ||
             (cleanIncomingPath.startsWith(statePath) &&
                 cleanIncomingPath[statePath.length] == '/')) {
-          
           final overlap = _checkQueryOverlap(
-            binding.getActiveQuery(), 
-            eventQuery, 
-            exact: binding.exactQueryMatch
-          );
-          
+              binding.getActiveQuery(), eventQuery,
+              exact: binding.exactQueryMatch);
+
           if (overlap) {
             try {
               binding.processAndAssign(event.data);
@@ -195,11 +187,15 @@ mixin LikePipelineMixin on ChangeNotifier {
     });
   }
 
-  bool _checkQueryOverlap(Map<String, dynamic> stateQuery, Map<String, dynamic> eventQuery, {bool exact = false}) {
+  bool _checkQueryOverlap(
+      Map<String, dynamic> stateQuery, Map<String, dynamic> eventQuery,
+      {bool exact = false}) {
     if (exact) {
       if (stateQuery.length != eventQuery.length) return false;
       for (final key in stateQuery.keys) {
-        if (stateQuery[key]?.toString() != eventQuery[key]?.toString()) return false;
+        if (stateQuery[key]?.toString() != eventQuery[key]?.toString()) {
+          return false;
+        }
       }
       return true;
     }

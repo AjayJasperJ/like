@@ -14,8 +14,8 @@ class TodoModel {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'completed': completed,
-  };
+        'id': id,
+        'title': title,
+        'completed': completed,
+      };
 }

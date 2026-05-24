@@ -82,9 +82,9 @@ class LikeStateResponse<T> {
       LikeStateResponse(state: LikeState.idle, message: message ?? 'Idle');
 
   factory LikeStateResponse.loading({String? message}) => LikeStateResponse(
-    state: LikeState.loading,
-    message: message ?? 'Loading...',
-  );
+        state: LikeState.loading,
+        message: message ?? 'Loading...',
+      );
 
   factory LikeStateResponse.success(
     T data, {
@@ -93,15 +93,16 @@ class LikeStateResponse<T> {
     bool isFromStaleWhileRevalidate = false,
     bool isResiliencyFallback = false,
     bool isFrom304 = false,
-  }) => LikeStateResponse(
-    state: LikeState.success,
-    message: message ?? 'Success',
-    data: data,
-    isFromCache: isFromCache,
-    isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
-    isResiliencyFallback: isResiliencyFallback,
-    isFrom304: isFrom304,
-  );
+  }) =>
+      LikeStateResponse(
+        state: LikeState.success,
+        message: message ?? 'Success',
+        data: data,
+        isFromCache: isFromCache,
+        isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
+        isResiliencyFallback: isResiliencyFallback,
+        isFrom304: isFrom304,
+      );
 
   factory LikeStateResponse.staleWhileRevalidate(T data, {String? message}) =>
       LikeStateResponse(
@@ -116,12 +117,13 @@ class LikeStateResponse<T> {
     T data, {
     String? message,
     bool isFromCache = false,
-  }) => LikeStateResponse(
-    state: LikeState.refreshing,
-    message: message ?? 'Refreshing...',
-    data: data,
-    isFromCache: isFromCache,
-  );
+  }) =>
+      LikeStateResponse(
+        state: LikeState.refreshing,
+        message: message ?? 'Refreshing...',
+        data: data,
+        isFromCache: isFromCache,
+      );
 
   factory LikeStateResponse.error(
     LikeError error, {
@@ -160,16 +162,17 @@ class LikeStateResponse<T> {
     bool isFromStaleWhileRevalidate = false,
     bool isResiliencyFallback = false,
     bool isFrom304 = false,
-  }) => LikeStateResponse(
-    state: LikeState.exception,
-    message: message,
-    data: data,
-    error: LikeError(message: message, type: LikeApiErrorType.unknown),
-    isFromCache: isFromCache,
-    isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
-    isResiliencyFallback: isResiliencyFallback,
-    isFrom304: isFrom304,
-  );
+  }) =>
+      LikeStateResponse(
+        state: LikeState.exception,
+        message: message,
+        data: data,
+        error: LikeError(message: message, type: LikeApiErrorType.unknown),
+        isFromCache: isFromCache,
+        isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
+        isResiliencyFallback: isResiliencyFallback,
+        isFrom304: isFrom304,
+      );
 
   // --- Common Error Helpers ---
 
@@ -177,8 +180,8 @@ class LikeStateResponse<T> {
       LikeError(message: 'Data parsing failed', type: LikeApiErrorType.parsing);
 
   factory LikeStateResponse.unknown() => LikeStateResponse<T>.exception(
-    'Something went wrong. Please try again later.',
-  );
+        'Something went wrong. Please try again later.',
+      );
 
   factory LikeStateResponse.missingData(String message) =>
       LikeStateResponse<T>.error(
@@ -273,8 +276,7 @@ extension LikeStateResponseExtension<T> on LikeStateResponse<T> {
       bool isRefreshing,
       bool isFromStaleWhileRevalidate,
       bool isResiliencyFallback,
-    )
-    onSuccess,
+    ) onSuccess,
     R Function()? onLoading,
     R Function()? onIdle,
     R Function(LikeError error)? onError,
@@ -310,8 +312,7 @@ extension LikeStateResponseExtension<T> on LikeStateResponse<T> {
       bool isRefreshing,
       bool isFromStaleWhileRevalidate,
       bool isResiliencyFallback,
-    )
-    onSuccess,
+    ) onSuccess,
     List<Widget> Function()? onLoading,
     List<Widget> Function()? onIdle,
     List<Widget> Function(LikeError error)? onError,

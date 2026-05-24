@@ -169,9 +169,8 @@ class _TodoDetailsScreenState extends State<TodoDetailsScreen> {
                               todo.completed
                                   ? Icons.check_circle
                                   : Icons.pending,
-                              color: todo.completed
-                                  ? Colors.green
-                                  : Colors.orange,
+                              color:
+                                  todo.completed ? Colors.green : Colors.orange,
                             ),
                           ),
                           const Divider(),

@@ -13,11 +13,9 @@ class LikeRegistry {
   bool _disposed = false;
 
   /// Tracks active network requests to prevent duplication.
-  final LinkedHashMap<
-    String,
-    (Future<LikeStateResponse<dynamic>>, CancelToken?)
-  >
-  _inFlight = LinkedHashMap();
+  final LinkedHashMap<String,
+          (Future<LikeStateResponse<dynamic>>, CancelToken?)> _inFlight =
+      LinkedHashMap();
 
   /// L1 Cache: Fast RAM-based storage for the current session.
   final LinkedHashMap<String, LikeStateResponse<dynamic>> _l1Cache =

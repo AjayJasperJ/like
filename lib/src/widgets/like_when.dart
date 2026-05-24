@@ -23,7 +23,6 @@ Future<void> updateNotifier<T extends Object>({
   bool disableErrorToast = false,
   bool disableExceptionToast = false,
   bool disableCancelledToast = true,
-
   bool enableHaptics = true,
   Map<LikeState, String>? messageOverrides,
 }) async {
@@ -80,8 +79,7 @@ Future<void> updateNotifier<T extends Object>({
       break;
 
     case LikeState.error:
-      final error =
-          response.error ??
+      final error = response.error ??
           LikeError(
             message: response.message,
             type: response.errorType ?? LikeApiErrorType.unknown,

@@ -36,8 +36,8 @@ class LikeApiResult<T> {
     this.isFromStaleWhileRevalidate = false,
     this.isResiliencyFallback = false,
     this.isFrom304 = false,
-  }) : error = null,
-       isSuccess = true;
+  })  : error = null,
+        isSuccess = true;
 
   LikeApiResult.error(
     this.error, {
@@ -45,8 +45,8 @@ class LikeApiResult<T> {
     this.isFromStaleWhileRevalidate = false,
     this.isResiliencyFallback = false,
     this.isFrom304 = false,
-  }) : data = null,
-       isSuccess = false;
+  })  : data = null,
+        isSuccess = false;
 
   /// `when()` lets you handle success or error elegantly
   R when<R>({
@@ -113,9 +113,8 @@ class LikeApiResult<T> {
   ) async {
     if (isSuccess && data != null) {
       try {
-        final dynamic rawData = data is Response
-            ? (data as Response).data
-            : data;
+        final dynamic rawData =
+            data is Response ? (data as Response).data : data;
 
         final result = await compute<_IsolateMapperParams<R>, R>(
           _isolateMapper,
@@ -165,8 +164,7 @@ class LikeApiResult<T> {
         isFrom304: isFrom304,
       );
     } else {
-      final err =
-          error ??
+      final err = error ??
           LikeError(message: 'Unknown error', type: LikeApiErrorType.unknown);
       return LikeStateResponse<T>.error(
         err,

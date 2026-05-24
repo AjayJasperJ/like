@@ -62,29 +62,29 @@ class LikeARS {
   });
 
   Map<String, dynamic> toJson() => {
-    'staleWhileRevalidate': staleWhileRevalidate,
-    'refresh': refresh,
-    'singleFetch': singleFetch,
-    'sessionStale': sessionStale,
-    'disableCache': disableCache,
-    'resetSingleFetch': resetSingleFetch,
-    'resetSessionStale': resetSessionStale,
-    'offlineSync': offlineSync,
-    'verifySSL': verifySSL,
-    'deduplicate': deduplicate,
-    'suppressErrors': suppressErrors,
-  };
+        'staleWhileRevalidate': staleWhileRevalidate,
+        'refresh': refresh,
+        'singleFetch': singleFetch,
+        'sessionStale': sessionStale,
+        'disableCache': disableCache,
+        'resetSingleFetch': resetSingleFetch,
+        'resetSessionStale': resetSessionStale,
+        'offlineSync': offlineSync,
+        'verifySSL': verifySSL,
+        'deduplicate': deduplicate,
+        'suppressErrors': suppressErrors,
+      };
 
   factory LikeARS.fromJson(Map<String, dynamic> json) => LikeARS(
-    staleWhileRevalidate: json['staleWhileRevalidate'] ?? true,
-    refresh: json['refresh'] ?? false,
-    singleFetch: json['singleFetch'] ?? false,
-    sessionStale: json['sessionStale'] ?? false,
-    disableCache: json['disableCache'] ?? false,
-    resetSingleFetch: json['resetSingleFetch'] ?? false,
-    resetSessionStale: json['resetSessionStale'] ?? false,
-    offlineSync: json['offlineSync'] ?? false,
-    deduplicate: json['deduplicate'] ?? true,
-    suppressErrors: json['suppressErrors'] ?? true,
-  );
+        staleWhileRevalidate: json['staleWhileRevalidate'] ?? true,
+        refresh: json['refresh'] ?? false,
+        singleFetch: json['singleFetch'] ?? false,
+        sessionStale: json['sessionStale'] ?? false,
+        disableCache: json['disableCache'] ?? false,
+        resetSingleFetch: json['resetSingleFetch'] ?? false,
+        resetSessionStale: json['resetSessionStale'] ?? false,
+        offlineSync: json['offlineSync'] ?? false,
+        deduplicate: json['deduplicate'] ?? true,
+        suppressErrors: json['suppressErrors'] ?? true,
+      );
 }

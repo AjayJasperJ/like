@@ -59,8 +59,8 @@ class LikeSyncManager {
   void registerTask(LikeSyncTask task) {
     if (_pendingTaskIds.contains(task.id)) {
       final existingTask = _taskQueue.toList().firstWhereOrNull(
-        (t) => t.id == task.id,
-      );
+            (t) => t.id == task.id,
+          );
 
       if (existingTask != null &&
           task.priority.index < existingTask.priority.index) {

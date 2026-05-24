@@ -2,7 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.5] - 2026-05-24
+
+### Added
+
+- **`LikeSuggestions` Diagnostic Engine**: Introduced a dedicated development-mode developer suggestions engine (`like_suggestions.dart`) that scans request profiles, identifies bad patterns (e.g. janky payloads parsed on UI thread, missing cache keys, redundant rebuilds), and outputs beautiful console advice.
+- **Pruning Floor Safeguards**: Added silent cache capacity audits and automatic safety limits to `AppCacheManager` to prevent storage leaks.
+
+### Fixed
+
+- **Toastification Reliability / Release Build Support**: Overhauled `LikeRootWrapper` and `LikeToastManager` to fully resolve instances where toast alerts failed to display in release builds. Secured context lookup routines in `ToastificationWrapper` and mitigated context-loss crashes.
+- **Resync Strategy Tuning**: Refined `LikeAutoReconnectMixin` and `LikeClient` query-overlap parsing logic to avoid redundant resync cascades on network recovery.
+
+### Removed
+
+- **Legacy Documentation Bloat**: Pruned unmaintained local wiki markdown files (`api_flow_implementation.md`, `toast_manupulation.md`, `auth_token_manupulation.md`, etc.) from the package root, pointing developers instead to the unified `like_docs` wiki repository to maintain a lightweight package profile (< 1MB).
+
 ## [1.2.4] - 2026-05-23
+
 
 ### Changed
 

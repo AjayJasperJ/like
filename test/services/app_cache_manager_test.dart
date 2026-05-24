@@ -10,14 +10,14 @@ void main() {
   const channel = MethodChannel('plugins.flutter.io/path_provider');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, (methodCall) async {
-        if (methodCall.method == 'getTemporaryDirectory') {
-          return io.Directory.systemTemp.path;
-        }
-        if (methodCall.method == 'getApplicationSupportDirectory') {
-          return io.Directory.systemTemp.path;
-        }
-        return null;
-      });
+    if (methodCall.method == 'getTemporaryDirectory') {
+      return io.Directory.systemTemp.path;
+    }
+    if (methodCall.method == 'getApplicationSupportDirectory') {
+      return io.Directory.systemTemp.path;
+    }
+    return null;
+  });
 
   group('AppCacheManager', () {
     late AppCacheManager cacheManager;

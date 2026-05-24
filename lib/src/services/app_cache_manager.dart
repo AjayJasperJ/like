@@ -19,15 +19,15 @@ class AppCacheManager extends CacheManager {
   factory AppCacheManager() => _instance;
 
   AppCacheManager._internal()
-    : super(
-        Config(
-          key,
-          stalePeriod: Duration(days: LikeConstants.imageStalePeriod),
-          maxNrOfCacheObjects: LikeConstants.maxImageCacheItems,
-          repo: JsonCacheInfoRepository(databaseName: key),
-          fileService: EncryptedHttpFileService(),
-        ),
-      );
+      : super(
+          Config(
+            key,
+            stalePeriod: Duration(days: LikeConstants.imageStalePeriod),
+            maxNrOfCacheObjects: LikeConstants.maxImageCacheItems,
+            repo: JsonCacheInfoRepository(databaseName: key),
+            fileService: EncryptedHttpFileService(),
+          ),
+        );
 
   @override
   Stream<FileResponse> getFileStream(
@@ -116,9 +116,8 @@ class AppCacheManager extends CacheManager {
       final directory = io.Directory('${cacheDir.path}/$key');
 
       if (await directory.exists()) {
-        final List<io.FileSystemEntity> entities = await directory
-            .list()
-            .toList();
+        final List<io.FileSystemEntity> entities =
+            await directory.list().toList();
         final List<io.File> files = entities
             .whereType<io.File>()
             .where((f) => !f.path.contains('/decrypted/'))
@@ -152,7 +151,8 @@ class AppCacheManager extends CacheManager {
               LikeLogger.log(
                 level: LikeLogLevel.error,
                 category: 'cache_manager',
-                message: 'Failed to delete file during pruning ${file.path}: $e',
+                message:
+                    'Failed to delete file during pruning ${file.path}: $e',
               );
             }
           }
@@ -210,9 +210,8 @@ class AppCacheManager extends CacheManager {
       final cacheDir = await getTemporaryDirectory();
       final directory = io.Directory('${cacheDir.path}/$key');
       if (await directory.exists()) {
-        final List<io.FileSystemEntity> entities = await directory
-            .list(recursive: true)
-            .toList();
+        final List<io.FileSystemEntity> entities =
+            await directory.list(recursive: true).toList();
         for (var entity in entities) {
           if (entity is io.File) {
             final path = entity.path.toLowerCase();
@@ -397,7 +396,8 @@ class AppCacheSecurity {
     }
 
     if (decryptedPath == encryptedFile.path) {
-      throw Exception('Decryption path collision detected. Avoiding overwrite.');
+      throw Exception(
+          'Decryption path collision detected. Avoiding overwrite.');
     }
 
     final decryptedFile = io.File(decryptedPath);

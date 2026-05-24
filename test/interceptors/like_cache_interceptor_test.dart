@@ -76,9 +76,8 @@ void main() {
       const key = 'expired-key';
 
       // Save an expired entry (10 days ago)
-      final expiredTimestamp = DateTime.now()
-          .subtract(const Duration(days: 10))
-          .toIso8601String();
+      final expiredTimestamp =
+          DateTime.now().subtract(const Duration(days: 10)).toIso8601String();
       await box.put(key, {
         'data': 'stale',
         'timestamp': expiredTimestamp,

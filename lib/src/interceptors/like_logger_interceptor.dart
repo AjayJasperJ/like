@@ -86,8 +86,8 @@ class LikeLoggerInterceptor extends Interceptor {
           : null,
       responseHeaders:
           (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? response.headers.map
-          : null,
+              ? response.headers.map
+              : null,
       requestBody: (LikeConstants.debugMode || LikeConstants.logApiResponses)
           ? response.requestOptions.data
           : null,
@@ -107,8 +107,8 @@ class LikeLoggerInterceptor extends Interceptor {
 
     final errorMessage =
         (err.type == DioExceptionType.cancel && err.error != null)
-        ? err.error.toString()
-        : err.message;
+            ? err.error.toString()
+            : err.message;
 
     Map<String, String>? fields;
     if (err.requestOptions.data is FormData) {
@@ -133,8 +133,8 @@ class LikeLoggerInterceptor extends Interceptor {
           : null,
       responseHeaders:
           (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? err.response?.headers.map
-          : null,
+              ? err.response?.headers.map
+              : null,
       requestBody: (LikeConstants.debugMode || LikeConstants.logApiResponses)
           ? err.requestOptions.data
           : null,

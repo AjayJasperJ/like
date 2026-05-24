@@ -14,7 +14,7 @@ import 'package:like/src/widgets/like_builder.dart';
 class LikeSelector<N, T> extends StatelessWidget {
   /// Selects the [LikeStateResponse] to observe from a specific notifier [N].
   final LikeStateResponse<dynamic> Function(BuildContext context, N notifier)
-  selector;
+      selector;
 
   /// A custom builder that gives you full control over the [LikeStateResponse] and [child].
   /// If provided, [onSuccess] and other specific builders are ignored.
@@ -22,16 +22,14 @@ class LikeSelector<N, T> extends StatelessWidget {
     BuildContext context,
     LikeStateResponse<dynamic> response,
     Widget? child,
-  )?
-  builder;
+  )? builder;
 
   /// Builder function called when the selected state contains successful data.
   final Widget Function(
     T data,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
-  )?
-  onSuccess;
+  )? onSuccess;
 
   /// Optional builder called when the state is [LikeState.loading].
   final Widget Function()? onLoading;
@@ -63,9 +61,9 @@ class LikeSelector<N, T> extends StatelessWidget {
     this.listener,
     this.child,
   }) : assert(
-         builder != null || onSuccess != null,
-         'Either builder or onSuccess must be provided',
-       );
+          builder != null || onSuccess != null,
+          'Either builder or onSuccess must be provided',
+        );
 
   @override
   Widget build(BuildContext context) {

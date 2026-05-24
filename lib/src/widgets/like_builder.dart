@@ -24,8 +24,7 @@ class LikeBuilder<T> extends StatefulWidget {
     T data,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
-  )
-  onSuccess;
+  ) onSuccess;
 
   /// Optional builder called when the initial data load is in progress.
   /// If [onSuccess] was previously called, [LikeBuilder] will continue to show
@@ -175,8 +174,7 @@ class LikeStateResponseBuilder<T> extends StatelessWidget {
     T data,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
-  )
-  onSuccess;
+  ) onSuccess;
 
   /// Optional builder called when the initial data load is in progress.
   final Widget Function()? onLoading;

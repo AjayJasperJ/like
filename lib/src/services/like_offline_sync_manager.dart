@@ -22,12 +22,12 @@ class LikeOfflineSyncManager {
     _isInitialized = true;
 
     _connectivitySubscription?.cancel();
-    _connectivitySubscription = LikeConnectivityManager().connectionChange
-        .listen((isConnected) {
-          if (isConnected) {
-            _triggerSync();
-          }
-        });
+    _connectivitySubscription =
+        LikeConnectivityManager().connectionChange.listen((isConnected) {
+      if (isConnected) {
+        _triggerSync();
+      }
+    });
 
     // Check initial state
     if (LikeConnectivityManager().hasConnection) {

@@ -201,8 +201,7 @@ class MockController {
     for (var rule in newRules) {
       final finalRule = rule.id.isEmpty
           ? rule.copyWith(
-              id:
-                  DateTime.now().millisecondsSinceEpoch.toString() +
+              id: DateTime.now().millisecondsSinceEpoch.toString() +
                   updatedRules.length.toString(),
             )
           : rule;

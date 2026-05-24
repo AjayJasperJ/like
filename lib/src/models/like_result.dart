@@ -23,10 +23,11 @@ class LikeResult<T> {
     String message, {
     LikeApiErrorType? type,
     int? code,
-  }) => LikeResult(
-    message: message,
-    isSuccess: false,
-    errorType: type,
-    statusCode: code,
-  );
+  }) =>
+      LikeResult(
+        message: message,
+        isSuccess: false,
+        errorType: type,
+        statusCode: code,
+      );
 }

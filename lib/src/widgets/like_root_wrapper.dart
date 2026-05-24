@@ -71,7 +71,8 @@ class Like extends StatefulWidget {
 
   /// Global navigator key that can be passed to [MaterialApp.navigatorKey]
   /// to enable contextless toasts to inherit the application's theme and navigator.
-  static GlobalKey<NavigatorState> get navigatorKey => LikeToastManager.navigatorKey;
+  static GlobalKey<NavigatorState> get navigatorKey =>
+      LikeToastManager.navigatorKey;
 
   const Like({
     super.key,
@@ -106,7 +107,7 @@ class _LikeState extends State<Like> {
   }
 
   Future<void> _initialize() async {
-    print('DEBUG: _initialize starting');
+    debugPrint('DEBUG: _initialize starting');
     try {
       // 1. Centralized Initialization (Hive, Connectivity, Client, Sync)
       // Merge root-level baseUrl into the current app-level config
@@ -114,9 +115,9 @@ class _LikeState extends State<Like> {
         baseUrl: widget.baseUrl,
       );
 
-      print('DEBUG: Calling LikeService.init');
+      debugPrint('DEBUG: Calling LikeService.init');
       await LikeService.init(config: engineConfig);
-      print('DEBUG: LikeService.init completed');
+      debugPrint('DEBUG: LikeService.init completed');
 
       // 2. Toasts & Security (Context-dependent)
       if (widget.toastConfig != null) {
@@ -162,9 +163,9 @@ class _LikeState extends State<Like> {
           LikeToastManager.showConnectivityToast(isConnected);
         });
       }
-      print('DEBUG: _initialize completed successfully');
+      debugPrint('DEBUG: _initialize completed successfully');
     } catch (e, stack) {
-      print('DEBUG: _initialize threw exception: $e\n$stack');
+      debugPrint('DEBUG: _initialize threw exception: $e\n$stack');
       rethrow;
     }
   }
@@ -200,10 +201,12 @@ class _LikeState extends State<Like> {
                         children: [
                           widget.child,
                           ValueListenableBuilder<bool>(
-                            valueListenable: widget.isSyncing ?? LikeService.isSyncing,
+                            valueListenable:
+                                widget.isSyncing ?? LikeService.isSyncing,
                             builder: (context, syncing, _) {
                               if (!syncing) return const SizedBox.shrink();
-                              return widget.syncOverlay ?? _DefaultSyncOverlay();
+                              return widget.syncOverlay ??
+                                  _DefaultSyncOverlay();
                             },
                           ),
                         ],

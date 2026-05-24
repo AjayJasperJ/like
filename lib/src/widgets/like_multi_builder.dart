@@ -16,8 +16,7 @@ class LikeMultiBuilder extends StatefulWidget {
     List<dynamic> results,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
-  )
-  onSuccess;
+  ) onSuccess;
 
   /// Optional builder called when at least one state is in [LikeState.loading].
   /// Supports sticky behavior: if [onSuccess] was previously called, it remains visible.
@@ -36,8 +35,7 @@ class LikeMultiBuilder extends StatefulWidget {
   final void Function(
     LikeState aggregatedState,
     List<LikeStateResponse<dynamic>> responses,
-  )?
-  listener;
+  )? listener;
 
   const LikeMultiBuilder({
     super.key,

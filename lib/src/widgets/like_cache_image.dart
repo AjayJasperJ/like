@@ -41,9 +41,8 @@ class LikeCacheImage extends StatelessWidget {
           const Center(child: Icon(Icons.error_outline));
     }
 
-    final resolvedUrl = normalizeUrl
-        ? AppCacheUtils.normalizeUrl(imageUrl)
-        : imageUrl;
+    final resolvedUrl =
+        normalizeUrl ? AppCacheUtils.normalizeUrl(imageUrl) : imageUrl;
 
     return CachedNetworkImage(
       imageUrl: resolvedUrl,

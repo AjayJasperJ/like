@@ -17,7 +17,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
   static final Lock _lock = Lock();
 
   LikeOfflineSyncInterceptor({required this.dio, required Box queueBox})
-    : _queueBox = queueBox;
+      : _queueBox = queueBox;
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {

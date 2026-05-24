@@ -16,8 +16,7 @@ class LikeMultiSliverBuilder extends StatefulWidget {
     List<dynamic> results,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
-  )
-  onSuccess;
+  ) onSuccess;
 
   /// Optional builder called when at least one state is in [LikeState.loading].
   final List<Widget> Function()? onLoading;
@@ -35,8 +34,7 @@ class LikeMultiSliverBuilder extends StatefulWidget {
   final void Function(
     LikeState aggregatedState,
     List<LikeStateResponse<dynamic>> responses,
-  )?
-  listener;
+  )? listener;
 
   const LikeMultiSliverBuilder({
     super.key,

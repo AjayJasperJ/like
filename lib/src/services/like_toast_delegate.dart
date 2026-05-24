@@ -68,7 +68,7 @@ abstract class LikeToastDelegate {
 class DefaultLikeToastDelegate implements LikeToastDelegate {
   /// A builder for custom synchronization progress toasts.
   final Widget Function(String title, String message, double progress)?
-  syncProgressBuilder;
+      syncProgressBuilder;
 
   /// Creates a [DefaultLikeToastDelegate] with optional custom builders.
   DefaultLikeToastDelegate({this.syncProgressBuilder});
@@ -106,8 +106,8 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
     final type = response.isSuccess
         ? ToastificationType.success
         : (response.isError
-              ? ToastificationType.warning
-              : ToastificationType.error);
+            ? ToastificationType.warning
+            : ToastificationType.error);
 
     showToast(context, message: response.message, type: type);
   }
@@ -170,13 +170,11 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
       animationDuration: maxDuration,
       callbacks: ToastificationCallbacks(onTap: (item) => onTap?.call()),
       animationBuilder: (context, animation, alignment, toastChild) {
-        final isExiting =
-            animation.status == AnimationStatus.reverse ||
+        final isExiting = animation.status == AnimationStatus.reverse ||
             animation.status == AnimationStatus.dismissed;
 
-        final currentDuration = isExiting
-            ? effectiveExitDuration
-            : entryDuration;
+        final currentDuration =
+            isExiting ? effectiveExitDuration : entryDuration;
         final ratio =
             currentDuration.inMilliseconds / maxDuration.inMilliseconds;
 
@@ -198,8 +196,8 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
             final defaultOffsetVar = alignment.y > 0 ? 1.0 : -1.0;
             final offset = isExiting
                 ? (slideOutOffset ??
-                      slideInOffset ??
-                      Offset(0, defaultOffsetVar))
+                    slideInOffset ??
+                    Offset(0, defaultOffsetVar))
                 : (slideInOffset ?? Offset(0, defaultOffsetVar));
 
             return SlideTransition(

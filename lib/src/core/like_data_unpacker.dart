@@ -39,8 +39,7 @@ class DefaultLikeUnpacker extends LikeDataUnpacker {
     return LikeUnpackedResponse(
       data: data,
       message: message,
-      isSuccess:
-          status == 'success' ||
+      isSuccess: status == 'success' ||
           status == 'true' ||
           json['success'] == true ||
           status == null,
