@@ -25,26 +25,36 @@ class LikeService {
   /// (timeouts, cache TTLs, logging levels, etc.).
   static Future<void> init({required LikeConfig config}) async {
     final baseUrl = config.baseUrl;
+    print('DEBUG: LikeService.init config: ${config.baseUrl}');
     // 0. Apply config settings to LikeConstants
     LikeConstants.apply(config);
 
     // 1a. Initialize encryption FIRST — must be ready before any file cache
     //     access occurs. Uses config.encryptionKey if provided, otherwise
     //     generates a per-device key stored in SharedPreferences.
+    print('DEBUG: AppCacheSecurity.init starting');
     await AppCacheSecurity.init();
+    print('DEBUG: AppCacheSecurity.init completed');
 
     // 1b. Core Storage
+    print('DEBUG: Hive.initFlutter starting');
     await Hive.initFlutter();
+    print('DEBUG: Hive.initFlutter completed');
+    
+    print('DEBUG: Opening Hive boxes starting');
     await Future.wait([
       Hive.openBox(LikeConstants.boxApiCache),
       Hive.openBox(LikeConstants.boxCacheMetadata),
       Hive.openBox(LikeConstants.boxEtags),
       Hive.openBox(LikeConstants.boxOfflineQueue),
     ]);
+    print('DEBUG: Opening Hive boxes completed');
 
     // 2. Connectivity & Reachability
     if (baseUrl.isNotEmpty) {
+      print('DEBUG: LikeConnectivityManager.init starting for $baseUrl');
       await LikeConnectivityManager().init(serverUrl: baseUrl);
+      print('DEBUG: LikeConnectivityManager.init completed');
     }
 
     // 3. Client Singleton

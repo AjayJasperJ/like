@@ -9,6 +9,10 @@ class LikeToastManager {
   static LikeToastDelegate _delegate = DefaultLikeToastDelegate();
   static BuildContext? _context;
 
+  /// Global navigator key that can be passed to [MaterialApp.navigatorKey]
+  /// to enable contextless toasts to inherit the application's theme and navigator.
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   /// Global registry for connectivity widgets.
   static Widget? onlineWidget;
   static Widget? offlineWidget;
@@ -29,7 +33,7 @@ class LikeToastManager {
 
   /// Shows a toast for connectivity changes.
   static void showConnectivityToast(bool isOnline, {BuildContext? context}) {
-    final effectiveContext = context ?? _context;
+    final effectiveContext = context ?? navigatorKey.currentContext ?? _context;
     if (effectiveContext == null) return;
     _delegate.showConnectivityToast(effectiveContext, isOnline);
   }
@@ -39,7 +43,7 @@ class LikeToastManager {
     LikeStateResponse<dynamic> response, {
     BuildContext? context,
   }) {
-    final effectiveContext = context ?? _context;
+    final effectiveContext = context ?? navigatorKey.currentContext ?? _context;
     if (effectiveContext == null) return;
     _delegate.showResponseToast(effectiveContext, response);
   }
@@ -52,7 +56,7 @@ class LikeToastManager {
     required ToastificationType type,
     Duration? autoCloseDuration,
   }) {
-    final effectiveContext = context ?? _context;
+    final effectiveContext = context ?? navigatorKey.currentContext ?? _context;
     if (effectiveContext == null) return;
     _delegate.showToast(
       effectiveContext,
@@ -80,7 +84,7 @@ class LikeToastManager {
     Offset? slideInOffset,
     Offset? slideOutOffset,
   }) {
-    final effectiveContext = context ?? _context;
+    final effectiveContext = context ?? navigatorKey.currentContext ?? _context;
     if (effectiveContext == null) return;
     _delegate.showCustomToast(
       effectiveContext,
@@ -106,7 +110,7 @@ class LikeToastManager {
     required String title,
     String? message,
   }) {
-    final effectiveContext = context ?? _context;
+    final effectiveContext = context ?? navigatorKey.currentContext ?? _context;
     if (effectiveContext == null) return;
     _delegate.showLoadingToast(
       effectiveContext,
@@ -122,7 +126,7 @@ class LikeToastManager {
     required String message,
     required double progress,
   }) {
-    final effectiveContext = context ?? _context;
+    final effectiveContext = context ?? navigatorKey.currentContext ?? _context;
     if (effectiveContext == null) return;
     _delegate.showSyncProgressToast(
       effectiveContext,
@@ -137,7 +141,7 @@ class LikeToastManager {
     BuildContext? context,
     bool showRemoveAnimation = false,
   }) {
-    final effectiveContext = context ?? _context;
+    final effectiveContext = context ?? navigatorKey.currentContext ?? _context;
     if (effectiveContext == null) return;
     _delegate.dismiss(
       effectiveContext,

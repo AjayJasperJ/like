@@ -69,6 +69,10 @@ class Like extends StatefulWidget {
   /// ```
   final Widget Function(Widget child)? devTool;
 
+  /// Global navigator key that can be passed to [MaterialApp.navigatorKey]
+  /// to enable contextless toasts to inherit the application's theme and navigator.
+  static GlobalKey<NavigatorState> get navigatorKey => LikeToastManager.navigatorKey;
+
   const Like({
     super.key,
     required this.child,
@@ -102,57 +106,66 @@ class _LikeState extends State<Like> {
   }
 
   Future<void> _initialize() async {
-    // 1. Centralized Initialization (Hive, Connectivity, Client, Sync)
-    // Merge root-level baseUrl into the current app-level config
-    final engineConfig = LikeConstants.current.copyWith(
-      baseUrl: widget.baseUrl,
-    );
-
-    await LikeService.init(config: engineConfig);
-
-    // 2. Toasts & Security (Context-dependent)
-    if (widget.toastConfig != null) {
-      if (widget.toastConfig!.online != null) {
-        LikeToastManager.onlineWidget = widget.toastConfig!.online;
-      }
-      if (widget.toastConfig!.offline != null) {
-        LikeToastManager.offlineWidget = widget.toastConfig!.offline;
-      }
-    }
-
-    if (widget.toastDelegate != null) {
-      LikeToastManager.setDelegate(widget.toastDelegate!);
-    } else if (widget.syncProgressBuilder != null ||
-        widget.toastConfig?.syncProgressBuilder != null) {
-      LikeToastManager.setDelegate(
-        DefaultLikeToastDelegate(
-          syncProgressBuilder: widget.syncProgressBuilder ??
-              widget.toastConfig?.syncProgressBuilder,
-        ),
+    print('DEBUG: _initialize starting');
+    try {
+      // 1. Centralized Initialization (Hive, Connectivity, Client, Sync)
+      // Merge root-level baseUrl into the current app-level config
+      final engineConfig = LikeConstants.current.copyWith(
+        baseUrl: widget.baseUrl,
       );
-    }
 
-    if (widget.getToken != null) {
-      LikeAuthInterceptor.getToken = widget.getToken!;
-    }
-    if (widget.refreshToken != null) {
-      LikeAuthInterceptor.refreshToken = widget.refreshToken!;
-    }
-    if (widget.onLogout != null) {
-      LikeAuthInterceptor.onLogout = widget.onLogout!;
-    }
-    if (widget.getApiKey != null) {
-      LikeAuthInterceptor.getApiKey = widget.getApiKey!;
-    }
+      print('DEBUG: Calling LikeService.init');
+      await LikeService.init(config: engineConfig);
+      print('DEBUG: LikeService.init completed');
 
-    // 3. Connectivity Toasts Listener
-    if (widget.showConnectivityToasts) {
-      _subscription = LikeConnectivityManager().connectionChange.listen((
-        isConnected,
-      ) {
-        if (!mounted) return;
-        LikeToastManager.showConnectivityToast(isConnected);
-      });
+      // 2. Toasts & Security (Context-dependent)
+      if (widget.toastConfig != null) {
+        if (widget.toastConfig!.online != null) {
+          LikeToastManager.onlineWidget = widget.toastConfig!.online;
+        }
+        if (widget.toastConfig!.offline != null) {
+          LikeToastManager.offlineWidget = widget.toastConfig!.offline;
+        }
+      }
+
+      if (widget.toastDelegate != null) {
+        LikeToastManager.setDelegate(widget.toastDelegate!);
+      } else if (widget.syncProgressBuilder != null ||
+          widget.toastConfig?.syncProgressBuilder != null) {
+        LikeToastManager.setDelegate(
+          DefaultLikeToastDelegate(
+            syncProgressBuilder: widget.syncProgressBuilder ??
+                widget.toastConfig?.syncProgressBuilder,
+          ),
+        );
+      }
+
+      if (widget.getToken != null) {
+        LikeAuthInterceptor.getToken = widget.getToken!;
+      }
+      if (widget.refreshToken != null) {
+        LikeAuthInterceptor.refreshToken = widget.refreshToken!;
+      }
+      if (widget.onLogout != null) {
+        LikeAuthInterceptor.onLogout = widget.onLogout!;
+      }
+      if (widget.getApiKey != null) {
+        LikeAuthInterceptor.getApiKey = widget.getApiKey!;
+      }
+
+      // 3. Connectivity Toasts Listener
+      if (widget.showConnectivityToasts) {
+        _subscription = LikeConnectivityManager().connectionChange.listen((
+          isConnected,
+        ) {
+          if (!mounted) return;
+          LikeToastManager.showConnectivityToast(isConnected);
+        });
+      }
+      print('DEBUG: _initialize completed successfully');
+    } catch (e, stack) {
+      print('DEBUG: _initialize threw exception: $e\n$stack');
+      rethrow;
     }
   }
 
@@ -171,24 +184,36 @@ class _LikeState extends State<Like> {
           return widget.loadingWidget ?? const _DefaultLoadingScreen();
         }
 
-        // Build the core app stack
-        final coreStack = Builder(
-          builder: (context) {
-            LikeToastManager.registerContext(context);
-            return Stack(
-              alignment: Alignment.topLeft,
-              children: [
-                widget.child,
-                ValueListenableBuilder<bool>(
-                  valueListenable: widget.isSyncing ?? LikeService.isSyncing,
-                  builder: (context, syncing, _) {
-                    if (!syncing) return const SizedBox.shrink();
-                    return widget.syncOverlay ?? _DefaultSyncOverlay();
-                  },
-                ),
-              ],
-            );
-          },
+        // Build the core app stack with a lightweight Overlay and Directionality
+        // to guarantee that the registered context has an Overlay ancestor in release builds.
+        final coreStack = Directionality(
+          textDirection: TextDirection.ltr,
+          child: Overlay(
+            initialEntries: [
+              OverlayEntry(
+                builder: (context) {
+                  return Builder(
+                    builder: (innerContext) {
+                      LikeToastManager.registerContext(innerContext);
+                      return Stack(
+                        alignment: Alignment.topLeft,
+                        children: [
+                          widget.child,
+                          ValueListenableBuilder<bool>(
+                            valueListenable: widget.isSyncing ?? LikeService.isSyncing,
+                            builder: (context, syncing, _) {
+                              if (!syncing) return const SizedBox.shrink();
+                              return widget.syncOverlay ?? _DefaultSyncOverlay();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
         );
 
         // Wrap with devTool overlay if provided (debug-only by convention)
