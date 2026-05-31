@@ -8,6 +8,12 @@ import 'ui/todo_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LikeService.init(
+      config: LikeConfig(
+    projectName: 'example_app',
+    unpacker: const CustomLikeUnpacker(),
+    baseUrl: 'https://jsonplaceholder.typicode.com',
+  ));
   runApp(const LikeExampleApp());
 }
 
@@ -27,7 +33,6 @@ class LikeExampleApp extends StatelessWidget {
       ],
       // 3. Wrap your root app in the 'Like' widget to initialize the engine
       child: Like(
-        baseUrl: 'https://jsonplaceholder.typicode.com',
         child: MaterialApp(
           title: 'LIKE Zero-Config Demo',
           debugShowCheckedModeBanner: false,
@@ -41,6 +46,35 @@ class LikeExampleApp extends StatelessWidget {
           home: const TodoListScreen(),
         ),
       ),
+    );
+  }
+}
+
+/// Example of a Custom Data Unpacker.
+/// To use this, change [unpacker] inside [LikeConfig] above to: `const CustomLikeUnpacker()`
+class CustomLikeUnpacker extends LikeDataUnpacker {
+  const CustomLikeUnpacker();
+
+  @override
+  LikeUnpackedResponse unpack(dynamic json) {
+    if (json is! Map<String, dynamic>) {
+      return LikeUnpackedResponse(data: json);
+    }
+
+    // Custom envelope keys mapping:
+    final data =
+        json.containsKey('response_payload') ? json['response_payload'] : json;
+    final message = json['msg']?.toString() ?? '';
+    final isSuccess = json['status_code'] == 200 || json['success'] == true;
+    final errors = json['error_details'] is Map<String, dynamic>
+        ? json['error_details']
+        : null;
+
+    return LikeUnpackedResponse(
+      data: data,
+      message: message,
+      isSuccess: isSuccess,
+      errors: errors,
     );
   }
 }

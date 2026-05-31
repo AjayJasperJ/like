@@ -26,8 +26,28 @@ class LikeNotifierState<T> extends ChangeNotifier {
   /// The captured query parameters from the last network request.
   Map<String, dynamic>? activeQuery;
 
+  String? _endpointPath;
+  String? _cleanEndpointPath;
+
   /// The captured endpoint path from the last network request.
-  String? endpointPath;
+  String? get endpointPath => _endpointPath;
+  set endpointPath(String? value) {
+    if (_endpointPath == value) return;
+    _endpointPath = value;
+    if (value != null) {
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        final uri = Uri.tryParse(value);
+        _cleanEndpointPath = uri != null ? uri.path : value.split('?').first;
+      } else {
+        _cleanEndpointPath = value.split('?').first;
+      }
+    } else {
+      _cleanEndpointPath = null;
+    }
+  }
+
+  /// The cached clean endpoint path (without query parameters) for O(1) matching.
+  String? get cleanEndpointPath => _cleanEndpointPath;
 
   /// Whether the notifier state should automatically resync when relevant mutations occur.
   bool autoResync = false;

@@ -24,7 +24,7 @@ class LikeSyncManager {
     return a.priority.index.compareTo(b.priority.index);
   });
 
-  final Set<String> _pendingTaskIds = {};
+  final Map<String, LikeSyncTask> _pendingTasks = {};
   bool _isProcessing = false;
   LikeSyncStatus _status = LikeSyncStatus.idle;
 
@@ -57,13 +57,9 @@ class LikeSyncManager {
   /// same ID already exists, its priority will be upgraded if the new task
   /// has a higher priority level.
   void registerTask(LikeSyncTask task) {
-    if (_pendingTaskIds.contains(task.id)) {
-      final existingTask = _taskQueue.toList().firstWhereOrNull(
-            (t) => t.id == task.id,
-          );
-
-      if (existingTask != null &&
-          task.priority.index < existingTask.priority.index) {
+    final existingTask = _pendingTasks[task.id];
+    if (existingTask != null) {
+      if (task.priority.index < existingTask.priority.index) {
         LikeLogger.log(
           level: LikeLogLevel.info,
           category: 'sync',
@@ -72,6 +68,7 @@ class LikeSyncManager {
         );
         _taskQueue.remove(existingTask);
         _taskQueue.add(task);
+        _pendingTasks[task.id] = task;
       }
       return;
     }
@@ -86,7 +83,7 @@ class LikeSyncManager {
 
     _totalTasks++;
     _taskQueue.add(task);
-    _pendingTaskIds.add(task.id);
+    _pendingTasks[task.id] = task;
 
     LikeLogger.log(
       level: LikeLogLevel.info,
@@ -101,6 +98,9 @@ class LikeSyncManager {
       processQueue();
     }
   }
+
+  int _consecutiveFailures = 0;
+  static const int _maxConsecutiveFailures = 3;
 
   /// Manually starts the execution of the synchronization queue.
   ///
@@ -123,7 +123,7 @@ class LikeSyncManager {
         }
 
         final task = _taskQueue.removeFirst();
-        _pendingTaskIds.remove(task.id);
+        _pendingTasks.remove(task.id);
 
         try {
           LikeLogger.log(
@@ -136,16 +136,35 @@ class LikeSyncManager {
 
           _completedTasks++;
           _updateProgress();
+          _consecutiveFailures = 0; // Reset consecutive failures on success
 
           if (_taskQueue.isNotEmpty) {
             await Future.delayed(const Duration(milliseconds: 300));
           }
         } catch (e) {
+          _consecutiveFailures++;
           LikeLogger.log(
             level: LikeLogLevel.error,
             category: 'sync',
-            message: 'Error executing task ${task.id}: $e',
+            message: 'Error executing task ${task.id} (failure $_consecutiveFailures): $e',
           );
+
+          // Circuit Breaker: Halt queue execution if server/network fails repeatedly
+          if (_consecutiveFailures >= _maxConsecutiveFailures) {
+            LikeLogger.log(
+              level: LikeLogLevel.error,
+              category: 'sync',
+              message: 'Circuit breaker tripped after $_consecutiveFailures consecutive failures. Pausing queue and marking server as offline.',
+            );
+            // Put failed task back to front or let it be handled later. Since it was removed, we should re-register it to not lose it.
+            _taskQueue.add(task);
+            _pendingTasks[task.id] = task;
+            
+            // Trip: mark server as offline
+            LikeConnectivityManager().markServerUnavailable();
+            _consecutiveFailures = 0;
+            break;
+          }
         }
       }
     } finally {
@@ -156,7 +175,11 @@ class LikeSyncManager {
 
       // Safety check: if tasks were added while we were finishing, restart the loop
       if (_taskQueue.isNotEmpty && LikeConnectivityManager().hasConnection) {
-        processQueue();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (LikeConnectivityManager().hasConnection && !_isProcessing) {
+            processQueue();
+          }
+        });
       }
 
       if (_status == LikeSyncStatus.completed) {

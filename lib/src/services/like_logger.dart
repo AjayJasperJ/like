@@ -23,7 +23,7 @@ class LikeLogger {
 
   /// Initializes the logging system.
   static Future<void> init() async {
-    if (LikeConstants.disableFileLogging) {
+    if (LikeConstants.disableFileLogging || (kIsWeb && LikeConstants.supportWeb)) {
       _isInitialized = true;
       return;
     }
@@ -32,14 +32,19 @@ class LikeLogger {
       if (_isInitialized) return;
       try {
         final dir = await getApplicationDocumentsDirectory();
-        _logFile = File('${dir.path}/like_api_log.txt');
+        final projectNamespace = LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+        _logFile = File('${dir.path}/${projectNamespace}_api_log.txt');
         if (!await _logFile!.exists()) {
           await _logFile!.create(recursive: true);
         }
         _isInitialized = true;
-        debugPrint('[LikeLogger] Initialized at: ${_logFile!.path}');
+        if (LikeConstants.debugMode && !LikeConstants.silentConsole) {
+          debugPrint('[LikeLogger] Initialized at: ${_logFile!.path}');
+        }
       } catch (e) {
-        debugPrint('[LikeLogger] Initialization failed: $e');
+        if (LikeConstants.debugMode && !LikeConstants.silentConsole) {
+          debugPrint('[LikeLogger] Initialization failed: $e');
+        }
       }
     });
   }
@@ -233,7 +238,7 @@ class LikeLogger {
 
   static Future<String> readLogs() async {
     await _ensureInitialized();
-    if (await _logFile!.exists()) {
+    if (_logFile != null && await _logFile!.exists()) {
       return await _logFile!.readAsString();
     }
     return '';
@@ -241,7 +246,7 @@ class LikeLogger {
 
   static Future<void> clearLogs() async {
     await _ensureInitialized();
-    if (await _logFile!.exists()) {
+    if (_logFile != null && await _logFile!.exists()) {
       await _logFile!.writeAsString('');
     }
   }

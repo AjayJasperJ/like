@@ -293,6 +293,11 @@ class LikeClient {
     Response response,
     String key,
   ) async {
+    final bool isFromCache = response.extra['isFromCache'] ?? false;
+    if (!isFromCache) {
+      LikeConnectivityManager().markServerAvailable();
+    }
+
     // 1. Decode JSON string if needed
     if (response.data is String && (response.data as String).isNotEmpty) {
       final dataStr = response.data as String;

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_config.dart';
+import 'package:like/src/core/like_data_unpacker.dart';
 
 /// Centralized configuration and constants for the LIKE networking engine.
 /// Provides production-grade networking configuration parity.
@@ -7,7 +8,7 @@ import 'package:like/src/core/like_config.dart';
 /// All values are read-only and must be configured via [LikeService.init]
 /// or [LikeConstants.apply].
 class LikeConstants {
-  static LikeConfig _config = LikeConfig();
+  static LikeConfig _config = LikeConfig(projectName: 'default_project');
 
   /// Returns the current global configuration.
   static LikeConfig get current => _config;
@@ -21,7 +22,10 @@ class LikeConstants {
   ///
   /// Use in [setUp]/[tearDown] in tests to prevent config bleed between test cases.
   @visibleForTesting
-  static void reset() => _config = LikeConfig();
+  static void reset() => _config = LikeConfig(projectName: 'default_project');
+
+  /// The name of the project. Used as a namespace prefix for storage, cache directories, encryption keys, and Hive boxes.
+  static String get projectName => _config.projectName;
 
   // --- Logs ---
 
@@ -234,4 +238,10 @@ class LikeConstants {
 
   /// Hive box name for storing ETag headers for 304 Not Modified validation.
   static String get boxEtags => _config.boxEtags;
+
+  /// Whether web support is enabled.
+  static bool get supportWeb => _config.supportWeb;
+
+  /// The global data unpacker used to extract payload, success status, and error messages from responses.
+  static LikeDataUnpacker get unpacker => _config.unpacker;
 }

@@ -3,208 +3,324 @@ import 'package:like/src/core/like_data_unpacker.dart';
 
 /// Global configuration for the LIKE engine's behavior and caching system.
 class LikeConfig {
-  /// The primary base URL for all network requests.
+  /// The name of the project. Used as a namespace prefix for storage, cache directories, encryption keys, and Hive boxes.
+  final String projectName;
+
+  /// The main web address (API root URL) that your app talks to.
+  /// 
+  /// **Example:** If you set this to `https://api.example.com`, all your API
+  /// requests will start with this URL (e.g. fetching `/profile` will call `https://api.example.com/profile`).
   final String baseUrl;
 
-  /// A map of alternative base URLs for multi-tenant or multi-service environments.
+  /// Extra web addresses you can use if your app talks to multiple different servers.
+  /// 
+  /// **Example:** You might have your main server at [baseUrl], but keep your chat server
+  /// at `https://chat.example.com` or your payment server at `https://pay.example.com`.
+  /// You map them like: `{'chat': 'https://chat.example.com'}`.
   final Map<String, String> extraBaseUrls;
 
-  /// Maximum time to wait for a connection to be established.
+  /// How long the app should wait to establish a connection with the server before giving up.
+  /// 
+  /// **Analogy:** If you dial a friend's phone number, how long will you let it ring
+  /// before hanging up? If they don't pick up within this time, your app will trigger a "Connection Timeout" error.
   final Duration connectTimeout;
 
-  /// Maximum time to wait for receiving a chunk of data from the server.
+  /// How long the app should wait to receive data from the server once a connection is made.
+  /// 
+  /// **Analogy:** Once your friend picks up the phone, how long are you willing to wait for
+  /// them to start speaking or send the next sentence? If the server goes completely silent mid-response
+  /// for longer than this duration, your app will trigger a "Receive Timeout" error.
   final Duration receiveTimeout;
 
-  /// Maximum time to wait for sending data to the server.
+  /// How long the app should wait while sending data (like uploading a file or photo) to the server.
+  /// 
+  /// **Analogy:** How long are you willing to wait for a large package you sent by mail to be
+  /// delivered to the recipient? If your phone takes too long to upload a post payload, this triggers a "Send Timeout".
   final Duration sendTimeout;
 
-  /// Timeout for the engine's initial setup and box opening.
+  /// How long the engine is allowed to take to set up and open its local databases (Hive) when the app starts.
+  /// 
+  /// If your app takes longer than this duration to open local storage boxes at startup, it will fail with an error.
   final Duration initTimeout;
 
-  /// Timeout for connectivity reachability checks (e.g., pinging google.com).
+  /// How long to wait when doing a real-world internet check (like pinging a reliable website).
+  /// 
+  /// Rationale: Sometimes your device says it is connected to Wi-Fi, but that Wi-Fi has no actual internet.
+  /// We do a quick background ping to check, and this is the maximum time we wait for that ping to respond.
   final Duration connTimeout;
 
-  /// Debounce time in milliseconds for connectivity status changes to prevent flickering.
+  /// The wait time (in milliseconds) before acting on a change in your internet connection.
+  /// 
+  /// **Why it's useful:** When a user walks out of their house, their phone might rapidly switch
+  /// back and forth between Wi-Fi and mobile data. This "debounce" waits a split second to make sure
+  /// the connection is stable before triggering UI alerts or reconnection workflows.
   final int connDebounceMs;
 
-  /// Globally enables or disables the LIKE logging system.
+  /// The master switch to turn the console logging system ON or OFF.
+  /// 
+  /// When set to `true`, the LIKE package prints green/red messages in your terminal
+  /// explaining exactly what requests are being sent, what cache is loaded, and any errors.
   final bool enableLogging;
 
-  /// If true, prevents logs from being printed to the system console.
+  /// Suppresses all logs in the console, even if [enableLogging] is `true`.
+  /// 
+  /// Useful in production releases when you want a completely clean console with no debug messages.
   final bool silentConsole;
 
-  /// If true, prevents logs related to background synchronization tasks.
+  /// Hides background logs related to internet checks and sync actions.
+  /// 
+  /// When set to `true`, this keeps your terminal focused on active foreground screen actions
+  /// instead of repetitive background loops.
   final bool silentSyncLogs;
 
-  /// If true, simplifies API logs to a single line per request.
+  /// Condenses all network request logs into a single clean line in your terminal.
+  /// 
+  /// When `true`, instead of printing multiple lines of request and response details, it prints
+  /// a simple: `[GET] 200 OK - /users/profile`, which is much easier to scan.
   final bool compactApiLogs;
 
-  /// If true, hides logs indicating the start of an API request.
+  /// Hides logs that print the exact millisecond a request is initiated.
+  /// 
+  /// Set this to `true` if you only want to see logs when requests succeed or fail,
+  /// reducing noise when multiple calls are fired in parallel.
   final bool silentApiStartLogs;
 
-  /// If true, disables writing logs to a local file for debugging.
+  /// Disables writing log files to the physical device's storage.
+  /// 
+  /// When `true`, no log files are saved to the device disk. This is highly recommended
+  /// for production apps to save disk space and improve security.
   final bool disableFileLogging;
 
-  /// Enables extremely detailed logs for internal engine cycles.
+  /// Enables extremely deep, detailed logs for internal developer debugging.
+  /// 
+  /// Shows everything under the hood: when a RAM cache gets saved, when a database write is successful,
+  /// and microsecond timers for parser execution.
   final bool verboseLogging;
 
-  /// List of HTTP headers that should be masked in logs for security (e.g., Authorization).
+  /// List of headers (like password tokens or auth keys) that should be hidden/masked in logs.
+  /// 
+  /// **Why it's crucial:** Prevents passwords or sensitive user credentials (like `Authorization` headers)
+  /// from being printed out in plain text or saved to debug files.
   final List<String> sensitiveHeaders;
 
-  /// Threshold in KB above which JSON parsing will be offloaded to a background isolate.
+  /// The threshold size (in Kilobytes) above which JSON parsing is offloaded to a background thread.
+  /// 
+  /// **Analogy:** If you have a small grocery bag (small JSON), you can carry it in your hand (UI thread).
+  /// If you have a massive furniture box (huge JSON response), you should get a helper to carry it (background Isolate)
+  /// so you don't stutter or freeze your application's UI frames.
   final int computeThresholdKB;
 
-  /// Optional AES key for encrypting cached data on disk.
+  /// Optional secret password key used to fully encrypt all cached data saved on disk.
+  /// 
+  /// **Security:** If provided, all local cache files are encrypted with AES, meaning even if someone hacks
+  /// the phone, they cannot read the user's cached offline profile or transaction lists in plain text.
   final String? encryptionKey;
 
-  /// An unpacker strategy used to extract domain data from standard API envelopes.
+  /// A helper class that unpacks your JSON responses and extracts only the relevant data.
+  /// 
+  /// **Example:** Often, servers wrap lists in envelopes like: `{"status": true, "data": [...your list...]}`.
+  /// The unpacker automatically strips away the status envelope and hands you just `[...your list...]`.
   final LikeDataUnpacker unpacker;
 
-  /// Default HTTP headers to be included in every request.
+  /// HTTP Headers that are automatically added to every single outgoing request.
+  /// 
+  /// Useful for global identifiers like client platform version tags (e.g. `{'X-App-Platform': 'Flutter'}`).
   final Map<String, String> defaultHeaders;
 
-  /// Whether to verify SSL certificates. Usually false in debug/development.
+  /// Whether to verify SSL/TLS security certificates of the servers you connect to.
+  /// 
+  /// **Tip:** Keep this `true` for production. You can set it to `false` in local debug/development environments
+  /// if your local mock API server does not have a verified security certificate.
   final bool verifySSL;
 
-  /// Optional SHA256 fingerprint for SSL pinning.
+  /// The secure fingerprint string of your server's certificate used for "SSL Pinning".
+  /// 
+  /// **What it does:** Guarantees that the app will *only* talk to your exact server. If a hacker attempts
+  /// to intercept your app's network using a malicious proxy, the app detects a certificate mismatch and blocks the connection.
   final String sslCertSha256;
 
   // --- Feature Flags ---
 
-  /// Enables the L2 (Disk) and L3 (SWR) caching systems globally.
+  /// Globally turns the caching system ON or OFF.
+  /// 
+  /// If set to `false`, all cache layers are ignored. Every single request will bypass storage and hit the network.
   final bool cacheEnabled;
 
-  /// Enables the Stale-While-Revalidate (SWR) background refresh logic.
+  /// Master switch to enable the "Stale-While-Revalidate" (SWR) cache flow globally.
+  /// 
+  /// **How it works:** When enabled, the app instantly shows the user their last stored cached data (even if it's old),
+  /// and silently fetches the fresh data from the internet in the background to update the screen. Extremely fast user experience!
   final bool staleWhileRevalidateEnabled;
 
-  /// Enables request deduplication to prevent redundant concurrent calls.
+  /// Automatically groups identical network requests made at the exact same moment.
+  /// 
+  /// **Example:** If two widgets on your screen request the user's profile at the exact same time, the app only
+  /// makes one call to the internet and shares the response with both widgets, saving data and bandwidth.
   final bool deduplicateEnabled;
 
-  /// Enables performance tracking for network requests and JSON parsing.
+  /// Turns performance benchmark tracking ON or OFF globally.
+  /// 
+  /// When `true`, the engine measures and reports how long each network request and parsing cycle takes,
+  /// helping you find bottlenecks in your app.
   final bool perfTrackingEnabled;
 
-  /// Enables internal rate limiting to prevent API abuse.
+  /// Prevents your app from spamming your API server with too many requests.
+  /// 
+  /// Limits how frequently your app can call the same endpoint to protect servers from overload.
   final bool rateLimitEnabled;
 
-  /// Automatically retries requests that fail due to rate limiting (429).
+  /// Automatically handles "Too Many Requests" (HTTP 429) errors from the server.
+  /// 
+  /// If the server tells the app it is calling too fast, the app will read the server's `Retry-After` header,
+  /// wait the exact amount of seconds requested, and automatically retry the call.
   final bool autoRetryRateLimit;
 
-  /// If true, the engine will intercept requests and return mock data if available.
+  /// Simulates internet responses using offline mock data files.
+  /// 
+  /// When `true`, requests intercept their calls and return local simulation mock files instead of going to the actual internet.
+  /// Excellent for testing when your backend server is down or still being built.
   final bool mockEnabled;
 
-  /// Enables request throttling to limit the frequency of identical calls.
+  /// Blocks consecutive identical requests fired in a tiny split second.
+  /// 
+  /// **Example:** Prevents issues caused when a user accidentally double-taps a "Submit" button by blocking
+  /// the second tap's request from sending.
   final bool throttleEnabled;
 
-  /// Enables background refreshing of state without triggering UI loading indicators.
+  /// Keeps background revalidation silent and seamless for the user.
+  /// 
+  /// When `true`, background updates (like SWR refreshes) happen invisibly. The user does not see visual loading spinners
+  /// or screen flickers while the data updates.
   final bool silentRefreshEnabled;
 
   // --- Resiliency ---
 
-  /// If true, attempts to return cached data when the device is offline.
+  /// Immediately falls back to your local cache if the user makes a request while offline.
+  /// 
+  /// Instead of showing an offline error screen, the user will still see their cached data, keeping the app functional.
   final bool cacheOnOffline;
 
-  /// If true, returns cached data when a server error (5xx) occurs.
+  /// Falls back to your local cache if the server crashes (5xx errors).
+  /// 
+  /// If your server goes down, the app displays the last successfully cached data instead of a blank crash screen.
   final bool cacheOnError;
 
-  /// If true, returns cached data when a network exception (timeout, etc.) occurs.
+  /// Falls back to your local cache if a request fails due to an exception (like a network timeout).
+  /// 
+  /// Displays stored data rather than a generic timeout error screen.
   final bool cacheOnException;
 
-  /// Maximum number of automatic retries for failed requests.
+  /// The maximum number of times the app will automatically retry a failed request before finally giving up.
   final int maxAutoRetries;
 
-  /// List of delays in seconds between consecutive retries (e.g., [1, 2, 4]).
+  /// The delay times (in seconds) between each automatic retry attempt.
+  /// 
+  /// **Example:** If set to `[1, 2, 4]`, the app waits 1 second before the 1st retry, 2 seconds before the 2nd retry,
+  /// and 4 seconds before the 3rd retry. This exponential backup avoids spamming a recovering server.
   final List<int> retryDelays;
 
-  /// Enables the offline queue for persisting mutation requests (POST/PUT/DELETE).
+  /// Enables the persistent "Offline Action Sync Queue" globally.
+  /// 
+  /// **How it works:** If a user performs an action that changes data (like "Liking" a post) while offline,
+  /// the action is saved locally. The moment the phone gets internet again, the app sends the action to the server in the background.
   final bool offlineSyncEnabled;
 
-  /// Enables background synchronization tasks while the app is in the background.
+  /// Allows background sync tasks to run even when the user closes or minimizes the app.
+  /// 
+  /// Dispatches the offline sync queue and refreshes critical caches in the background so the app is up-to-date when reopened.
   final bool backgroundSyncEnabled;
 
   // --- Default Flags (Per-Request Behavior) ---
 
-  /// Whether to include authentication headers by default.
+  /// Attaches authorization/login headers to requests by default.
   final bool withAuthByDefault;
 
-  /// Whether to queue mutation requests for offline sync by default.
+  /// Automatically saves mutation requests (POST/PUT/DELETE) to the offline sync queue by default if offline.
   final bool offlineSyncByDefault;
 
-  /// Whether to bypass the cache by default.
+  /// Bypasses the cache and goes directly to the internet by default for all requests.
   final bool disableCacheByDefault;
 
-  /// Whether to suppress logging for specific requests by default.
+  /// Turns off terminal logging for all requests by default.
   final bool disableLoggerByDefault;
 
-  /// Whether to suppress global error UI/toasts for failed requests by default.
+  /// Prevents the app from showing automatic error popup toasts or alerts when a request fails by default.
   final bool suppressErrorsByDefault;
 
-  /// Whether to enable SWR revalidation by default.
+  /// Enforces Stale-While-Revalidate (SWR) behavior by default for all GET requests.
   final bool staleWhileRevalidateByDefault;
 
-  /// Whether to use a short-lived "session cache" for this request by default.
+  /// Saves request results in fast RAM memory for the current session by default.
+  /// 
+  /// The app will fetch the data once, and subsequent calls in the same session return it instantly from RAM with no network call.
   final bool sessionStaleByDefault;
 
-  /// If true, ensures only one instance of this request type is active across the app.
+  /// Restricts endpoints to be called exactly once per session by default, ignoring subsequent requests.
   final bool singleFetchByDefault;
 
-  /// Whether to force a network refresh and bypass cache by default.
+  /// Ignores all cache levels and forces a hard internet refresh on every request by default.
   final bool refreshByDefault;
 
-  /// Whether to trigger a "bottom" loading indicator for pagination by default.
+  /// Displays a subtle pagination-friendly loading indicator (like a bottom spinner) instead of a full-screen loading spinner.
   final bool bottomRefreshByDefault;
 
-  /// Whether to perform a server health check before executing the request.
+  /// Performs a pre-flight internet check to ensure the server is fully reachable before attempting the network call by default.
   final bool healthCheckByDefault;
 
-  /// Whether to deduplicate identical concurrent requests by default.
+  /// Groups identical concurrent requests together by default across the entire app.
   final bool deduplicateByDefault;
 
   // --- Cache Configuration ---
 
-  /// Time-To-Live in days for data stored in the L2 (Disk) cache.
+  /// How many days cached data stays in the local database before it is deleted to save space.
   final int cacheTTL;
 
-  /// Maximum number of items to keep in the L1 (RAM) cache.
+  /// The maximum number of individual responses kept in fast RAM memory at once.
   final int maxL1CacheItems;
 
-  /// Maximum number of concurrent network requests allowed.
+  /// The maximum number of network requests allowed to run at the exact same moment.
   final int maxInFlightRequests;
 
-  /// Time in minutes for which session-stale data is considered valid.
+  /// How many minutes session-stale RAM data is considered fresh before it expires.
   final int sessionStaleTTL;
 
-  /// Time in days after which cached images are considered stale.
+  /// How many days cached images are stored before they are marked stale and eligible for deletion.
   final int imageStalePeriod;
 
-  /// Maximum number of images allowed in the persistent image cache.
+  /// The maximum number of image files allowed to be stored in the disk image cache.
   final int maxImageCacheItems;
 
-  /// Maximum size in MB for the image cache on disk.
+  /// The absolute disk storage limit (in Megabytes) allowed for caching images on the phone.
   final double maxImageCacheMB;
 
-  /// Target size in MB to reach when cleaning up the image cache.
+  /// The target disk storage size (in Megabytes) the cache manager tries to clean down to when pruning old image files.
   final double minImageCacheMB;
 
   // --- Box Names ---
 
-  /// Name of the Hive box for API response caching.
+  /// The storage box table name used for general API response cache payloads.
   final String boxApiCache;
 
-  /// Name of the Hive box for the offline synchronization queue.
+  /// The storage box table name used for queueing failed mutations waiting for offline sync.
   final String boxOfflineQueue;
 
-  /// Name of the Hive box for cache metadata and timestamps.
+  /// The storage box table name used for caching timestamps, expiration dates, and metadata.
   final String boxCacheMetadata;
 
-  /// Name of the Hive box for storing ETag values.
+  /// The storage box table name used for storing ETag markers to support 304 response validations.
   final String boxEtags;
 
   // --- Misc ---
 
-  /// Host used to check internet reachability (defaults to google.com).
+  /// The host website address (defaults to `google.com`) used to verify if the device has actual, active internet.
   final String connCheckHost;
 
+  /// Enabling this parameter configures the engine to operate fully safely and functionally
+  /// on Web platforms without compromising key features (like caching and offline mutations).
+  final bool supportWeb;
+
   LikeConfig({
+    required this.projectName,
     this.baseUrl = '',
     this.unpacker = const DefaultLikeUnpacker(),
     this.extraBaseUrls = const {},
@@ -263,14 +379,20 @@ class LikeConfig {
     this.maxImageCacheItems = 5000,
     this.maxImageCacheMB = 500.0,
     this.minImageCacheMB = 400.0,
-    this.boxApiCache = 'like_api_cache',
-    this.boxOfflineQueue = 'like_offline_queue',
-    this.boxCacheMetadata = 'like_cache_metadata',
-    this.boxEtags = 'like_etags',
+    String? boxApiCache,
+    String? boxOfflineQueue,
+    String? boxCacheMetadata,
+    String? boxEtags,
     this.connCheckHost = 'google.com',
-  }) : verifySSL = verifySSL ?? !kDebugMode;
+    this.supportWeb = false,
+  })  : verifySSL = verifySSL ?? !kDebugMode,
+        boxApiCache = boxApiCache ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_api_cache',
+        boxOfflineQueue = boxOfflineQueue ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_offline_queue',
+        boxCacheMetadata = boxCacheMetadata ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_cache_metadata',
+        boxEtags = boxEtags ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_etags';
 
   LikeConfig copyWith({
+    String? projectName,
     String? baseUrl,
     LikeDataUnpacker? unpacker,
     Map<String, String>? extraBaseUrls,
@@ -334,8 +456,10 @@ class LikeConfig {
     String? boxCacheMetadata,
     String? boxEtags,
     String? connCheckHost,
+    bool? supportWeb,
   }) {
     return LikeConfig(
+      projectName: projectName ?? this.projectName,
       baseUrl: baseUrl ?? this.baseUrl,
       unpacker: unpacker ?? this.unpacker,
       extraBaseUrls: extraBaseUrls ?? this.extraBaseUrls,
@@ -402,11 +526,12 @@ class LikeConfig {
       maxImageCacheItems: maxImageCacheItems ?? this.maxImageCacheItems,
       maxImageCacheMB: maxImageCacheMB ?? this.maxImageCacheMB,
       minImageCacheMB: minImageCacheMB ?? this.minImageCacheMB,
-      boxApiCache: boxApiCache ?? this.boxApiCache,
-      boxOfflineQueue: boxOfflineQueue ?? this.boxOfflineQueue,
-      boxCacheMetadata: boxCacheMetadata ?? this.boxCacheMetadata,
-      boxEtags: boxEtags ?? this.boxEtags,
+      boxApiCache: boxApiCache ?? (projectName != null ? null : this.boxApiCache),
+      boxOfflineQueue: boxOfflineQueue ?? (projectName != null ? null : this.boxOfflineQueue),
+      boxCacheMetadata: boxCacheMetadata ?? (projectName != null ? null : this.boxCacheMetadata),
+      boxEtags: boxEtags ?? (projectName != null ? null : this.boxEtags),
       connCheckHost: connCheckHost ?? this.connCheckHost,
+      supportWeb: supportWeb ?? this.supportWeb,
     );
   }
 

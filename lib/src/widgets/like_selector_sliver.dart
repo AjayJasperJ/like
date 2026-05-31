@@ -4,33 +4,87 @@ import 'package:provider/provider.dart';
 import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/widgets/like_sliver_builder.dart';
 
-/// A specialized sliver version of [LikeSelector] for use in [CustomScrollView].
-/// Matches the exact signature of the original StateSelectorSliver.
+/// # `LikeSelectorSliver<N, T>`
+/// 
+/// A specialized, performance-optimized layout widget designed to select and observe 
+/// a specific state from a Provider and render a **List of Slivers** (`List<Widget>`) 
+/// inside a [CustomScrollView].
+/// 
+/// This widget combines the O(1) rebuild filtration of Provider's `Selector` 
+/// with the frame-efficient scroll rendering of `LikeSliverBuilder`.
+/// 
+/// ### Example Usage:
+/// ```dart
+/// CustomScrollView(
+///   slivers: [
+///     SliverAppBar(title: Text('Search Results')),
+///     LikeSelectorSliver<SearchNotifier, List<SearchResult>>(
+///       selector: (notifier) => notifier.searchResultsState, // only rebuilds when searchResultsState changes!
+///       onLoading: () => [SliverToBoxAdapter(child: LoadingSpinner())],
+///       onSuccess: (results, isRefreshing, isSWR) {
+///         return [
+///           SliverList(
+///             delegate: SliverChildBuilderDelegate(
+///               (context, index) => ResultTile(results[index]),
+///               childCount: results.length,
+///             ),
+///           ),
+///         ];
+///       },
+///     ),
+///   ],
+/// );
+/// ```
 class LikeSelectorSliver<N, T extends Object> extends StatelessWidget {
-  /// Selects the [LikeStateResponse] to observe from a specific notifier [N].
+  /// **selector**
+  /// 
+  /// A function that receives the notifier [N] from the widget context and returns 
+  /// the specific [LikeStateResponse] you want this widget to observe.
   final LikeStateResponse<dynamic> Function(N notifier) selector;
 
-  /// Builder function called when the selected state contains successful data.
-  /// Returns a list of slivers.
+  /// **onSuccess**
+  /// 
+  /// The builder function called when the selected state contains successful data.
+  /// 
+  /// Receives:
+  /// * `data`: The parsed model object of type [T]. Guaranteed to be non-null.
+  /// * `isRefreshing`: True if the user manually triggered a refresh.
+  /// * `isFromStaleWhileRevalidate`: True if cached data is currently being displayed.
+  /// 
+  /// Must return a list of sliver widgets.
   final List<Widget> Function(
     T data,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
   ) onSuccess;
 
-  /// Optional builder called when the state is [LikeState.loading].
+  /// **onLoading**
+  /// 
+  /// Optional builder active when the selected state is loading for the very first time.
+  /// Must return a list of sliver widgets.
   final List<Widget> Function()? onLoading;
 
-  /// Optional builder called when the state is [LikeState.idle].
+  /// **onIdle**
+  /// 
+  /// Optional builder active when the selected state is in an uninitialized (idle) phase.
+  /// Must return a list of sliver widgets.
   final List<Widget> Function()? onIdle;
 
-  /// Optional builder called when an explicit [LikeError] occurs.
+  /// **onError**
+  /// 
+  /// Optional builder active when a server-side error is returned.
+  /// Receives the [LikeError] payload. Must return a list of sliver widgets.
   final List<Widget> Function(LikeError error)? onError;
 
-  /// Optional builder called when an unexpected exception or system error occurs.
+  /// **onException**
+  /// 
+  /// Optional builder active when a client-side exception occurs.
+  /// Receives the exception string. Must return a list of sliver widgets.
   final List<Widget> Function(String message)? onException;
 
-  /// An optional side-effect listener that triggers every time the selected state changes.
+  /// **listener**
+  /// 
+  /// An optional side-effect callback that triggers whenever the selected state changes.
   final void Function(LikeStateResponse<dynamic> response)? listener;
 
   const LikeSelectorSliver({

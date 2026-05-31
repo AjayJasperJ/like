@@ -266,6 +266,36 @@ class LikeStateResponse<T> {
       isFrom304: isFrom304 ?? this.isFrom304,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is LikeStateResponse<T> &&
+        other.state == state &&
+        other.message == message &&
+        other.data == data &&
+        other.error == error &&
+        other.errorType == errorType &&
+        other.code == code &&
+        other.isFromCache == isFromCache &&
+        other.isFromStaleWhileRevalidate == isFromStaleWhileRevalidate &&
+        other.isResiliencyFallback == isResiliencyFallback &&
+        other.isFrom304 == isFrom304;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        state,
+        message,
+        data,
+        error,
+        errorType,
+        code,
+        isFromCache,
+        isFromStaleWhileRevalidate,
+        isResiliencyFallback,
+        isFrom304,
+      );
 }
 
 extension LikeStateResponseExtension<T> on LikeStateResponse<T> {

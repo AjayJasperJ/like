@@ -13,10 +13,15 @@ import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/like_logger.dart';
 
 class AppCacheManager extends CacheManager {
-  static const key = 'universalImageCache';
-  static final AppCacheManager _instance = AppCacheManager._internal();
+  static String get key => '${LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}_universalImageCache';
+  static AppCacheManager? _instance;
 
-  factory AppCacheManager() => _instance;
+  @visibleForTesting
+  static void reset() => _instance = null;
+
+  factory AppCacheManager() {
+    return _instance ??= AppCacheManager._internal();
+  }
 
   AppCacheManager._internal()
       : super(
@@ -43,11 +48,16 @@ class AppCacheManager extends CacheManager {
       withProgress: withProgress,
     );
 
+    if (kIsWeb && LikeConstants.supportWeb) {
+      return stream;
+    }
+
     return stream.asyncMap((response) async {
       if (response is FileInfo) {
         // Skip if already in decrypted directory
+        final separator = kIsWeb ? '/' : io.Platform.pathSeparator;
         if (response.file.path.contains(
-          '${io.Platform.pathSeparator}decrypted${io.Platform.pathSeparator}',
+          '${separator}decrypted$separator',
         )) {
           return response;
         }
@@ -108,6 +118,7 @@ class AppCacheManager extends CacheManager {
   /// Checks the total size of the cache and performs LRU pruning if it exceeds [maxMB].
   /// Prunes down to [minMB] by deleting the least recently used files.
   Future<void> pruneCacheIfExceedsSize({double? maxMB, double? minMB}) async {
+    if (kIsWeb && LikeConstants.supportWeb) return;
     final limitMax = maxMB ?? LikeConstants.maxImageCacheMB;
     final limitMin = minMB ?? LikeConstants.minImageCacheMB;
 
@@ -169,6 +180,7 @@ class AppCacheManager extends CacheManager {
 
   /// Clears the temporary decrypted files
   Future<void> clearDecryptedCache() async {
+    if (kIsWeb && LikeConstants.supportWeb) return;
     try {
       final cacheDir = await getTemporaryDirectory();
       final decryptedDir = io.Directory('${cacheDir.path}/$key/decrypted');
@@ -195,6 +207,7 @@ class AppCacheManager extends CacheManager {
         message: 'Failed to empty flutter_cache_manager cache: $e',
       );
     }
+    if (kIsWeb && LikeConstants.supportWeb) return;
     try {
       await clearDecryptedCache();
     } catch (e) {
@@ -259,7 +272,7 @@ class AppCacheSecurity {
   static encrypt.Encrypter? _encrypter;
   static bool _initialized = false;
   static const int _ivLength = 16;
-  static const String _deviceKeyPrefKey = 'like_cache_encryption_key_v2';
+  static String get _deviceKeyPrefKey => '${LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}_cache_encryption_key_v2';
 
   /// Initializes the encryption engine.
   ///
@@ -267,6 +280,10 @@ class AppCacheSecurity {
   /// a per-device key in SharedPreferences.
   /// Safe to call multiple times — subsequent calls are no-ops.
   static Future<void> init() async {
+    if (kIsWeb && LikeConstants.supportWeb) {
+      _initialized = true;
+      return;
+    }
     if (_initialized) return;
 
     final configKey = LikeConstants.current.encryptionKey;
@@ -319,6 +336,7 @@ class AppCacheSecurity {
   /// Returns [16-byte IV][AES-CBC ciphertext] concatenated.
   static Uint8List encryptBytes(Uint8List bytes) {
     if (bytes.isEmpty) return Uint8List(0);
+    if (kIsWeb && LikeConstants.supportWeb) return bytes;
     _assertInitialized();
 
     final rng = Random.secure();
@@ -338,6 +356,7 @@ class AppCacheSecurity {
   /// Decrypts encrypted bytes in-memory and returns the raw decrypted bytes.
   static Uint8List decryptBytes(Uint8List encryptedBytes) {
     if (encryptedBytes.isEmpty) return Uint8List(0);
+    if (kIsWeb && LikeConstants.supportWeb) return encryptedBytes;
     _assertInitialized();
 
     if (encryptedBytes.length <= _ivLength) {
@@ -383,7 +402,7 @@ class AppCacheSecurity {
     );
 
     // Safeguard path logic (unchanged from original)
-    final String separator = io.Platform.pathSeparator;
+    final String separator = kIsWeb ? '/' : io.Platform.pathSeparator;
     final String keyMatch = '$separator${AppCacheManager.key}$separator';
     final String decryptedMatch = '${keyMatch}decrypted$separator';
 

@@ -23,7 +23,7 @@ class _TodoDetailsScreenState extends State<TodoDetailsScreen> {
       if (mounted) {
         // Assume user ID is based on todo ID
         final userId = (widget.todo.id % 10) + 1;
-        context.read<TodoProvider>().getUserDetail(userId);
+        context.read<TodoProvider>().getUserDetail(userId, ars: ARS());
       }
     });
   }

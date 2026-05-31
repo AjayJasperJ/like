@@ -33,10 +33,11 @@ class TestNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
 class TestNotifierWithState extends ChangeNotifier with LikeAutoReconnectMixin {
   final stringState = LikeNotifierState<String>();
 
-  Future<void> fetchData({LikeARS? ars}) async {
+  Future<void> fetchData({LikeARS? ars, bool disableRequestCancellation = false}) async {
     await fetch<String>(
       state: stringState,
       ars: ars,
+      disableRequestCancellation: disableRequestCancellation,
       action: (token, ars) async {
         // Simulate API call
         await Future.delayed(const Duration(milliseconds: 10));
@@ -47,6 +48,22 @@ class TestNotifierWithState extends ChangeNotifier with LikeAutoReconnectMixin {
           );
         }
         return LikeStateResponse<String>.success('data');
+      },
+    );
+  }
+}
+
+class TestNotifierWithMapper extends ChangeNotifier with LikeAutoReconnectMixin {
+  final stringState = LikeNotifierState<String>(
+    mapper: (json) => json['name'] as String,
+  );
+
+  Future<void> fetchData({LikeARS? ars}) async {
+    await fetch<String>(
+      state: stringState,
+      ars: ars,
+      action: (token, ars) async {
+        return LikeStateResponse<String>.success('initial_name');
       },
     );
   }
@@ -263,6 +280,128 @@ void main() {
           }),
           false,
         );
+      });
+    });
+
+    group('Pipeline Auto-wiring with mapper', () {
+      late TestNotifierWithMapper mapperNotifier;
+
+      setUp(() {
+        mapperNotifier = TestNotifierWithMapper();
+      });
+
+      tearDown(() {
+        mapperNotifier.dispose();
+      });
+
+      test('should auto-update state via mapper on pipeline event matching path & query', () async {
+        // 1. Run fetch to initial state and register it.
+        await mapperNotifier.fetchData();
+
+        expect(mapperNotifier.stringState.data, 'initial_name');
+
+        // Manually simulate active endpoint and query set
+        mapperNotifier.stringState.endpointPath = '/profile/view';
+        mapperNotifier.stringState.activeQuery = {'id': '99'};
+
+        var notified = false;
+        mapperNotifier.addListener(() {
+          notified = true;
+        });
+
+        // 2. Emit an event on the pipeline with matching path and query
+        LikePipeline().emit(
+          'GET:/profile/view',
+          Response(
+            requestOptions: RequestOptions(
+              path: '/profile/view',
+              queryParameters: {'id': '99'},
+            ),
+            data: {'name': 'Updated via Pipeline'},
+          ),
+        );
+
+        // Allow event delivery to propagate on stream
+        await Future.delayed(Duration.zero);
+
+        expect(mapperNotifier.stringState.isSuccess, true);
+        expect(mapperNotifier.stringState.data, 'Updated via Pipeline');
+        expect(notified, true);
+      });
+
+      test('should ignore event when state is loading', () async {
+        await mapperNotifier.fetchData();
+
+        mapperNotifier.stringState.endpointPath = '/profile/view';
+        mapperNotifier.stringState.activeQuery = {'id': '99'};
+        mapperNotifier.stringState.value = LikeStateResponse<String>.loading();
+
+        LikePipeline().emit(
+          'GET:/profile/view',
+          Response(
+            requestOptions: RequestOptions(
+              path: '/profile/view',
+              queryParameters: {'id': '99'},
+            ),
+            data: {'name': 'Should not apply'},
+          ),
+        );
+
+        await Future.delayed(Duration.zero);
+
+        expect(mapperNotifier.stringState.isLoading, true);
+        expect(mapperNotifier.stringState.data, isNull);
+      });
+    });
+
+    group('disableRequestCancellation Support', () {
+      test('should NOT cancel previous request and should reuse token when disableRequestCancellation is true', () async {
+        final notifier = TestNotifierWithState();
+
+        // 1. Fetch once
+        final f1 = notifier.fetchData(disableRequestCancellation: true);
+        final ct1 = notifier.stringState.ct;
+        expect(ct1, isNotNull);
+        expect(ct1!.isCancelled, false);
+
+        // 2. Fetch a second time with disableRequestCancellation = true
+        final f2 = notifier.fetchData(disableRequestCancellation: true);
+        final ct2 = notifier.stringState.ct;
+        expect(ct2, isNotNull);
+
+        // 3. Confirm that the first cancel token is NOT cancelled!
+        expect(ct1.isCancelled, false);
+        // And they are indeed the same token
+        expect(ct1, ct2);
+
+        // Wait for both to complete
+        await f1;
+        await f2;
+        notifier.dispose();
+      });
+
+      test('should cancel previous request by default (disableRequestCancellation = false)', () async {
+        final notifier = TestNotifierWithState();
+
+        // 1. Fetch once
+        final f1 = notifier.fetchData(disableRequestCancellation: false);
+        final ct1 = notifier.stringState.ct;
+        expect(ct1, isNotNull);
+        expect(ct1!.isCancelled, false);
+
+        // 2. Fetch a second time (default cancels previous)
+        final f2 = notifier.fetchData(disableRequestCancellation: false);
+        final ct2 = notifier.stringState.ct;
+        expect(ct2, isNotNull);
+
+        // 3. Confirm that the first cancel token is cancelled!
+        expect(ct1.isCancelled, true);
+        expect(ct1 != ct2, true);
+
+        // Wait for both to complete
+        await f1;
+        await f2;
+        notifier.dispose();
       });
     });
   });

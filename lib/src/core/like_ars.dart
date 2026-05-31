@@ -3,48 +3,78 @@
 typedef ARS = LikeARS;
 
 class LikeARS {
-  /// Enables Stale-While-Revalidate (Instant UI + Background Refresh).
-  /// If true, cached data is returned immediately while a network refresh
-  /// occurs in the background.
+  /// Enables Stale-While-Revalidate (Instant cached UI + Background network refresh).
+  /// 
+  /// **How it works:** When enabled, the app instantly shows the user their last stored cached data (even if it's old),
+  /// and silently fetches the fresh data from the internet in the background to update the screen.
+  /// 
+  /// **Best used for:** Feeds, profile pages, or dashboards where fast loading is crucial.
   final bool staleWhileRevalidate;
 
-  /// If true, the request is an explicit refresh (e.g., pull-to-refresh).
-  /// Used by providers to decide whether to show a loading state or keep
-  /// the current data visible (sticky data).
+  /// Signals that this request is a user-initiated hard refresh (like a pull-to-refresh swipe).
+  /// 
+  /// **Why it's useful:** It tells the state managers and UI builders that they should either show a loading spinner
+  /// or maintain "sticky data" (keeping the current data visible on screen) while the fresh network request finishes.
   final bool refresh;
 
-  /// If true, only fetches from the network if no data has been successfully
-  /// retrieved for this specific resource in the current application session.
+  /// Fetches from the internet *exactly once* during the lifetime of the application.
+  /// 
+  /// **How it works:** When set to `true`, the app checks your offline L2 disk database. If it finds a stored response,
+  /// it returns it instantly and **completely skips the network call**.
+  /// 
+  /// **Best used for:** Static app configurations, FAQs, country lists, or legal terms that almost never change.
   final bool singleFetch;
 
-  /// If true, checks the L1 RAM cache before hitting the network or disk.
-  /// Ideal for frequently accessed data that rarely changes during a session.
+  /// Saves cache in fast RAM memory for the current session.
+  /// 
+  /// **How it works:** The very first time you request the data, the app goes to the internet. For any subsequent
+  /// requests made in the same session, it instantly serves the response from the in-memory L1 RAM Cache,
+  /// avoiding both database reads and network calls.
   final bool sessionStale;
 
-  /// If true, bypasses all caching layers and forces a network request.
+  /// Bypasses all caching layers entirely and forces a direct call to the internet.
+  /// 
+  /// **Why it's useful:** When `true`, it ignores L1 RAM, L2 Disk, and SWR layers. The request is guaranteed
+  /// to go straight to the real network every single time.
+  /// 
+  /// **Best used for:** Pages requiring absolute real-time accuracy, such as checkouts or bank balances.
   final bool disableCache;
 
-  /// If true, invalidates the `singleFetch` flag and forces a new network fetch.
+  /// Resets the single-fetch safeguard for this specific endpoint.
+  /// 
+  /// **Why it's useful:** When `true`, it invalidates any previous `singleFetch` cache and forces a real network call
+  /// to refresh that data once, updating the cached value.
   final bool resetSingleFetch;
 
-  /// If true, invalidates the `sessionStale` flag and forces a network fetch
-  /// even if L1 cache is available.
+  /// Clears the session RAM cache for this specific endpoint.
+  /// 
+  /// **Why it's useful:** When `true`, it clears the stored L1 cache registry key for this resource,
+  /// forcing a new network call to fetch fresh data.
   final bool resetSessionStale;
 
-  /// If true, suppresses toast notifications for errors.
-  /// Useful for background syncs or non-critical pre-fetching.
+  /// Suppresses global UI error alerts or popup toasts if this request fails.
+  /// 
+  /// **Why it's useful:** Prevents annoying error dialogs from popping up when a background task or non-critical pre-fetch
+  /// fails, letting you handle the error silently in your controller code.
   final bool suppressErrors;
 
-  /// If true, this request will be persisted and re-tried if it fails
-  /// due to connectivity issues (only for mutation methods like POST/PUT/DELETE).
+  /// Enforces the persistent "Offline Action Sync Queue" for modifying actions (like POST/PUT/DELETE).
+  /// 
+  /// **How it works:** If a user performs an action (like posting a comment) while offline, this catches the failure,
+  /// serializes the request, and saves it in the persistent offline queue box. As soon as the connectivity manager
+  /// detects that the device is online again, it automatically sends the action to the server in the background.
   final bool offlineSync;
 
-  /// Whether to verify the SSL certificate of the remote server.
+  /// Whether to verify the SSL/TLS security certificate of the remote server.
+  /// 
+  /// **Tip:** Keep this `true` for production. You can set it to `false` in local debug/development environments
+  /// if your local mock API server does not have a verified security certificate.
   final bool verifySSL;
 
-  /// Enables request deduplication.
-  /// If true, multiple simultaneous calls to the same endpoint will wait
-  /// for a single shared in-flight network request.
+  /// Automatically groups identical network requests made at the exact same moment.
+  /// 
+  /// **Example:** If two widgets on your screen request the user's profile at the exact same time, the app only
+  /// makes one call to the internet and shares the response with both widgets, saving data and bandwidth.
   final bool deduplicate;
 
   const LikeARS({
@@ -84,6 +114,7 @@ class LikeARS {
         resetSingleFetch: json['resetSingleFetch'] ?? false,
         resetSessionStale: json['resetSessionStale'] ?? false,
         offlineSync: json['offlineSync'] ?? false,
+        verifySSL: json['verifySSL'] ?? true,
         deduplicate: json['deduplicate'] ?? true,
         suppressErrors: json['suppressErrors'] ?? true,
       );

@@ -31,18 +31,33 @@ class DefaultLikeUnpacker extends LikeDataUnpacker {
       return LikeUnpackedResponse(data: json);
     }
 
-    // Common patterns: data: {...} or status: "success"
-    final data = json['data'] ?? json;
+    // If the "data" key explicitly exists (even if its value is null), retrieve it.
+    // Otherwise, treat the entire JSON envelope as the data block.
+    final data = json.containsKey('data') ? json['data'] : json;
     final message = json['message']?.toString() ?? '';
-    final status = json['status']?.toString().toLowerCase();
+
+    // Check success status robustly
+    bool isSuccess = true;
+    if (json.containsKey('success')) {
+      final successVal = json['success'];
+      if (successVal is bool) {
+        isSuccess = successVal;
+      } else if (successVal != null) {
+        final lower = successVal.toString().toLowerCase();
+        isSuccess = lower == 'true' || lower == 'success' || lower == 'ok';
+      }
+    } else if (json.containsKey('status')) {
+      final statusVal = json['status'];
+      if (statusVal != null) {
+        final lower = statusVal.toString().toLowerCase();
+        isSuccess = lower == 'success' || lower == 'ok' || lower == 'true';
+      }
+    }
 
     return LikeUnpackedResponse(
       data: data,
       message: message,
-      isSuccess: status == 'success' ||
-          status == 'true' ||
-          json['success'] == true ||
-          status == null,
+      isSuccess: isSuccess,
       errors: json['errors'] is Map<String, dynamic> ? json['errors'] : null,
     );
   }

@@ -83,10 +83,15 @@
 Wrap your `MaterialApp` once. LIKE bootstraps Hive, connectivity, AES image-cache, auth interceptors, and toast listeners in a single call.
 
 ```dart
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LikeService.init(
+    config: LikeConfig(
+      baseUrl: 'https://api.example.com',
+    ),
+  );
   runApp(
     Like(
-      baseUrl: 'https://api.example.com',
       getToken:     () async => 'current_session_token',
       refreshToken: () async => 'new_session_token',
       devTool: (child) => LikeDevTool(child: child), // optional debug overlay

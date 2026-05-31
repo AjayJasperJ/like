@@ -8,6 +8,7 @@ import 'package:like/src/models/like_state_response.dart';
 class _LikePipelineStateBinding {
   final Object identity; // Used for deduplication
   final String? Function() getEndpointPath;
+  final String? Function() getCleanEndpointPath;
   final Map<String, dynamic> Function() getActiveQuery;
   final bool exactQueryMatch;
   final void Function(dynamic rawData) processAndAssign;
@@ -15,6 +16,7 @@ class _LikePipelineStateBinding {
   _LikePipelineStateBinding({
     required this.identity,
     required this.getEndpointPath,
+    required this.getCleanEndpointPath,
     required this.getActiveQuery,
     required this.exactQueryMatch,
     required this.processAndAssign,
@@ -65,6 +67,7 @@ mixin LikePipelineMixin on ChangeNotifier {
     _pipelineBindings.add(_LikePipelineStateBinding(
       identity: state,
       getEndpointPath: () => state.endpointPath,
+      getCleanEndpointPath: () => state.cleanEndpointPath,
       getActiveQuery: () => state.activeQuery ?? const {},
       exactQueryMatch: false,
       processAndAssign: (rawData) {
@@ -131,9 +134,16 @@ mixin LikePipelineMixin on ChangeNotifier {
       final incomingKey = event.key;
 
       // Extract path for matching
-      final incomingPath =
-          incomingKey.contains(':') ? incomingKey.split(':').last : incomingKey;
-      final cleanIncomingPath = incomingPath.split('?').first;
+      String cleanIncomingPath;
+      if (incomingKey.startsWith('http://') || incomingKey.startsWith('https://')) {
+        final uri = Uri.tryParse(incomingKey);
+        cleanIncomingPath = uri != null ? uri.path : incomingKey.split('?').first;
+      } else {
+        final incomingPath = incomingKey.contains(':')
+            ? incomingKey.split(':').last
+            : incomingKey;
+        cleanIncomingPath = incomingPath.split('?').first;
+      }
 
       // Extract query from event
       final eventQuery = event.response.requestOptions.queryParameters;
@@ -158,14 +168,11 @@ mixin LikePipelineMixin on ChangeNotifier {
 
       // 2. Process declarative bindings
       for (final binding in _pipelineBindings) {
-        final endpointPath = binding.getEndpointPath();
-        if (endpointPath == null) continue;
+        final statePath = binding.getCleanEndpointPath() ??
+            binding.getEndpointPath()?.split('?').first;
+        if (statePath == null) continue;
 
-        final statePath = endpointPath.split('?').first;
-
-        if (cleanIncomingPath == statePath ||
-            (cleanIncomingPath.startsWith(statePath) &&
-                cleanIncomingPath[statePath.length] == '/')) {
+        if (cleanIncomingPath == statePath) {
           final overlap = _checkQueryOverlap(
               binding.getActiveQuery(), eventQuery,
               exact: binding.exactQueryMatch);

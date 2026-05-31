@@ -4,49 +4,99 @@ import 'package:provider/provider.dart';
 import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/widgets/like_builder.dart';
 
-/// A specialized version of [LikeBuilder] that integrates with the [Selector]
-/// pattern from the `provider` package.
-///
-/// This widget is highly efficient as it only rebuilds when the specific
-/// [LikeStateResponse] returned by the [selector] actually changes.
-///
-/// Ideal for screens that listen to multiple properties from the same provider.
+/// # `LikeSelector<N, T>`
+/// 
+/// A performance-optimized state management widget designed for complex screens 
+/// powered by the `provider` package.
+/// 
+/// It integrates standard `LikeBuilder` state rendering with Provider's `Selector` 
+/// optimization pattern.
+/// 
+/// ### Why is this useful? (The "Selector" Advantage)
+/// Normally, using `context.watch<MyNotifier>()` causes your widget to rebuild *every single time* 
+/// **any** property inside `MyNotifier` changes, even if your widget doesn't care about that property.
+/// 
+/// `LikeSelector` solves this. It filters state updates so that your widget **only rebuilds** when 
+/// the *specific* `LikeStateResponse` selected by your [selector] function actually mutates. 
+/// 
+/// ### Example Usage:
+/// ```dart
+/// LikeSelector<DashboardNotifier, List<NewsItem>>(
+///   // N is DashboardNotifier (the provider)
+///   // T is List<NewsItem> (the resolved success data type)
+///   selector: (context, notifier) => notifier.newsState, // only rebuilds when newsState changes!
+///   onLoading: () => CircularProgressIndicator(),
+///   onSuccess: (newsList, isRefreshing, isSWR) {
+///     return ListView.builder(
+///       itemCount: newsList.length,
+///       itemBuilder: (context, index) => NewsCard(newsList[index]),
+///     );
+///   },
+/// );
+/// ```
 class LikeSelector<N, T> extends StatelessWidget {
-  /// Selects the [LikeStateResponse] to observe from a specific notifier [N].
+  /// **selector**
+  /// 
+  /// A selector function that receives the notifier [N] from the widget context and returns 
+  /// the specific [LikeStateResponse] you want this widget to observe.
   final LikeStateResponse<dynamic> Function(BuildContext context, N notifier)
       selector;
 
-  /// A custom builder that gives you full control over the [LikeStateResponse] and [child].
-  /// If provided, [onSuccess] and other specific builders are ignored.
+  /// **builder**
+  /// 
+  /// An optional builder function providing full granular control over both the [LikeStateResponse] 
+  /// and the pre-built [child] widget.
+  /// * **Note:** If you supply [builder], then [onSuccess], [onLoading], [onError], and other specific 
+  ///   sub-builders are completely ignored.
   final Widget Function(
     BuildContext context,
     LikeStateResponse<dynamic> response,
     Widget? child,
   )? builder;
 
-  /// Builder function called when the selected state contains successful data.
+  /// **onSuccess**
+  /// 
+  /// The builder function called when the selected state contains successful data.
+  /// 
+  /// Receives:
+  /// * `data`: The parsed model object of type [T]. Guaranteed to be non-null.
+  /// * `isRefreshing`: True if the user manually triggered a refresh.
+  /// * `isFromStaleWhileRevalidate`: True if cached data is currently being displayed.
   final Widget Function(
     T data,
     bool isRefreshing,
     bool isFromStaleWhileRevalidate,
   )? onSuccess;
 
-  /// Optional builder called when the state is [LikeState.loading].
+  /// **onLoading**
+  /// 
+  /// Optional builder active when the selected state is loading for the very first time.
   final Widget Function()? onLoading;
 
-  /// Optional builder called when the state is [LikeState.idle].
+  /// **onIdle**
+  /// 
+  /// Optional builder active when the selected state is in an idle, uninitialized phase.
   final Widget Function()? onIdle;
 
-  /// Optional builder called when an explicit [LikeError] occurs.
+  /// **onError**
+  /// 
+  /// Optional builder active when a server-side error is returned.
   final Widget Function(LikeError error)? onError;
 
-  /// Optional builder called when an unexpected exception or system error occurs.
+  /// **onException**
+  /// 
+  /// Optional builder active when a client-side exception occurs.
   final Widget Function(String message)? onException;
 
-  /// An optional side-effect listener that triggers every time the selected state changes.
+  /// **listener**
+  /// 
+  /// An optional side-effect callback that triggers whenever the selected state changes.
   final void Function(LikeStateResponse<dynamic> response)? listener;
 
-  /// An optional constant child widget that is passed to [builder].
+  /// **child**
+  /// 
+  /// An optional, pre-built constant child widget that is passed to your custom [builder]. 
+  /// Useful to prevent rebuilding static elements of your page.
   final Widget? child;
 
   const LikeSelector({

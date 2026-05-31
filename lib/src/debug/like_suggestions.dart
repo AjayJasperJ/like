@@ -44,6 +44,36 @@ void printRandomSuggestion() {
   debugPrint(separator);
 }
 
+void printAllSuggestions() {
+  final separator = '\x1B[90m${'─' * 70}\x1B[0m';
+  debugPrint(separator);
+  debugPrint('\x1B[1m\x1B[32m🚀 [LIKE] Link Intelligent Kernel Engine Help & Quickstart Guide\x1B[0m');
+  debugPrint('\x1B[90mRun `Like.help()` anytime in development to print this guide.\x1B[0m');
+  debugPrint(separator);
+
+  final types = ['Widget', 'Class', 'Method', 'Mixin'];
+  for (final type in types) {
+    final list = _suggestions.where((s) => s.type == type).toList();
+    if (list.isEmpty) continue;
+
+    debugPrint('\x1B[1m\x1B[35m💎 Category: ${type}s (${list.length})\x1B[0m');
+    debugPrint(separator);
+
+    for (final item in list) {
+      debugPrint('\x1B[1m\x1B[36m👉 ${item.name}\x1B[0m');
+      debugPrint('\x1B[32m  Use Case:\x1B[0m ${item.useCase}');
+      debugPrint('\x1B[34m  Description:\x1B[0m ${item.description}');
+      debugPrint('\x1B[33m  Snippet:\x1B[0m');
+      for (final line in item.code.split('\n')) {
+        debugPrint('    $line');
+      }
+      debugPrint('\x1B[90m  ${'.' * 60}\x1B[0m');
+    }
+    debugPrint('');
+  }
+  debugPrint(separator);
+}
+
 const List<LikeSuggestion> _suggestions = [
   LikeSuggestion(
     name: 'Like',
@@ -52,7 +82,6 @@ const List<LikeSuggestion> _suggestions = [
     description:
         'The root-level wrapper widget that configures base URLs, JWT token callbacks, offline synchronization, automated haptic alerts, and developer devtool overlays.',
     code: '''Like(
-  baseUrl: 'https://www.themealdb.com',
   getToken: () => storage.read('jwt_token'),
   refreshToken: () => auth.refreshSession(),
   devTool: (child) => LikeDevTool(child: child),
@@ -94,28 +123,31 @@ const List<LikeSuggestion> _suggestions = [
 )''',
   ),
   LikeSuggestion(
-    name: 'LikeSelector<T, S>',
+    name: 'LikeSelector<N, T>',
     type: 'Widget',
     useCase: 'Fine-Grained Performance Optimization',
     description:
         'Filters state mutations to optimize performance. Rebuilds only when the specific property or slice you select from the model changes, avoiding full-screen redraws.',
-    code: '''LikeSelector<User, String>(
-  observe: () => provider.userState,
-  selector: (state) => state.data?.avatarUrl ?? '',
-  builder: (context, avatarUrl, child) => Avatar(avatarUrl),
+    code: '''LikeSelector<MealProvider, UserModel>(
+  selector: (context, provider) => provider.userDetailResponse,
+  onSuccess: (user, isRefreshing, isFromSWR) => UserAvatar(user.avatarUrl),
 )''',
   ),
   LikeSuggestion(
-    name: 'LikeSelectorSliver<T, S>',
+    name: 'LikeSelectorSliver<N, T>',
     type: 'Widget',
     useCase: 'Performance Optimized Sliver Rebuilding',
     description:
         'The sliver version of LikeSelector. Redraws list segments inside a CustomScrollView only when the observed property transitions.',
-    code: '''LikeSelectorSliver<List<Meal>, int>(
-  observe: () => provider.mealsState,
-  selector: (meals) => meals.length,
-  onSuccess: (count, isRefreshing, isSWR) => [
-    SliverToBoxAdapter(child: Text('Total meals: \$count')),
+    code: '''LikeSelectorSliver<MealProvider, List<Meal>>(
+  selector: (provider) => provider.mealsResponse,
+  onSuccess: (meals, isRefreshing, isFromSWR) => [
+    SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => MealCard(meals[index]),
+        childCount: meals.length,
+      ),
+    ),
   ],
 )''',
   ),
@@ -126,11 +158,15 @@ const List<LikeSuggestion> _suggestions = [
     description:
         'Unifies multiple concurrent network requests (e.g. Profile + Feed + Settings) into a single cohesive UI flow. Listens and rebuilds on any combined notifier updates.',
     code: '''LikeMultiBuilder(
-  observe: [profileState, notificationState],
-  builder: (context) => Dashboard(
-    profile: profileState.value.data,
-    notifications: notificationState.value.data,
-  ),
+  observes: [
+    () => mealProvider.mealsResponse,
+    () => mealProvider.userDetailResponse,
+  ],
+  onSuccess: (results, isRefreshing, isFromSWR) {
+    final meals = results[0] as List<Meal>;
+    final user = results[1] as User;
+    return Dashboard(meals: meals, user: user);
+  },
 )''',
   ),
   LikeSuggestion(
@@ -140,11 +176,18 @@ const List<LikeSuggestion> _suggestions = [
     description:
         'Coordinates and renders multiple concurrent network state models inside a CustomScrollView, triggering a rebuild on any update.',
     code: '''LikeMultiSliverBuilder(
-  observe: [featuredMeals, recommendedMeals],
-  builder: (context) => [
-    FeaturedSliverList(meals: featuredMeals.value.data),
-    RecommendedSliverGrid(meals: recommendedMeals.value.data),
+  observes: [
+    () => mealProvider.featuredMealsResponse,
+    () => mealProvider.recommendedMealsResponse,
   ],
+  onSuccess: (results, isRefreshing, isFromSWR) {
+    final featured = results[0] as List<Meal>;
+    final recommended = results[1] as List<Meal>;
+    return [
+      FeaturedSliverList(meals: featured),
+      RecommendedSliverGrid(meals: recommended),
+    ];
+  },
 )''',
   ),
   LikeSuggestion(
@@ -154,8 +197,8 @@ const List<LikeSuggestion> _suggestions = [
     description:
         'Enables quick, zero-boilerplate pattern matching for any LikeStateResponse<T> state snapshot. Extremely useful for clean, inline build returns in nested widgets.',
     code: '''LikeWhen(
-  response: provider.myResponse,
-  onSuccess: (data) => DataWidget(data),
+  response: mealProvider.mealsResponse,
+  onSuccess: (meals) => MealList(meals),
   onLoading: () => const Spinner(),
   onError: (error) => Text(error.message),
 )''',

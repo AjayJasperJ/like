@@ -15,6 +15,8 @@ import 'package:like/src/debug/like_suggestions.dart';
 /// Handles caching, ETags, and the offline queue.
 /// Matches enterprise's NetworkBoxService parity.
 class LikeService {
+  static bool _initialized = false;
+
   /// Initializes the LIKE engine and its persistent storage.
   ///
   /// This must be called before using any [LikeClient] or builders.
@@ -24,37 +26,58 @@ class LikeService {
   /// Numerous optional parameters allow fine-tuning the engine's behavior
   /// (timeouts, cache TTLs, logging levels, etc.).
   static Future<void> init({required LikeConfig config}) async {
+    if (_initialized) {
+      LikeConstants.apply(config);
+      if (config.baseUrl.isNotEmpty) {
+        await LikeConnectivityManager().init(serverUrl: config.baseUrl);
+        LikeClient(
+          baseUrl: config.baseUrl,
+          timeout: Duration(seconds: LikeConstants.connectTimeout),
+        );
+      }
+      return;
+    }
+
     final baseUrl = config.baseUrl;
-    debugPrint('DEBUG: LikeService.init config: ${config.baseUrl}');
+    void logDebug(String msg) {
+      if (config.verboseLogging && !config.silentConsole) {
+        debugPrint(msg);
+      }
+    }
+
+    logDebug('DEBUG: LikeService.init config: ${config.baseUrl}');
     // 0. Apply config settings to LikeConstants
     LikeConstants.apply(config);
 
     // 1a. Initialize encryption FIRST — must be ready before any file cache
     //     access occurs. Uses config.encryptionKey if provided, otherwise
     //     generates a per-device key stored in SharedPreferences.
-    debugPrint('DEBUG: AppCacheSecurity.init starting');
-    await AppCacheSecurity.init();
-    debugPrint('DEBUG: AppCacheSecurity.init completed');
+    if (!(kIsWeb && LikeConstants.supportWeb)) {
+      logDebug('DEBUG: AppCacheSecurity.init starting');
+      await AppCacheSecurity.init();
+      logDebug('DEBUG: AppCacheSecurity.init completed');
+    }
 
     // 1b. Core Storage
-    debugPrint('DEBUG: Hive.initFlutter starting');
-    await Hive.initFlutter();
-    debugPrint('DEBUG: Hive.initFlutter completed');
+    logDebug('DEBUG: Hive.initFlutter starting');
+    final projectNamespace = LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    await Hive.initFlutter(projectNamespace);
+    logDebug('DEBUG: Hive.initFlutter completed');
 
-    debugPrint('DEBUG: Opening Hive boxes starting');
+    logDebug('DEBUG: Opening Hive boxes starting');
     await Future.wait([
       Hive.openBox(LikeConstants.boxApiCache),
       Hive.openBox(LikeConstants.boxCacheMetadata),
       Hive.openBox(LikeConstants.boxEtags),
       Hive.openBox(LikeConstants.boxOfflineQueue),
     ]);
-    debugPrint('DEBUG: Opening Hive boxes completed');
+    logDebug('DEBUG: Opening Hive boxes completed');
 
     // 2. Connectivity & Reachability
     if (baseUrl.isNotEmpty) {
-      debugPrint('DEBUG: LikeConnectivityManager.init starting for $baseUrl');
+      logDebug('DEBUG: LikeConnectivityManager.init starting for $baseUrl');
       await LikeConnectivityManager().init(serverUrl: baseUrl);
-      debugPrint('DEBUG: LikeConnectivityManager.init completed');
+      logDebug('DEBUG: LikeConnectivityManager.init completed');
     }
 
     // 3. Client Singleton
@@ -70,9 +93,13 @@ class LikeService {
     LikeOfflineSyncManager().init();
 
     // Ensure the disk image cache respects the configured limits on startup
-    await AppCacheManager().pruneCacheIfExceedsSize();
+    if (!(kIsWeb && LikeConstants.supportWeb)) {
+      await AppCacheManager().pruneCacheIfExceedsSize();
+    }
 
-    if (kDebugMode) {
+    _initialized = true;
+
+    if (kDebugMode && config.verboseLogging && !config.silentConsole) {
       printRandomSuggestion();
     }
   }

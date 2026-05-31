@@ -1,7 +1,7 @@
 import 'package:universal_io/io.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/models/like_error.dart';
-import 'package:like/src/core/like_data_unpacker.dart';
+import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 
 /// Handles conversion of various errors (Dio, Socket, etc.) into unified [LikeError].
@@ -50,10 +50,8 @@ class LikeErrorHandler {
         if (!conn.isInternetConnected) {
           defaultMsg = 'No internet connection – Please check your network.';
           type = LikeApiErrorType.network;
-        } else if (!conn.isServerAvailable) {
-          defaultMsg = 'Server Unreachable – The backend is currently offline.';
-          type = LikeApiErrorType.serverUnavailable;
         } else {
+          conn.markServerUnavailable();
           defaultMsg =
               'Request timed out – Please check your connection stability.';
           type = LikeApiErrorType.timeout;
@@ -75,10 +73,8 @@ class LikeErrorHandler {
         if (!conn.isInternetConnected) {
           defaultMsg = 'No internet connection – Unable to reach the server.';
           type = LikeApiErrorType.network;
-        } else if (!conn.isServerAvailable) {
-          defaultMsg = 'Server Unreachable – The backend is currently offline.';
-          type = LikeApiErrorType.serverUnavailable;
         } else {
+          conn.markServerUnavailable();
           defaultMsg = 'Connection Error – Unable to reach the server.';
           type = LikeApiErrorType.network;
         }
@@ -88,11 +84,8 @@ class LikeErrorHandler {
           if (!conn.isInternetConnected) {
             defaultMsg = 'No internet connection – Please check your network.';
             type = LikeApiErrorType.network;
-          } else if (!conn.isServerAvailable) {
-            defaultMsg =
-                'Server Unreachable – The backend is currently offline.';
-            type = LikeApiErrorType.serverUnavailable;
           } else {
+            conn.markServerUnavailable();
             defaultMsg = 'Network Error – Unable to connect to the server.';
             type = LikeApiErrorType.network;
           }
@@ -110,7 +103,7 @@ class LikeErrorHandler {
   }
 
   static Future<LikeError> parseResponse(Response res) async {
-    const unpacker = DefaultLikeUnpacker();
+    final unpacker = LikeConstants.unpacker;
     final unpacked = unpacker.unpack(res.data);
 
     String defaultMsg;
@@ -152,14 +145,17 @@ class LikeErrorHandler {
         type = LikeApiErrorType.server;
         break;
       case 502:
+        LikeConnectivityManager().markServerUnavailable();
         defaultMsg = 'Bad Gateway – The server received an invalid response.';
         type = LikeApiErrorType.serverUnavailable;
         break;
       case 503:
+        LikeConnectivityManager().markServerUnavailable();
         defaultMsg = 'Service Unavailable – The server is temporarily offline.';
         type = LikeApiErrorType.serverUnavailable;
         break;
       case 504:
+        LikeConnectivityManager().markServerUnavailable();
         defaultMsg =
             'Gateway Timeout – The server is taking too long to respond.';
         type = LikeApiErrorType.timeout;

@@ -14,6 +14,7 @@ import 'package:like/src/services/like_pipeline.dart';
 class _LikePipelineStateBinding {
   final LikeNotifierState<dynamic> state;
   final String? Function() getEndpointPath;
+  final String? Function() getCleanEndpointPath;
   final Map<String, dynamic> Function() getActiveQuery;
   final bool exactQueryMatch;
   final void Function(dynamic rawData) processAndAssign;
@@ -21,10 +22,18 @@ class _LikePipelineStateBinding {
   _LikePipelineStateBinding({
     required this.state,
     required this.getEndpointPath,
+    required this.getCleanEndpointPath,
     required this.getActiveQuery,
     required this.exactQueryMatch,
     required this.processAndAssign,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      other is _LikePipelineStateBinding && other.state == state;
+
+  @override
+  int get hashCode => state.hashCode;
 }
 
 /// A mixin that provides automatic reconnection and synchronization logic for Notifiers.
@@ -75,9 +84,14 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
       // 2. Automated syncWith support
       for (final task in _granularTasks) {
         if (task.endpoint != null) {
-          // Extract path for matching
-          final incomingPath = path.contains(':') ? path.split(':').last : path;
-          final cleanPath = incomingPath.split('?').first;
+          String cleanPath;
+          if (path.startsWith('http://') || path.startsWith('https://')) {
+            final uri = Uri.tryParse(path);
+            cleanPath = uri != null ? uri.path : path.split('?').first;
+          } else {
+            final incomingPath = path.contains(':') ? path.split(':').last : path;
+            cleanPath = incomingPath.split('?').first;
+          }
 
           if (cleanPath == task.endpoint! ||
               (cleanPath.startsWith(task.endpoint!) &&
@@ -95,8 +109,21 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
         if (state.autoResync &&
             state.endpointPath != null &&
             state.refreshAction != null) {
-          final cleanPath = event.path.split('?').first;
-          final statePath = state.endpointPath!.split('?').first;
+          String cleanPath;
+          if (event.path.startsWith('http://') || event.path.startsWith('https://')) {
+            final uri = Uri.tryParse(event.path);
+            cleanPath = uri != null ? uri.path : event.path.split('?').first;
+          } else {
+            cleanPath = event.path.split('?').first;
+          }
+
+          String statePath;
+          if (state.endpointPath!.startsWith('http://') || state.endpointPath!.startsWith('https://')) {
+            final uri = Uri.tryParse(state.endpointPath!);
+            statePath = uri != null ? uri.path : state.endpointPath!.split('?').first;
+          } else {
+            statePath = state.endpointPath!.split('?').first;
+          }
 
           if (cleanPath == statePath ||
               (cleanPath.startsWith(statePath) &&
@@ -120,20 +147,25 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
 
     _pipelineSubscription = LikePipeline().stream.listen((event) {
       final incomingKey = event.key;
-      final incomingPath =
-          incomingKey.contains(':') ? incomingKey.split(':').last : incomingKey;
-      final cleanIncomingPath = incomingPath.split('?').first;
+      String cleanIncomingPath;
+      if (incomingKey.startsWith('http://') || incomingKey.startsWith('https://')) {
+        final uri = Uri.tryParse(incomingKey);
+        cleanIncomingPath = uri != null ? uri.path : incomingKey.split('?').first;
+      } else {
+        final incomingPath = incomingKey.contains(':')
+            ? incomingKey.split(':').last
+            : incomingKey;
+        cleanIncomingPath = incomingPath.split('?').first;
+      }
       final eventQuery = event.response.requestOptions.queryParameters;
+      bool handled = false;
 
       for (final binding in _pipelineBindings) {
-        final endpointPath = binding.getEndpointPath();
-        if (endpointPath == null) continue;
+        final statePath = binding.getCleanEndpointPath() ??
+            binding.getEndpointPath()?.split('?').first;
+        if (statePath == null) continue;
 
-        final statePath = endpointPath.split('?').first;
-
-        if (cleanIncomingPath == statePath ||
-            (cleanIncomingPath.startsWith(statePath) &&
-                cleanIncomingPath[statePath.length] == '/')) {
+        if (cleanIncomingPath == statePath) {
           final overlap = checkQueryOverlap(
             binding.getActiveQuery(),
             eventQuery,
@@ -143,12 +175,16 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
           if (overlap) {
             try {
               binding.processAndAssign(event.data);
-              if (!_isDisposed) notifyListeners();
+              handled = true;
             } catch (e) {
               debugPrint('AutoReconnect Pipeline Mapping Error: $e');
             }
           }
         }
+      }
+
+      if (handled && !_isDisposed) {
+        notifyListeners();
       }
     });
   }
@@ -245,6 +281,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     LikeARS? ars,
     bool autoResync = false,
     LikeSyncPriority priority = LikeSyncPriority.normal,
+    bool disableRequestCancellation = false,
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
         action,
   }) async {
@@ -264,6 +301,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
       _pipelineBindings.add(_LikePipelineStateBinding(
         state: state,
         getEndpointPath: () => state.endpointPath,
+        getCleanEndpointPath: () => state.cleanEndpointPath,
         getActiveQuery: () => state.activeQuery ?? const {},
         exactQueryMatch: false,
         processAndAssign: (rawData) {
@@ -284,6 +322,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
           ars: const LikeARS(refresh: true),
           autoResync: autoResync,
           priority: priority,
+          disableRequestCancellation: disableRequestCancellation,
           action: action,
         );
 
@@ -293,6 +332,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
         ct: state.ct,
         onRotate: (next) => state.ct = next,
         onUpdate: (newState) => state.value = newState,
+        disableRequestCancellation: disableRequestCancellation,
         action: action,
       );
     }, zoneValues: {#likeActiveState: state});
@@ -314,11 +354,12 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
         action,
     required void Function(LikeStateResponse<T> state) onUpdate,
+    bool disableRequestCancellation = false,
   }) async {
     ars ??= const ARS();
 
-    // 1. Rotate immediately: Get old to cancel it, then set new via callback
-    final next = newCT(ct);
+    // 1. Rotate immediately: Get old to cancel it, then set new via callback unless cancellation is disabled
+    final next = disableRequestCancellation ? (ct ?? CancelToken()) : newCT(ct);
     onRotate(next);
 
     final activeState = Zone.current[#likeActiveState];
@@ -339,13 +380,17 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
       } else {
         onUpdate(LikeStateResponse<T>.loading());
       }
-      if (!_isDisposed) {
-        notifyListeners();
-      }
+      if (!_isDisposed) notifyListeners();
 
       // 3. Execution
       final result = await action(next, ars);
       onUpdate(result);
+      // Notify immediately after the result is assigned so the provider
+      // rebuilds with the actual (potentially fresh) data. Previously this
+      // lived in a `finally` block which fired *after* `return`, meaning
+      // the SWR stale value was already returned and the parent rebuilt
+      // with old data before the real network result could be applied.
+      if (!_isDisposed) notifyListeners();
       return result;
     } catch (e) {
       // Handle Dio Cancellation silently
@@ -355,11 +400,8 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
 
       final exception = LikeStateResponse<T>.exception(e.toString());
       onUpdate(exception);
+      if (!_isDisposed) notifyListeners();
       return exception;
-    } finally {
-      if (!_isDisposed) {
-        notifyListeners();
-      }
     }
   }
 
@@ -410,13 +452,16 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
       }
 
       if (key == 'date') {
-        final eventDate = _parseDateTime(eventVal);
-        final stateStart = _parseDateTime(stateQuery['startDate']);
-        final stateEnd = _parseDateTime(stateQuery['endDate']);
+        if (stateQuery.containsKey('startDate') &&
+            stateQuery.containsKey('endDate')) {
+          final eventDate = _parseDateTime(eventVal);
+          final stateStart = _parseDateTime(stateQuery['startDate']);
+          final stateEnd = _parseDateTime(stateQuery['endDate']);
 
-        if (eventDate != null && stateStart != null && stateEnd != null) {
-          if (eventDate.isBefore(stateStart) || eventDate.isAfter(stateEnd)) {
-            return false;
+          if (eventDate != null && stateStart != null && stateEnd != null) {
+            if (eventDate.isBefore(stateStart) || eventDate.isAfter(stateEnd)) {
+              return false;
+            }
           }
         }
       }

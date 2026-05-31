@@ -31,8 +31,8 @@ class LikeConnectivityManager {
       _isServerAvailableNotifier;
 
   /// Combined status: returns true if the device is currently online.
-  /// We prioritize internet reachability for reconnection events.
-  bool get hasConnection => isInternetConnected || isServerAvailable;
+  /// Both internet and server availability must be active.
+  bool get hasConnection => isInternetConnected && isServerAvailable;
 
   /// Alias for [hasConnection] to match enterprise resiliency naming.
   bool get isOnline => hasConnection;
@@ -126,6 +126,9 @@ class LikeConnectivityManager {
   }
 
   static Future<bool> _lookupHost(String host) async {
+    if (kIsWeb && LikeConstants.supportWeb) {
+      return true; // Browser handles connection detection via connectivity_plus
+    }
     if (host.isEmpty) return false;
     try {
       final result = await InternetAddress.lookup(
@@ -138,6 +141,9 @@ class LikeConnectivityManager {
   }
 
   static Future<bool> _checkServerReachability(String url) async {
+    if (kIsWeb && LikeConstants.supportWeb) {
+      return true; // Browser doesn't support raw TCP. Dio error-interception provides true reachability.
+    }
     try {
       final uri = Uri.parse(url);
       final host = uri.host;
@@ -170,6 +176,22 @@ class LikeConnectivityManager {
   void debugSetStatus({bool? internet, bool? server}) {
     if (internet != null) _isInternetConnectedNotifier.value = internet;
     if (server != null) _isServerAvailableNotifier.value = server;
+  }
+
+  /// Marks the server as unavailable and notifies listeners if the state changed.
+  void markServerUnavailable() {
+    if (_isServerAvailableNotifier.value) {
+      _isServerAvailableNotifier.value = false;
+      _connectionChangeController.add(hasConnection);
+    }
+  }
+
+  /// Marks the server as available and notifies listeners if the state changed.
+  void markServerAvailable() {
+    if (!_isServerAvailableNotifier.value) {
+      _isServerAvailableNotifier.value = true;
+      _connectionChangeController.add(hasConnection);
+    }
   }
 
   void dispose() {
