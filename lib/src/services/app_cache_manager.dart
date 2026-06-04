@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' as io;
+import 'package:universal_io/io.dart' as io;
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
@@ -29,7 +29,13 @@ class AppCacheManager extends CacheManager {
             key,
             stalePeriod: Duration(days: LikeConstants.imageStalePeriod),
             maxNrOfCacheObjects: LikeConstants.maxImageCacheItems,
-            repo: JsonCacheInfoRepository(databaseName: key),
+            // JsonCacheInfoRepository uses sqflite which has no web support.
+            // On web we fall back to NonStoringObjectProvider — images still
+            // load from network, they just aren't persisted across sessions.
+            // On mobile/desktop the full encrypted disk cache is used.
+            repo: kIsWeb
+                ? NonStoringObjectProvider()
+                : JsonCacheInfoRepository(databaseName: key),
             fileService: EncryptedHttpFileService(),
           ),
         );

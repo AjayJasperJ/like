@@ -7,6 +7,8 @@ export 'src/core/like_ars.dart';
 export 'src/core/like_constants.dart';
 export 'src/core/like_data_unpacker.dart';
 export 'src/core/like_helpers.dart';
+export 'src/core/like_request_config.dart';
+export 'src/core/like_client_config.dart';
 
 // Models
 export 'src/models/like_state_response.dart';

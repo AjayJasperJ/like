@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
+import 'package:like/src/core/like_request_config.dart';
+import 'package:like/src/core/like_client_config.dart';
 import 'package:like/src/models/like_api_result.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_event.dart';
@@ -71,17 +73,92 @@ class LikeClient {
     return _instance!;
   }
 
+  /// Creates a fully **isolated** [LikeClient] with its own Dio instance,
+  /// interceptor stack, and request registry.
+  ///
+  /// Unlike the default [LikeClient()] singleton, scoped clients do **not**
+  /// share state with the rest of the app. They are ideal for feature modules
+  /// or integrations with a different backend server.
+  ///
+  /// Unset fields in [config] fall back to the current global [LikeConstants]
+  /// values, so you only specify what is different.
+  ///
+  /// **Lifecycle:** You are responsible for calling [dispose()] on a scoped
+  /// client when the feature module is torn down.
+  ///
+  /// **Example — Payments module:**
+  /// ```dart
+  /// final paymentsClient = LikeClient.scoped(
+  ///   LikeClientConfig(
+  ///     baseUrl: 'https://pay.example.com',
+  ///     connectTimeout: Duration(seconds: 15),
+  ///     defaultHeaders: {'X-Payment-Version': '2'},
+  ///     unpacker: PaymentsResponseUnpacker(),
+  ///     interceptors: [PaymentsHmacSigningInterceptor()],
+  ///   ),
+  /// );
+  /// ```
+  factory LikeClient.scoped(LikeClientConfig config) {
+    return LikeClient._scoped(config);
+  }
+
   LikeClient._internal({String? baseUrl, Duration? timeout, Dio? dio}) {
     _registry = LikeRequestRegistry();
     _dio = dio ??
         LikeClientFactory.create(
-          baseUrl: baseUrl ?? '', // Should be provided or set via updateBaseUrl
+          baseUrl: baseUrl ?? '',
           timeout: timeout,
           registry: _registry,
+          // Wire in developer-provided global interceptors from LikeConfig
+          customInterceptors: LikeConstants.current.interceptors,
         );
   }
 
+  LikeClient._scoped(LikeClientConfig config) {
+    _registry = LikeRequestRegistry();
+    _dio = LikeClientFactory.create(
+      baseUrl: config.baseUrl ?? LikeConstants.current.baseUrl,
+      registry: _registry,
+      customInterceptors: [
+        // Global interceptors come first
+        ...LikeConstants.current.interceptors,
+        // Then client-specific interceptors
+        ...?config.interceptors,
+      ],
+      extraHeaders: config.defaultHeaders ?? const {},
+      verifySSL: config.verifySSL,
+      sslCertSha256: config.sslCertSha256,
+    );
+    // Apply per-timeout overrides if provided
+    if (config.connectTimeout != null) {
+      _dio.options.connectTimeout = config.connectTimeout;
+    }
+    if (config.receiveTimeout != null) {
+      _dio.options.receiveTimeout = config.receiveTimeout;
+    }
+    if (config.sendTimeout != null) {
+      _dio.options.sendTimeout = config.sendTimeout;
+    }
+  }
+
   // --- Core Execution Logic (ApiExecutor Parity) ---
+
+  /// Resolves the effective base URL for a request by checking [LikeRequestConfig]
+  /// in priority order: explicit [LikeRequestConfig.baseUrl] → named URL from
+  /// [LikeRequestConfig.namedBaseUrl] → the Dio instance's own base URL.
+  String _resolveBaseUrl(LikeRequestConfig? requestConfig) {
+    if (requestConfig == null) return _dio.options.baseUrl;
+    if (requestConfig.baseUrl != null && requestConfig.baseUrl!.isNotEmpty) {
+      return LikeHelpers.normalizeBaseUrl(requestConfig.baseUrl!);
+    }
+    if (requestConfig.namedBaseUrl != null) {
+      final named = LikeConstants.current.extraBaseUrls[requestConfig.namedBaseUrl];
+      if (named != null && named.isNotEmpty) {
+        return LikeHelpers.normalizeBaseUrl(named);
+      }
+    }
+    return _dio.options.baseUrl;
+  }
 
   Future<LikeApiResult<Response>> _execute({
     required String method,
@@ -92,6 +169,8 @@ class LikeClient {
     Options? options,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
+    // Per-request network config override. Null means use global defaults.
+    LikeRequestConfig? requestConfig,
   }) async {
     final extra = options?.extra ?? {};
     final bool isGet = method == 'GET';
@@ -102,6 +181,49 @@ class LikeClient {
       queryParameters,
     );
 
+    // --- Per-request config resolution ---
+    // Resolve the base URL: requestConfig.baseUrl > namedBaseUrl > dio default
+    final effectiveBaseUrl = _resolveBaseUrl(requestConfig);
+    final bool baseUrlOverridden = effectiveBaseUrl != _dio.options.baseUrl;
+
+    // Merge per-request headers on top of the base options headers
+    final mergedHeaders = <String, dynamic>{
+      ...(_dio.options.headers.map((k, v) => MapEntry(k, v.toString()))),
+      if (options?.headers != null) ...options!.headers!,
+      if (requestConfig?.headers != null) ...requestConfig!.headers!,
+    };
+
+    // Apply per-request timeout overrides (or fall back to Dio defaults)
+    final effectiveConnectTimeout =
+        requestConfig?.connectTimeout ?? _dio.options.connectTimeout;
+    final effectiveReceiveTimeout =
+        requestConfig?.receiveTimeout ?? _dio.options.receiveTimeout;
+    final bool hasBody = data != null;
+    final effectiveSendTimeout = kIsWeb && !hasBody
+        ? null
+        : (requestConfig?.sendTimeout ?? _dio.options.sendTimeout);
+
+    // Stash the per-request unpacker in extras so widget builders can read it
+    if (requestConfig?.unpacker != null) {
+      extra['requestUnpacker'] = requestConfig!.unpacker;
+    }
+
+    // Resiliency overrides: requestConfig takes precedence over LikeConstants
+    final bool effectiveCacheOnOffline =
+        requestConfig?.cacheOnOffline ?? LikeConstants.cacheOnOffline;
+    final bool effectiveCacheOnError =
+        requestConfig?.cacheOnError ?? LikeConstants.cacheOnError;
+    final bool effectiveCacheOnException =
+        requestConfig?.cacheOnException ?? LikeConstants.cacheOnException;
+
+    // Pass retry overrides into extras so LikeRetryInterceptor can read them
+    if (requestConfig?.maxAutoRetries != null) {
+      extra['maxAutoRetries'] = requestConfig!.maxAutoRetries;
+    }
+    if (requestConfig?.retryDelays != null) {
+      extra['retryDelays'] = requestConfig!.retryDelays;
+    }
+
     if (isGet) {
       final activeState = Zone.current[#likeActiveState];
       if (activeState is LikeNotifierState) {
@@ -111,8 +233,10 @@ class LikeClient {
     }
 
     // Absolute URI for box key matching
+    // When the base URL is overridden per-request, we must build the key
+    // against the effective base so cache is correctly scoped per server.
     final tempOptions = RequestOptions(
-      baseUrl: _dio.options.baseUrl,
+      baseUrl: effectiveBaseUrl,
       path: effectivePath,
       queryParameters: queryParameters,
     );
@@ -195,17 +319,39 @@ class LikeClient {
     }
 
     // 4. Start Network Request
-    final future = _dio.request<dynamic>(
-      effectivePath,
-      data: data,
-      queryParameters: queryParameters,
-      cancelToken: cancelToken,
-      onSendProgress: onSendProgress,
-      onReceiveProgress: onReceiveProgress,
-      options: (options ?? Options()).copyWith(
-        method: method,
-        responseType: ResponseType.plain,
+    // When a base URL or timeout override is active, we compose a dedicated
+    // Options object that carries those overrides into the Dio pipeline.
+    final effectiveOptions = (options ?? Options()).copyWith(
+      method: method,
+      responseType: ResponseType.plain,
+      headers: mergedHeaders,
+      connectTimeout: effectiveConnectTimeout,
+      receiveTimeout: effectiveReceiveTimeout,
+      sendTimeout: effectiveSendTimeout,
+      // If baseUrl changed, pass it as an absolute path-prefix override
+      // so Dio doesn't blindly prepend the instance baseUrl
+      extra: {
+        ...extra,
+        if (baseUrlOverridden) 'overrideBaseUrl': effectiveBaseUrl,
+      },
+    );
+
+    final future = runZoned(
+      () => _dio.request<dynamic>(
+        // When hitting a different server, prefix the path with the full URL
+        // so Dio treats it as absolute and ignores the instance base URL.
+        baseUrlOverridden ? '$effectiveBaseUrl$effectivePath' : effectivePath,
+        data: data,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+        onSendProgress: onSendProgress,
+        onReceiveProgress: onReceiveProgress,
+        options: effectiveOptions,
       ),
+      zoneValues: {
+        #verifySSL: requestConfig?.verifySSL,
+        #sslCertSha256: requestConfig?.sslCertSha256,
+      },
     );
 
     if (isGet) _registry.addInFlight(requestKey, (future, cancelToken));
@@ -216,7 +362,7 @@ class LikeClient {
         staleWhileRevalidate &&
         LikeConstants.staleWhileRevalidateEnabled) {
       final bool isOnline = LikeConnectivityManager().hasConnection;
-      final bool allowCache = isOnline || LikeConstants.cacheOnOffline;
+      final bool allowCache = isOnline || effectiveCacheOnOffline;
 
       if (allowCache) {
         // Try L1 then L2 for SWR instant UI transition
@@ -263,9 +409,9 @@ class LikeClient {
 
       final shouldFallback = (isNetworkError &&
               (isOnline
-                  ? LikeConstants.cacheOnException
-                  : LikeConstants.cacheOnOffline)) ||
-          (!isNetworkError && LikeConstants.cacheOnError);
+                  ? effectiveCacheOnException
+                  : effectiveCacheOnOffline)) ||
+          (!isNetworkError && effectiveCacheOnError);
 
       if (shouldFallback && isGet && !disableCache) {
         final cached = await LikeService.fetchResponseFromCache(
@@ -357,6 +503,8 @@ class LikeClient {
   /// [query] parameters are automatically encoded.
   /// [withAuth] determines if the auth interceptor should include headers.
   /// [ars] provides fine-grained control over caching and deduplication.
+  /// [requestConfig] optionally overrides network settings (baseUrl, timeouts,
+  /// headers, unpacker) for this single call without affecting global defaults.
   Future<LikeApiResult<Response>> get(
     String path, {
     Map<String, dynamic>? query,
@@ -373,6 +521,7 @@ class LikeClient {
     Duration? timeout,
     CancelToken? cancelToken,
     ARS? ars,
+    LikeRequestConfig? requestConfig,
   }) async {
     final finalARS = ars ??
         ARS(
@@ -391,6 +540,7 @@ class LikeClient {
       path: path,
       queryParameters: query,
       cancelToken: cancelToken,
+      requestConfig: requestConfig,
       options: Options(
         headers: headers,
         receiveTimeout: timeout,
@@ -414,6 +564,7 @@ class LikeClient {
   ///
   /// [body] is the data payload (e.g., Map, List, or String).
   /// [offlineSync] if true, the request is queued if the network is unavailable.
+  /// [requestConfig] optionally overrides network settings for this single call.
   Future<LikeApiResult<Response>> post(
     String path, {
     Object? body,
@@ -424,6 +575,7 @@ class LikeClient {
     bool disableCache = false,
     CancelToken? cancelToken,
     ARS? ars,
+    LikeRequestConfig? requestConfig,
   }) async {
     final finalARS =
         ars ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
@@ -434,6 +586,7 @@ class LikeClient {
       data: body,
       queryParameters: query,
       cancelToken: cancelToken,
+      requestConfig: requestConfig,
       options: Options(
         headers: headers,
         extra: {
@@ -449,6 +602,7 @@ class LikeClient {
   }
 
   /// Performs a PUT request.
+  /// [requestConfig] optionally overrides network settings for this single call.
   Future<LikeApiResult<Response>> put(
     String path, {
     Object? body,
@@ -459,6 +613,7 @@ class LikeClient {
     bool disableCache = false,
     CancelToken? cancelToken,
     ARS? ars,
+    LikeRequestConfig? requestConfig,
   }) async {
     final finalARS =
         ars ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
@@ -469,6 +624,7 @@ class LikeClient {
       data: body,
       queryParameters: query,
       cancelToken: cancelToken,
+      requestConfig: requestConfig,
       options: Options(
         headers: headers,
         extra: {
@@ -484,6 +640,7 @@ class LikeClient {
   }
 
   /// Performs a DELETE request.
+  /// [requestConfig] optionally overrides network settings for this single call.
   Future<LikeApiResult<Response>> delete(
     String path, {
     Object? body,
@@ -494,6 +651,7 @@ class LikeClient {
     bool disableCache = false,
     CancelToken? cancelToken,
     ARS? ars,
+    LikeRequestConfig? requestConfig,
   }) async {
     final finalARS =
         ars ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
@@ -504,6 +662,7 @@ class LikeClient {
       data: body,
       queryParameters: query,
       cancelToken: cancelToken,
+      requestConfig: requestConfig,
       options: Options(
         headers: headers,
         extra: {
@@ -523,6 +682,8 @@ class LikeClient {
   /// [fields] are standard form fields.
   /// [filePaths] is a map of keys to file paths or lists of file paths.
   /// [files] is a list of [MultipartBytesFile] for in-memory file data.
+  /// [requestConfig] optionally overrides network settings for this single call.
+  /// This is especially useful for upload endpoints that need a longer [sendTimeout].
   Future<LikeApiResult<Response>> multipart(
     String path, {
     String method = 'POST',
@@ -536,6 +697,7 @@ class LikeClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     ARS? ars,
+    LikeRequestConfig? requestConfig,
   }) async {
     final finalARS = ars ?? ARS(offlineSync: offlineSync);
     final formData = FormData();
@@ -547,18 +709,29 @@ class LikeClient {
     }
 
     if (filePaths != null) {
-      if (filePaths is Map<String, String>) {
-        for (final entry in filePaths.entries) {
-          formData.files.add(
-            MapEntry(entry.key, await MultipartFile.fromFile(entry.value)),
-          );
-        }
-      } else if (filePaths is Map<String, List<String>>) {
-        for (final entry in filePaths.entries) {
-          for (final p in entry.value) {
+      // MultipartFile.fromFile() reads a native file-system path.
+      // On web there is no file-system — use the `files` parameter with
+      // MultipartBytesFile (in-memory bytes) instead.
+      assert(
+        !kIsWeb,
+        'LikeClient.multipart(): the `filePaths` parameter is not supported on web '
+        'because the web platform has no file-system access. '
+        'Use the `files` parameter with MultipartBytesFile (bytes) instead.',
+      );
+      if (!kIsWeb) {
+        if (filePaths is Map<String, String>) {
+          for (final entry in filePaths.entries) {
             formData.files.add(
-              MapEntry(entry.key, await MultipartFile.fromFile(p)),
+              MapEntry(entry.key, await MultipartFile.fromFile(entry.value)),
             );
+          }
+        } else if (filePaths is Map<String, List<String>>) {
+          for (final entry in filePaths.entries) {
+            for (final p in entry.value) {
+              formData.files.add(
+                MapEntry(entry.key, await MultipartFile.fromFile(p)),
+              );
+            }
           }
         }
       }
@@ -586,6 +759,7 @@ class LikeClient {
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
+      requestConfig: requestConfig,
       options: Options(
         headers: headers,
         extra: {

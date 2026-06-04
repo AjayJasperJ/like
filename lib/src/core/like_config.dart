@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_data_unpacker.dart';
 
@@ -319,6 +320,34 @@ class LikeConfig {
   /// on Web platforms without compromising key features (like caching and offline mutations).
   final bool supportWeb;
 
+  // --- Network Access ---
+
+  /// Custom Dio interceptors to inject into the global [LikeClient] singleton.
+  ///
+  /// These run on **every** request the app makes, in addition to the built-in Like
+  /// interceptors (auth, cache, retry, logging, etc.).
+  ///
+  /// **Use cases:**
+  /// - Token refresh logic specific to your backend.
+  /// - Custom request signing (HMAC, API keys).
+  /// - Analytics / tracing interceptors.
+  ///
+  /// **Ordering:** Custom interceptors are added **after** all built-in Like
+  /// interceptors so they execute closest to the network.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// LikeService.init(LikeConfig(
+  ///   projectName: 'myApp',
+  ///   baseUrl: 'https://api.example.com',
+  ///   interceptors: [
+  ///     MyTokenRefreshInterceptor(),
+  ///     MyRequestSigningInterceptor(),
+  ///   ],
+  /// ));
+  /// ```
+  final List<Interceptor> interceptors;
+
   LikeConfig({
     required this.projectName,
     this.baseUrl = '',
@@ -385,6 +414,7 @@ class LikeConfig {
     String? boxEtags,
     this.connCheckHost = 'google.com',
     this.supportWeb = false,
+    this.interceptors = const [],
   })  : verifySSL = verifySSL ?? !kDebugMode,
         boxApiCache = boxApiCache ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_api_cache',
         boxOfflineQueue = boxOfflineQueue ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_offline_queue',
@@ -457,6 +487,7 @@ class LikeConfig {
     String? boxEtags,
     String? connCheckHost,
     bool? supportWeb,
+    List<Interceptor>? interceptors,
   }) {
     return LikeConfig(
       projectName: projectName ?? this.projectName,
@@ -532,6 +563,7 @@ class LikeConfig {
       boxEtags: boxEtags ?? (projectName != null ? null : this.boxEtags),
       connCheckHost: connCheckHost ?? this.connCheckHost,
       supportWeb: supportWeb ?? this.supportWeb,
+      interceptors: interceptors ?? this.interceptors,
     );
   }
 

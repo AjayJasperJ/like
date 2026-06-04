@@ -1,8 +1,10 @@
-import 'package:universal_io/io.dart';
+// Conditional import: compiler selects the correct SSL implementation.
+//   - Web   → like_ssl_stub.dart  (no-op, browser handles TLS)
+//   - Native → like_ssl_io.dart   (IOHttpClientAdapter + HttpClient pinning)
+import 'like_ssl_stub.dart'
+    if (dart.library.io) 'like_ssl_io.dart' as ssl;
+
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
-import 'package:flutter/foundation.dart';
-import 'package:crypto/crypto.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/client/like_request_registry.dart';
@@ -15,7 +17,6 @@ import 'package:like/src/interceptors/like_cache_interceptor.dart';
 import 'package:like/src/interceptors/like_offline_sync_interceptor.dart';
 import 'package:like/src/interceptors/like_connectivity_interceptor.dart';
 import 'package:like/src/interceptors/like_retry_interceptor.dart';
-
 import 'package:like/src/interceptors/like_perf_interceptors.dart';
 import 'package:like/src/services/like_service.dart';
 
@@ -26,6 +27,23 @@ class LikeClientFactory {
     required String baseUrl,
     Duration? timeout,
     required LikeRequestRegistry registry,
+
+    /// Custom Dio interceptors injected **after** the built-in Like stack.
+    ///
+    /// Sourced from [LikeConfig.interceptors] (global) or
+    /// [LikeClientConfig.interceptors] (scoped client).
+    List<Interceptor> customInterceptors = const [],
+
+    /// Extra HTTP headers merged on top of the package-level defaults.
+    ///
+    /// Sourced from [LikeClientConfig.defaultHeaders] for scoped clients.
+    Map<String, String> extraHeaders = const {},
+
+    /// Explicit SSL verification override. Defaults to [LikeConstants.verifySSL].
+    bool? verifySSL,
+
+    /// Explicit SSL certificate SHA-256 pin override. Defaults to [LikeConstants.sslCertSha256].
+    String? sslCertSha256,
   }) {
     final effectiveBaseUrl = LikeHelpers.normalizeBaseUrl(baseUrl);
 
@@ -40,17 +58,30 @@ class LikeClientFactory {
         headers: {
           'Accept': LikeConstants.defaultAcceptHeader,
           'Content-Type': LikeConstants.defaultContentTypeHeader,
+          ...extraHeaders,
         },
       ),
     );
 
-    _setupInterceptors(dio, registry);
-    _setupSSL(dio);
+    _setupInterceptors(dio, registry, customInterceptors);
+
+    // Delegate to the platform-correct SSL implementation:
+    //   • Mobile/Desktop → like_ssl_io.dart  (IOHttpClientAdapter)
+    //   • Web            → like_ssl_stub.dart (no-op)
+    ssl.setupSSL(
+      dio,
+      verifySSL: verifySSL ?? LikeConstants.verifySSL,
+      sslCertSha256: sslCertSha256 ?? LikeConstants.sslCertSha256,
+    );
 
     return dio;
   }
 
-  static void _setupInterceptors(Dio dio, LikeRequestRegistry registry) {
+  static void _setupInterceptors(
+    Dio dio,
+    LikeRequestRegistry registry,
+    List<Interceptor> customInterceptors,
+  ) {
     dio.interceptors.addAll(
       [
         // 0. Logging (Catches all requests)
@@ -61,7 +92,6 @@ class LikeClientFactory {
 
         // 1. Core Logic
         LikeEtagInterceptor(),
-
         LikeCacheInterceptor(),
         LikePipelineInterceptor(),
 
@@ -80,34 +110,11 @@ class LikeClientFactory {
 
         // 4. Security & Session (Last to ensure headers are final)
         LikeAuthInterceptor(dio: dio),
+
+        // 5. Developer-injected custom interceptors (outermost layer,
+        //    closest to the actual network wire).
+        ...customInterceptors,
       ].whereType<Interceptor>(),
     );
-  }
-
-  static void _setupSSL(Dio dio) {
-    if (LikeConstants.verifySSL) {
-      (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        final client = HttpClient();
-        client.badCertificateCallback = (cert, host, port) {
-          if (LikeConstants.sslCertSha256.isEmpty) return kDebugMode;
-
-          final certSha256 = sha256
-              .convert(cert.der)
-              .bytes
-              .map((b) => b.toRadixString(16).padLeft(2, '0'))
-              .join(':')
-              .toLowerCase();
-
-          return certSha256 == LikeConstants.sslCertSha256.toLowerCase();
-        };
-        return client;
-      };
-    } else {
-      (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        final client = HttpClient();
-        client.badCertificateCallback = (cert, host, port) => true;
-        return client;
-      };
-    }
   }
 }

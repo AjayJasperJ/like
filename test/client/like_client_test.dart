@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:mocktail/mocktail.dart';
@@ -185,6 +186,40 @@ void main() {
       final result = await client.get(path, staleWhileRevalidate: true);
 
       expect(result.data?.data['source'], equals('cache'));
+    });
+
+    test('request should propagate verifySSL and sslCertSha256 to Zone context', () async {
+      const path = '/ssl-test';
+      bool? capturedVerifySSL;
+      String? capturedSha;
+
+      when(
+        () => mockDio.request<dynamic>(
+          any(),
+          data: any(named: 'data'),
+          queryParameters: any(named: 'queryParameters'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer((_) async {
+        capturedVerifySSL = Zone.current[#verifySSL] as bool?;
+        capturedSha = Zone.current[#sslCertSha256] as String?;
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          data: {'status': 'ok'},
+          statusCode: 200,
+        );
+      });
+
+      await client.get(
+        path,
+        requestConfig: const LikeRequestConfig(
+          verifySSL: false,
+          sslCertSha256: 'some-sha',
+        ),
+      );
+
+      expect(capturedVerifySSL, isFalse);
+      expect(capturedSha, equals('some-sha'));
     });
   });
 }

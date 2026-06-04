@@ -182,7 +182,10 @@ class LikeAuthInterceptor extends Interceptor {
           );
         }
 
-        if (filePaths != null) {
+        // MultipartFile.fromFile() requires a native file-system path.
+        // On web there is no file-system — filePaths retries are skipped.
+        // Callers should use MultipartBytesFile (bytes) for web compatibility.
+        if (filePaths != null && !kIsWeb) {
           if (filePaths is Map<String, String>) {
             for (final entry in filePaths.entries) {
               formData.files.add(

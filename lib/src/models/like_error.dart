@@ -39,6 +39,18 @@ enum LikeApiErrorType {
 
   /// Request was queued for offline synchronization.
   offlineQueued,
+
+  /// 405 Method Not Allowed.
+  methodNotAllowed,
+
+  /// 409 Conflict.
+  conflict,
+
+  /// 410 Gone.
+  gone,
+
+  /// 413 Payload Too Large.
+  payloadTooLarge,
 }
 
 /// A unified error model for all network operations.

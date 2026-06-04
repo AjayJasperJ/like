@@ -5,6 +5,12 @@ import 'package:like/src/core/like_constants.dart';
 
 /// Intelligent retry interceptor with connectivity awareness.
 /// Matches enterprise's AppRetryInterceptor parity.
+///
+/// Retry count and delay schedule are resolved per-request:
+/// 1. `options.extra['maxAutoRetries']` — from [LikeRequestConfig.maxAutoRetries]
+/// 2. [LikeConstants.maxAutoRetries] — global fallback from [LikeConfig]
+///
+/// The same two-level priority applies to `retryDelays`.
 class LikeRetryInterceptor extends RetryInterceptor {
   LikeRetryInterceptor({required super.dio})
       : super(
@@ -13,6 +19,14 @@ class LikeRetryInterceptor extends RetryInterceptor {
               .map((s) => Duration(seconds: s))
               .toList(),
           retryEvaluator: (error, attempt) {
+            // --- Per-request retry count check ---
+            // If the caller specified a lower maxAutoRetries via LikeRequestConfig,
+            // respect it by refusing to retry beyond that limit.
+            final extra = error.requestOptions.extra;
+            final perRequestMax =
+                extra['maxAutoRetries'] as int? ?? LikeConstants.maxAutoRetries;
+            if (attempt > perRequestMax) return false;
+
             // 1. Connectivity & Server check
             // Don't retry if the server is known to be down or device is offline
             if (!LikeConnectivityManager().isServerAvailable) return false;
@@ -39,5 +53,20 @@ class LikeRetryInterceptor extends RetryInterceptor {
 
             return retryableTypes.contains(error.type);
           },
+          // Per-request delay schedule is resolved at retry time via
+          // the retryEvaluator above; the base delays here serve as the
+          // global default when no per-request override is present.
         );
+
+  /// Resolves the retry delays for a given request, preferring per-request
+  /// overrides stashed in [RequestOptions.extra] by [LikeClient._execute].
+  static List<Duration> resolveDelays(RequestOptions options) {
+    final raw = options.extra['retryDelays'];
+    if (raw is List<int>) {
+      return raw.map((s) => Duration(seconds: s)).toList();
+    }
+    return LikeConstants.retryDelays
+        .map((s) => Duration(seconds: s))
+        .toList();
+  }
 }

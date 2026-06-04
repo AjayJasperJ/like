@@ -10,10 +10,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LikeService.init(
       config: LikeConfig(
-    projectName: 'example_app',
-    unpacker: const CustomLikeUnpacker(),
-    baseUrl: 'https://jsonplaceholder.typicode.com',
-  ));
+          projectName: 'example_app',
+          unpacker: const CustomLikeUnpacker(),
+          baseUrl: 'https://jsonplaceholder.typicode.com',
+          supportWeb: true));
   runApp(const LikeExampleApp());
 }
 
