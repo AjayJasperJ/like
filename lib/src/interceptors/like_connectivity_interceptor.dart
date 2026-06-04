@@ -6,6 +6,11 @@ import 'package:like/src/services/like_connectivity_manager.dart';
 class LikeConnectivityInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final customConnectTimeout = options.extra['connectTimeout'];
+    if (customConnectTimeout is Duration) {
+      options.connectTimeout = customConnectTimeout;
+    }
+
     final bool offlineSync = options.extra['offlineSync'] ?? true;
     final bool isSyncRequest = options.extra['isSyncRequest'] ?? false;
 

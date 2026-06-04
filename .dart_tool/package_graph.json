@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "like",
-      "version": "2.0.0",
+      "version": "2.1.1",
       "dependencies": [
         "cached_network_image",
         "collection",
@@ -169,7 +169,7 @@
     },
     {
       "name": "synchronized",
-      "version": "3.4.0+1",
+      "version": "3.4.1",
       "dependencies": []
     },
     {
@@ -750,7 +750,7 @@
     },
     {
       "name": "sqflite",
-      "version": "2.4.2+1",
+      "version": "2.4.3",
       "dependencies": [
         "flutter",
         "path",
@@ -850,7 +850,7 @@
     },
     {
       "name": "shared_preferences_android",
-      "version": "2.4.23",
+      "version": "2.4.25",
       "dependencies": [
         "flutter",
         "shared_preferences_platform_interface"
@@ -1089,7 +1089,7 @@
     },
     {
       "name": "sqflite_common",
-      "version": "2.5.8",
+      "version": "2.5.9",
       "dependencies": [
         "meta",
         "path",
@@ -1098,7 +1098,7 @@
     },
     {
       "name": "sqflite_platform_interface",
-      "version": "2.4.0",
+      "version": "2.4.1",
       "dependencies": [
         "flutter",
         "meta",
@@ -1109,7 +1109,7 @@
     },
     {
       "name": "sqflite_darwin",
-      "version": "2.4.2",
+      "version": "2.4.3",
       "dependencies": [
         "flutter",
         "meta",
@@ -1120,7 +1120,7 @@
     },
     {
       "name": "sqflite_android",
-      "version": "2.4.2+3",
+      "version": "2.4.3",
       "dependencies": [
         "flutter",
         "path",
@@ -1189,7 +1189,7 @@
     },
     {
       "name": "dbus",
-      "version": "0.7.13",
+      "version": "0.7.14",
       "dependencies": [
         "args",
         "ffi",
@@ -1204,7 +1204,7 @@
     },
     {
       "name": "hooks",
-      "version": "2.0.0",
+      "version": "2.0.2",
       "dependencies": [
         "collection",
         "crypto",
@@ -1217,7 +1217,7 @@
     },
     {
       "name": "code_assets",
-      "version": "1.1.0",
+      "version": "1.2.1",
       "dependencies": [
         "collection",
         "hooks"
@@ -1225,7 +1225,7 @@
     },
     {
       "name": "xml",
-      "version": "7.0.1",
+      "version": "6.6.1",
       "dependencies": [
         "collection",
         "meta",

@@ -488,6 +488,35 @@ Custom envelopes (e.g. nested `result.body.payload`) can be handled by implement
 
 ---
 
+## Web Platform Compatibility
+
+LIKE is designed to be fully platform-agnostic, supporting **Android, iOS, Web, Windows, macOS, and Linux**. 
+* **SSL Isolation**: Uses conditional exports to transparently handle certificate pinning (`verifySSL` and `sslCertSha256`) on native platforms while cleanly stubbing it out for the browser.
+* **Storage Guard**: When running on Flutter Web, the database/file caching layer automatically falls back to `NonStoringObjectProvider` to avoid native SQLite and filesystem dependencies.
+* **HTTP Adapters & Timeouts**: Adapts request timeout configurations dynamically on the Web (disabling `sendTimeout` when no body is present to eliminate Dio console warnings).
+
+---
+
+## Enterprise Error & Exception Handling
+
+LIKE converts all backend response failures and client exceptions into a unified `LikeError` model.
+
+### 1. Granular HTTP Mappings
+Every standard HTTP code is translated into a user-friendly message and categorised into a `LikeApiErrorType` case:
+* **3xx Redirections**: 300, 301, 302, 304, 307, 308 (mapped as `badRequest`).
+* **4xx Client Errors**: 400 (`badRequest`), 401 (`unauthorized`), 402 (`forbidden`), 403 (`forbidden`), 404 (`notFound`), 405 (`methodNotAllowed`), 406 (`badRequest`), 407 (`unauthorized`), 408 (`timeout`), 409 (`conflict`), 410 (`gone`), 411/412/414/415/416/417/418/421/422/424/425/426/428/431 (`badRequest`), 423/451 (`forbidden`), 429 (`rateLimit`).
+* **5xx Server Errors**: 500 (`server`), 501/505/507/508 (`server`), 502/503 (`serverUnavailable`), 504 (`timeout`), 511 (`unauthorized`).
+
+### 2. High-Resilience Exception Traps
+`LikeErrorHandler.handle()` catches and maps raw system exceptions before they crash the application or result in generic "Unknown" errors:
+* **`SocketException`**: Inspects device connectivity via `LikeConnectivityManager` to return a precise offline message or server outage report.
+* **`TimeoutException`**: Standardizes request/response timeout intervals.
+* **`HttpException`**: Decodes low-level network protocol issues.
+* **`TypeError`**: Identifies type mismatches during JSON mapping or model serialization/deserialization.
+* **`AssertionError`**: Gracefully converts assertion violations.
+
+---
+
 ## Offline Sync Queue
 
 All `POST` / `PUT` / `DELETE` mutations are persisted in a Hive box when the network is unavailable and auto-replayed in chronological order on reconnect.

@@ -321,17 +321,20 @@ class LikeClient {
     // 4. Start Network Request
     // When a base URL or timeout override is active, we compose a dedicated
     // Options object that carries those overrides into the Dio pipeline.
+    // Note: Options does not support connectTimeout directly, so we pass it in
+    // extra and apply it in LikeConnectivityInterceptor.
     final effectiveOptions = (options ?? Options()).copyWith(
       method: method,
       responseType: ResponseType.plain,
       headers: mergedHeaders,
-      connectTimeout: effectiveConnectTimeout,
       receiveTimeout: effectiveReceiveTimeout,
       sendTimeout: effectiveSendTimeout,
       // If baseUrl changed, pass it as an absolute path-prefix override
       // so Dio doesn't blindly prepend the instance baseUrl
       extra: {
         ...extra,
+        if (effectiveConnectTimeout != null)
+          'connectTimeout': effectiveConnectTimeout,
         if (baseUrlOverridden) 'overrideBaseUrl': effectiveBaseUrl,
       },
     );

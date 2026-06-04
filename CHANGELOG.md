@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-06-04
+
+### Fixed
+
+- **Options connectTimeout Deprecation and Lower-bound Resolution**:
+  - Resolved a compatibility compilation error that occurred during package downgrades due to `connectTimeout` not being defined as a parameter in `Options.copyWith`.
+  - Re-routed the request-specific connection timeout via the request `extra` option and dynamically applied it inside `LikeConnectivityInterceptor.onRequest`.
+
+## [2.1.0] - 2026-06-04
+
+### Added
+
+- **Full Flutter Web Platform Support**:
+  - Achieved complete platform-agnostic architecture by isolating native `dart:io` compiler imports.
+  - Introduced conditional exports (`like_ssl_io.dart` / `like_ssl_stub.dart`) to support certificate pinning/verification safely on native platforms while cleanly stubbing it out on Web.
+  - Implemented runtime platform guards (`kIsWeb`) to safely bypass filesystem mutations and avoid multipart file extraction errors in browser environments.
+  - Integrated `NonStoringObjectProvider` fallback for the caching layer on Web to bypass native SQLite / filesystem dependencies.
+  - Added dynamic `sendTimeout` handling to suppress Dio web adapter errors when dispatching requests without a body.
+- **Robust Multi-Category Error Mapping**:
+  - Expanded `LikeApiErrorType` enum to include `methodNotAllowed`, `conflict`, `gone`, and `payloadTooLarge` for granular client handling.
+  - Configured `LikeErrorHandler.parseResponse` to systematically decode dozens of HTTP status codes (3xx redirections, 4xx client issues, 5xx server issues).
+  - Extended `LikeErrorHandler.handle` to intercept low-level Dart network and runtime failures, converting `SocketException`, `TimeoutException`, `HttpException`, `TypeError` (decoding mismatches), and `AssertionError` to unified, user-friendly `LikeError` formats.
+- **Thorough Platform Test Harness**:
+  - Added rigorous unit tests in `test/client/like_error_handler_test.dart` to verify mapping accuracy, connectivity states, and custom exception handling.
+
 ## [2.0.0] - 2026-05-31
 
 ### Added

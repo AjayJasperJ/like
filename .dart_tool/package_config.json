@@ -123,7 +123,7 @@
     },
     {
       "name": "code_assets",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/code_assets-1.1.0",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/code_assets-1.2.1",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     },
@@ -171,7 +171,7 @@
     },
     {
       "name": "dbus",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/dbus-0.7.13",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/dbus-0.7.14",
       "packageUri": "lib/",
       "languageVersion": "2.17"
     },
@@ -297,7 +297,7 @@
     },
     {
       "name": "hooks",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/hooks-2.0.0",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/hooks-2.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     },
@@ -555,9 +555,9 @@
     },
     {
       "name": "shared_preferences_android",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.23",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.25",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.12"
     },
     {
       "name": "shared_preferences_foundation",
@@ -627,33 +627,33 @@
     },
     {
       "name": "sqflite",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite-2.4.2+1",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite-2.4.3",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.12"
     },
     {
       "name": "sqflite_android",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_android-2.4.2+3",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_android-2.4.3",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.12"
     },
     {
       "name": "sqflite_common",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_common-2.5.8",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_common-2.5.9",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.12"
     },
     {
       "name": "sqflite_darwin",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_darwin-2.4.2",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_darwin-2.4.3",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.12"
     },
     {
       "name": "sqflite_platform_interface",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_platform_interface-2.4.0",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/sqflite_platform_interface-2.4.1",
       "packageUri": "lib/",
-      "languageVersion": "3.5"
+      "languageVersion": "3.12"
     },
     {
       "name": "stack_trace",
@@ -681,9 +681,9 @@
     },
     {
       "name": "synchronized",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/synchronized-3.4.0+1",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/synchronized-3.4.1",
       "packageUri": "lib/",
-      "languageVersion": "3.11"
+      "languageVersion": "3.12"
     },
     {
       "name": "term_glyph",
@@ -771,9 +771,9 @@
     },
     {
       "name": "xml",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/xml-7.0.1",
+      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/xml-6.6.1",
       "packageUri": "lib/",
-      "languageVersion": "3.11"
+      "languageVersion": "3.8"
     },
     {
       "name": "yaml",

@@ -18,6 +18,7 @@ Thank you for contributing to the **Link Intelligent Kernel Engine (LIKE)**. To 
 4.  **No Main-Thread Jank**: Always delegate payload parsing to background isolates using `.mapAsync()` for payloads larger than 100 KB.
 5.  **Reactive State Contracts**: Never expose raw domain models directly from providers to the UI. Always wrap state in a `LikeNotifierState` or `LikeStateResponse` to handle `loading`, `refreshing`, `success`, `error`, and `staleWhileRevalidate` states out-of-the-box.
 6.  **Offline-Resiliency**: All mutable endpoints (`POST`/`PUT`/`DELETE`) must support persistence in the offline mutation queue, complete with auto-replay and auth-aware token rotation on reconnect.
+7.  **Web Compatibility & Platform Isolation**: Maintain full compatibility across Web and native. Do not import `dart:io` or native-only APIs directly in shared code. Use conditional compilation/exports or runtime guards (`kIsWeb`) to isolate native APIs (like certificate overrides or direct file caching) from browser execution environments.
 
 ---
 
