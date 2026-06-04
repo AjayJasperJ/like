@@ -2,13 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.1.2] - 2026-06-04
+1. [2.1.2] - 2026-06-04
 
 ### Changed
 
 - **Dynamic Request Header & Timeout Configuration**:
-  - Refactored `Content-Type` header injection to be dynamic: automatically appends `Content-Type` if a request has a body (`data != null`) and no override is present, and cleans it up from the request headers if no body exists.
-  - Configured default `sendTimeout` in `LikeClientFactory` to fallback to `null` under Flutter Web (`kIsWeb`) to prevent web-specific adapter execution issues.
+  1. Refactored `Content-Type` header injection to be dynamic: automatically appends `Content-Type` if a request has a body (`data != null`) and no override is present, and cleans it up from the request headers if no body exists.
+  1. Configured default `sendTimeout` in `LikeClientFactory` to fallback to `null` under Flutter Web (`kIsWeb`) to prevent web-specific adapter execution issues.
 
 ## [2.1.1] - 2026-06-04
 
@@ -101,7 +101,6 @@ All notable changes to this project will be documented in this file.
 
 ## [1.2.4] - 2026-05-23
 
-
 ### Changed
 
 - **Synchronized Release**: Bumped version to `1.2.4` to maintain version alignment with `like_devtool`.
@@ -165,12 +164,14 @@ All notable changes to this project will be documented in this file.
 ## [1.1.3] - 2026-05-19
 
 ### Added
+
 - **Repository Optimization**: Updated and pointed the package source repository metadata to the dedicated documentation/repository (`https://github.com/AjayJasperJ/like_docs`).
 - **Modern SDK Support**: Upgraded the package constraints to target the latest stable Dart SDK (`^3.12.0`) and Flutter SDK (`>=3.44.0`) following system environment upgrades.
 
 ## [1.1.2] - 2026-05-18
 
 ### Added
+
 - **Multi-Screen UI Demonstration App**: Added a full, robust multi-screen example application within `example/` demonstrating the comprehensive integration of all core package widgets and builders (including `LikeBuilder`, `LikeWhen`, `LikeSelector`, `LikeSelectorSliver`, `LikeMultiBuilder`, `LikeMultiSliverBuilder`, `LikeCacheImage`, `updateNotifier`, and `LikeToast`).
 - **Reactive State Selectors**: Supported granular UI rebuilds via `LikeSelector` and `LikeSelectorSliver` to observe and rebuild on precise state slices.
 - **Combined State Observers**: Introduced `LikeMultiBuilder` and `LikeMultiSliverBuilder` to elegantly bundle and process multiple concurrent state notifier updates.
@@ -179,12 +180,14 @@ All notable changes to this project will be documented in this file.
 ## [1.1.1] - 2026-05-17
 
 ### Added
+
 - **Metadata Tuning**: Updated the package description and topics in `pubspec.yaml` to highlight core Dio, Hive, and AES encryption integrations for enhanced discoverability on pub.dev.
 - **Engine Optimization**: Consolidated brand-agnostic key transformations and optimized test configurations.
 
 ## [1.1.0] - 2026-05-17
 
 ### Added
+
 - **Network Mocking Engine**: Integrated persistent Hive-backed mocking (`MockController`) and Dio request interception (`LikeMockInterceptor`) for offline, testing, and staging environment simulation.
 - **Secure Image Caching**: Added transparent AES-CBC 256-bit disk encryption (`AppCacheManager`, `EncryptedHttpFileService`) with dynamic stream-based decryption for sensitive assets.
 - **Auto LRU Image Pruning**: Implemented automatic Least Recently Used (LRU) pruning targeting size limits (`maxImageCacheMB` and `minImageCacheMB`).
@@ -193,11 +196,13 @@ All notable changes to this project will be documented in this file.
 - **Unified Protocols & Technical Deep Dive**: Fully documented the engine's optimized Dio wrapper foundation, REST/GraphQL protocol support, offline mutation queues, background Isolate parsing, and rate limiting (HTTP 429) controls.
 
 ### Fixed
+
 - **Code Hardening & Security Audit**: Audited the entire codebase to purge external branding and variables. Updated deprecated method channel testing APIs and resolved static analysis lints for 100% health.
 
 ## [1.0.7] - 2026-05-11
 
 ### Added
+
 - **Documentation**: Major update to README with corrected initialization via the `Like` root wrapper widget.
 - **4-Tier Roadmap**: Explicitly documented Tiers 1-4 (Service, Repository, Provider, UI) with production-grade examples.
 - **Manual Initialization**: Added `addPostFrameCallback` pattern for deferred engine setup.
@@ -206,10 +211,10 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.6] - 2026-05-11
 
-
 ### Added
+
 - **Background Parsing**: Added isolate-based JSON transformation for background processing.
-- **LikeBuilder Updates**: 
+- **LikeBuilder Updates**:
   - Added support for onLoading, onError, and onSuccess callbacks.
   - Added support for pagination loading states.
   - Created `LikeWhen` widget for pattern matching UI.
@@ -219,57 +224,61 @@ All notable changes to this project will be documented in this file.
 - **Async Utilities**: Added `mapAsync` and `mapSuccessAsync` extensions.
 
 ### Fixed
+
 - **Memory Safety**: Added critical documentation on `dispose` patterns to prevent background sync leaks in multi-screen applications.
 - **Metadata**: Resolved `pubspec.yaml` topic limit issues for better discoverability.
 
 ## [1.0.5] - 2026-05-10
 
 ### Added
+
 - **Architecture Roadmap**: Added comprehensive documentation for Clean Architecture integration covering Service, Repository, Provider, and UI layers.
 - **Background Parsing**: Standardized `mapAsync` and `mapSuccessAsync` extensions for isolate-based JSON transformation to maintain 120 FPS.
 - **Provider Hardening**: Enhanced `LikeAutoReconnectMixin` documentation with "Gold Standard" implementation patterns.
 - **Resync Engine**: Formally documented cross-notifier synchronization (`syncWith`) and automated reconnection recovery (`onReconnect`).
 
 ### Fixed
+
 - **Memory Safety**: Added critical documentation on `dispose` patterns to prevent background sync leaks in multi-screen applications.
 - **Metadata**: Resolved `pubspec.yaml` topic limit issues for better discoverability.
 
 ## [1.0.4] - 2026-05-10
 
-
 ### Added
+
 - **Multi-platform Support**: Integrated `universal_io` to enable Web support while maintaining mobile/desktop parity.
 - **Dependency Hardening**: Synchronized all core packages to their latest resolvable versions for optimal security and performance.
 
 ### Fixed
+
 - **Static Analysis**: Resolved all linter hints (info) across the codebase.
 - **Documentation**: Finalized banner rendering paths.
 
 ## [1.0.3] - 2026-05-10
 
-
 ### Fixed
+
 - **Documentation**: Finalized correct banner URL path for pub.dev.
 
 ## [1.0.2] - 2026-05-10
 
-
 ### Fixed
+
 - **Pub.dev Asset Loading**: Switched to raw GitHub URLs for the banner to ensure correct rendering on pub.dev.
 - **Package Size Optimization**: Added `.pubignore` to exclude the `build/` folder and other artifacts, significantly reducing the package size (from 16MB down to <1MB).
 
 ## [1.0.1] - 2026-05-10
 
-
 ### Added
+
 - **Visual Identity**: Added a high-fidelity package banner to the README for a more professional presentation on pub.dev.
 
 ### Fixed
+
 - **Code Hardening**: Fixed multiple `use_build_context_synchronously` lint issues in `LikeWhen` to ensure UI stability during async gaps.
 - **Style Consistency**: Corrected string quoting and applied `dart format` across the entire package (63 files) for 100% lint compliance.
 
 ## [1.0.0] - 2026-05-10
-
 
 ### Initial Release
 
@@ -278,7 +287,7 @@ All notable changes to this project will be documented in this file.
   - L1: RAM Cache for instantaneous session-level retrieval.
   - L2: Persistent Disk Cache (Hive) for cross-session persistence.
   - L3: Stale-While-Revalidate (SWR) logic for background data freshness.
-- **Resilience Engine**: 
+- **Resilience Engine**:
   - Automated request deduplication.
   - Request suppression and cancellation logic.
   - Built-in smart retry mechanism.
