@@ -19,6 +19,7 @@ import 'package:like/src/interceptors/like_connectivity_interceptor.dart';
 import 'package:like/src/interceptors/like_retry_interceptor.dart';
 import 'package:like/src/interceptors/like_perf_interceptors.dart';
 import 'package:like/src/services/like_service.dart';
+import 'package:flutter/foundation.dart';
 
 /// Factory to create and configure a Dio instance with all LIKE interceptors.
 /// Matches enterprise's DioFactory parity.
@@ -54,10 +55,11 @@ class LikeClientFactory {
             timeout ?? Duration(seconds: LikeConstants.connectTimeout),
         receiveTimeout:
             timeout ?? Duration(seconds: LikeConstants.receiveTimeout),
-        sendTimeout: timeout ?? Duration(seconds: LikeConstants.sendTimeout),
+        sendTimeout: kIsWeb
+            ? null
+            : (timeout ?? Duration(seconds: LikeConstants.sendTimeout)),
         headers: {
           'Accept': LikeConstants.defaultAcceptHeader,
-          'Content-Type': LikeConstants.defaultContentTypeHeader,
           ...extraHeaders,
         },
       ),

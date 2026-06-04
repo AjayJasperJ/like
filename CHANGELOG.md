@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.2] - 2026-06-04
+
+### Changed
+
+- **Dynamic Request Header & Timeout Configuration**:
+  - Refactored `Content-Type` header injection to be dynamic: automatically appends `Content-Type` if a request has a body (`data != null`) and no override is present, and cleans it up from the request headers if no body exists.
+  - Configured default `sendTimeout` in `LikeClientFactory` to fallback to `null` under Flutter Web (`kIsWeb`) to prevent web-specific adapter execution issues.
+
 ## [2.1.1] - 2026-06-04
 
 ### Fixed

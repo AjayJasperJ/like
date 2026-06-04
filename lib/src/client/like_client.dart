@@ -186,6 +186,8 @@ class LikeClient {
     final effectiveBaseUrl = _resolveBaseUrl(requestConfig);
     final bool baseUrlOverridden = effectiveBaseUrl != _dio.options.baseUrl;
 
+    final bool hasBody = data != null;
+
     // Merge per-request headers on top of the base options headers
     final mergedHeaders = <String, dynamic>{
       ...(_dio.options.headers.map((k, v) => MapEntry(k, v.toString()))),
@@ -193,12 +195,22 @@ class LikeClient {
       if (requestConfig?.headers != null) ...requestConfig!.headers!,
     };
 
+    if (hasBody) {
+      final hasContentType =
+          mergedHeaders.keys.any((k) => k.toLowerCase() == 'content-type');
+      if (!hasContentType) {
+        mergedHeaders['Content-Type'] = LikeConstants.defaultContentTypeHeader;
+      }
+    } else {
+      mergedHeaders.remove('Content-Type');
+      mergedHeaders.remove('content-type');
+    }
+
     // Apply per-request timeout overrides (or fall back to Dio defaults)
     final effectiveConnectTimeout =
         requestConfig?.connectTimeout ?? _dio.options.connectTimeout;
     final effectiveReceiveTimeout =
         requestConfig?.receiveTimeout ?? _dio.options.receiveTimeout;
-    final bool hasBody = data != null;
     final effectiveSendTimeout = kIsWeb && !hasBody
         ? null
         : (requestConfig?.sendTimeout ?? _dio.options.sendTimeout);
