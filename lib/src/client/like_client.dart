@@ -152,7 +152,8 @@ class LikeClient {
       return LikeHelpers.normalizeBaseUrl(requestConfig.baseUrl!);
     }
     if (requestConfig.namedBaseUrl != null) {
-      final named = LikeConstants.current.extraBaseUrls[requestConfig.namedBaseUrl];
+      final named =
+          LikeConstants.current.extraBaseUrls[requestConfig.namedBaseUrl];
       if (named != null && named.isNotEmpty) {
         return LikeHelpers.normalizeBaseUrl(named);
       }
@@ -315,17 +316,30 @@ class LikeClient {
         extra['deduplicate'] ?? LikeConstants.deduplicateByDefault;
     if (isGet && deduplicate) {
       final inFlight = _registry.getInFlight(requestKey);
-      if (inFlight != null) {
+      // Only deduplicate if the in-flight token is still live.
+      // If it is already cancelled (rotated by a newCT call), skip dedup
+      // so this caller makes its own fresh request instead of inheriting
+      // the cancel exception from the dead in-flight entry.
+      final inFlightAlive =
+          inFlight != null && !(inFlight.$2?.isCancelled ?? false);
+      if (inFlightAlive) {
         try {
           final response = await inFlight.$1;
           return await _handleSuccess(response, requestKey);
         } catch (e) {
           if (e is DioException) {
-            return LikeApiResult.error(await LikeErrorHandler.handle(e));
+            // If the shared future was cancelled while we were waiting,
+            // fall through and make a fresh independent request.
+            if (CancelToken.isCancel(e)) {
+              // intentional fall-through to step 4 below
+            } else {
+              return LikeApiResult.error(await LikeErrorHandler.handle(e));
+            }
+          } else {
+            return LikeApiResult.error(
+              LikeError(message: e.toString(), type: LikeApiErrorType.unknown),
+            );
           }
-          return LikeApiResult.error(
-            LikeError(message: e.toString(), type: LikeApiErrorType.unknown),
-          );
         }
       }
     }

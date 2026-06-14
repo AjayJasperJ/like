@@ -2,7 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
-1. [2.1.2] - 2026-06-04
+## [2.2.1] - 2026-06-14
+
+### Fixed
+
+- **Silent Request Cancellation — Continuous UI State**: `LikeAutoReconnectMixin.fetcher` no longer surfaces a cancellation as a state regression. When a request is cancelled by a newer `fetch` call (via `newCT`):
+  - If prior success data exists, the state is immediately restored to `success(data)` so the UI remains continuous and the user sees no disruption.
+  - If no prior data exists (initial load), the state is explicitly set to `loading()` so the spinner persists until the new in-flight request resolves.
+  - In both cases the cancelled state is fully absorbed — the new in-flight request owns the final state update.
+
+- **Deduplication Block — Cancel Exception Swallowing New Request**: `LikeClient._execute` deduplication now correctly handles cancelled in-flight entries:
+  - Added a pre-check: if the stored in-flight `CancelToken` is already cancelled, deduplication is skipped entirely and the caller proceeds to make a fresh independent network request.
+  - Added a cancel-aware catch: if the shared in-flight future resolves with a cancellation while a waiter is awaiting it, the waiter falls through to step 4 (Start Network Request) instead of returning an error — fixing the root cause of "new request missing" after a `newCT` rotation.
+
+- **`ARS` Default — `staleWhileRevalidate` Opt-In**: Changed the default value of `staleWhileRevalidate` from `true` to `false` in both the `LikeARS` constructor and `LikeARS.fromJson`. SWR is now opt-in, consistent with `LikeClient.get()` defaults, preventing unintended stale cache renders on endpoints that require real-time accuracy.
+
+## [2.1.2] - 2026-06-04
 
 ### Changed
 

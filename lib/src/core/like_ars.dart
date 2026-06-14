@@ -78,7 +78,7 @@ class LikeARS {
   final bool deduplicate;
 
   const LikeARS({
-    this.staleWhileRevalidate = true,
+    this.staleWhileRevalidate = false,
     this.refresh = false,
     this.singleFetch = false,
     this.sessionStale = false,
@@ -106,7 +106,7 @@ class LikeARS {
       };
 
   factory LikeARS.fromJson(Map<String, dynamic> json) => LikeARS(
-        staleWhileRevalidate: json['staleWhileRevalidate'] ?? true,
+        staleWhileRevalidate: json['staleWhileRevalidate'] ?? false,
         refresh: json['refresh'] ?? false,
         singleFetch: json['singleFetch'] ?? false,
         sessionStale: json['sessionStale'] ?? false,

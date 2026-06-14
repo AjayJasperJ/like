@@ -393,9 +393,25 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
       if (!_isDisposed) notifyListeners();
       return result;
     } catch (e) {
-      // Handle Dio Cancellation silently
+      // Cancellation is always triggered by a NEWER request (via newCT).
+      // Never surface the cancelled state — the new in-flight request will
+      // complete and update the state on its own.
       if (e is DioException && CancelToken.isCancel(e)) {
-        return LikeStateResponse<T>.idle();
+        if (currentData != null) {
+          // Had prior success data: restore it so the UI stays continuous.
+          // The new request will overwrite this when it resolves.
+          final restored = LikeStateResponse<T>.success(currentData);
+          onUpdate(restored);
+          if (!_isDisposed) notifyListeners();
+          return restored;
+        }
+        // No prior data: ensure the state is explicitly loading so the UI
+        // shows a spinner while the new in-flight request resolves.
+        // (The refresh+null-data path above skips the loading() onUpdate,
+        // so we must set it here to guarantee a well-defined state.)
+        onUpdate(LikeStateResponse<T>.loading());
+        if (!_isDisposed) notifyListeners();
+        return LikeStateResponse<T>.loading();
       }
 
       final exception = LikeStateResponse<T>.exception(e.toString());
