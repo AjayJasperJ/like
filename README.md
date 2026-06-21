@@ -537,6 +537,44 @@ All `POST` / `PUT` / `DELETE` mutations are persisted in a Hive box when the net
 
 ---
 
+## WebSocket Support
+
+`LikeWebSocketClient` brings structured, real-time push updates to the LIKE engine. It manages connection lifecycles, heartbeats, auth tokens, and feeds push events straight into the reactive pipeline.
+
+### Key Capabilities
+
+* **Sequential Execution Lock**: Connection state changes (`connect`, `disconnect`, `dispose`) and message transmissions are serialized using a `synchronized` lock to prevent overlapping race conditions.
+* **Auto-Reconnect & Heartbeats**: Automatically schedules reconnection upon network failure and handles background ping-pong keepalives.
+* **Auth Token Sync**: Dynamically resolves the latest authorization token via `getToken` before initiating any connection attempt.
+* **Pipeline Synchronization**: If an incoming payload contains a `path` (endpoint) and `data` (payload), the client simulates an HTTP response and emits it directly to `LikePipeline`. Any active `LikeNotifierState` observing that endpoint path automatically parses the data and updates the UI in real-time.
+
+### Usage
+
+```dart
+final wsClient = LikeWebSocketClient(
+  url: 'wss://api.example.com/ws',
+  getToken: () async => 'current_session_token',
+  pingInterval: const Duration(seconds: 30),
+  reconnectInterval: const Duration(seconds: 5),
+);
+
+// Connect to the socket
+await wsClient.connect();
+
+// Send messages securely
+await wsClient.send({'type': 'subscribe', 'channel': 'chats'});
+
+// Listen to raw messages directly
+wsClient.messages.listen((message) {
+  debugPrint('Received message: $message');
+});
+
+// Clean up when done
+await wsClient.dispose();
+```
+
+---
+
 ## Logging
 
 `LikeLoggerInterceptor` prints structured request/response details — query parameters, headers, and multipart form data — to the developer console. Sensitive headers (e.g. `Authorization`) are masked automatically.

@@ -107,6 +107,13 @@ class MockController {
   static final MockController _instance = MockController._internal();
   factory MockController() => _instance;
 
+  @visibleForTesting
+  void reset() {
+    _isInitialized = false;
+    rules.value = [];
+    isEngineEnabled.value = true;
+  }
+
   static const String _boxName = 'devtools_mock_rules';
   final ValueNotifier<List<MockRule>> rules = ValueNotifier<List<MockRule>>([]);
   final ValueNotifier<bool> isEngineEnabled = ValueNotifier<bool>(true);

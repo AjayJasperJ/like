@@ -15,6 +15,8 @@ class TestNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
       ct: ct,
       onRotate: (next) => ct = next,
       onUpdate: (newState) => state = newState,
+      isObsolete: (next) => ct != next,
+      previousState: state,
       action: (token, ars) async {
         // Simulate API call
         await Future.delayed(const Duration(milliseconds: 10));
@@ -69,6 +71,80 @@ class TestNotifierWithMapper extends ChangeNotifier with LikeAutoReconnectMixin 
   }
 }
 
+class TestNotifierWithFailingMapper extends ChangeNotifier with LikeAutoReconnectMixin {
+  final stringState = LikeNotifierState<String>(
+    mapper: (json) => throw 'Mapping failed!',
+  );
+
+  Future<void> fetchData({LikeARS? ars}) async {
+    await fetch<String>(
+      state: stringState,
+      ars: ars,
+      action: (token, ars) async {
+        return LikeStateResponse<String>.success('initial_name');
+      },
+    );
+  }
+}
+
+class TestNotifierWithInitialSync extends ChangeNotifier with LikeAutoReconnectMixin {
+  TestNotifierWithInitialSync() {
+    initAutoReconnect(registerInitialTask: true);
+  }
+}
+
+class TestNotifierSync extends ChangeNotifier with LikeAutoReconnectMixin {
+  bool syncCalled = false;
+  final syncState = LikeNotifierState<String>();
+
+  TestNotifierSync() {
+    syncWith<String>(
+      endpoint: '/users/profile',
+      action: () async {
+        syncCalled = true;
+      },
+      state: () => syncState.value,
+      cancelToken: () => syncState.ct,
+    );
+  }
+}
+
+class TestNotifierSyncState extends ChangeNotifier with LikeAutoReconnectMixin {
+  bool syncCalled = false;
+  final syncState = LikeNotifierState<String>();
+
+  TestNotifierSyncState() {
+    syncWithState<String>(
+      endpoint: '/users/settings',
+      action: () async {
+        syncCalled = true;
+      },
+      state: syncState,
+    );
+  }
+}
+
+class TestNotifierRetry extends ChangeNotifier with LikeAutoReconnectMixin {
+  bool reconnectedCalled = false;
+
+  @override
+  bool get shouldRetry => true;
+
+  @override
+  Future<void> onReconnect() async {
+    reconnectedCalled = true;
+  }
+}
+
+class TestNotifierAutoRefresh extends ChangeNotifier with LikeAutoReconnectMixin {
+  String? refreshedPath;
+
+  @override
+  void onAutoRefresh(String path) {
+    refreshedPath = path;
+  }
+}
+
 void main() {
   group('LikeAutoReconnectMixin', () {
     late TestNotifier notifier;
@@ -76,6 +152,7 @@ void main() {
 
     setUpAll(() async {
       setupMocks();
+      LikeConnectivityManager().debugSetStatus(internet: true, server: true);
       await initTestHive();
       await Hive.openBox(LikeConstants.boxApiCache);
       await Hive.openBox(LikeConstants.boxCacheMetadata);
@@ -132,6 +209,67 @@ void main() {
 
       await future;
       expect(notifier.state.isSuccess, true);
+    });
+
+    test('cancelled request should not overwrite the state of a newer request', () async {
+      // 1. Initial success
+      await stateNotifier.fetchData();
+      expect(stateNotifier.stringState.isSuccess, true);
+      expect(stateNotifier.stringState.data, 'data');
+
+      // 2. Start a refresh (second request)
+      final future2 = stateNotifier.fetchData(ars: const ARS(refresh: true));
+      expect(stateNotifier.stringState.isRefreshing, true);
+
+      // 3. Start another refresh (third request) which cancels the second request
+      final future3 = stateNotifier.fetchData(ars: const ARS(refresh: true));
+      expect(stateNotifier.stringState.isRefreshing, true);
+
+      // Wait for second request (cancelled) to complete/throw
+      await future2;
+
+      // The state should STILL be refreshing (because third request is still running)!
+      expect(stateNotifier.stringState.isRefreshing, true);
+
+      // Wait for third request to complete
+      await future3;
+      expect(stateNotifier.stringState.isSuccess, true);
+    });
+
+    test('cancelled request should revert to the previous state', () async {
+      // 1. Initial success
+      await stateNotifier.fetchData();
+      expect(stateNotifier.stringState.isSuccess, true);
+      expect(stateNotifier.stringState.data, 'data');
+
+      // 2. Start a refresh (which changes state to refreshing)
+      final future = stateNotifier.fetchData(ars: const ARS(refresh: true));
+      expect(stateNotifier.stringState.isRefreshing, true);
+
+      // 3. Manually cancel the token
+      stateNotifier.stringState.cancel('Manual cancellation');
+
+      // 4. Wait for it to complete
+      await future;
+
+      // 5. The state should have reverted back to success with the previous data!
+      expect(stateNotifier.stringState.isSuccess, true);
+      expect(stateNotifier.stringState.data, 'data');
+    });
+
+    test('cancelled request from idle should revert to idle', () async {
+      // 1. Start a fetch from idle (which changes state to loading)
+      final future = stateNotifier.fetchData();
+      expect(stateNotifier.stringState.isLoading, true);
+
+      // 2. Manually cancel the token
+      stateNotifier.stringState.cancel('Manual cancellation');
+
+      // 3. Wait for it to complete
+      await future;
+
+      // 4. The state should have reverted to idle!
+      expect(stateNotifier.stringState.isIdle, true);
     });
 
     test('newCT should cancel old token and return new one', () {
@@ -401,6 +539,162 @@ void main() {
         // Wait for both to complete
         await f1;
         await f2;
+        notifier.dispose();
+      });
+    });
+
+    group('Additional Coverage', () {
+      test('initAutoReconnect with registerInitialTask = true', () {
+        final notifier = TestNotifierWithInitialSync();
+        notifier.dispose();
+      });
+
+      test('checkQueryOverlap exact matching and date parsing', () {
+        final notifier = TestNotifier();
+        // Exact matching cases
+        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '2'}, exact: true), false);
+        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '1', 'b': '2'}, exact: true), false);
+        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '1'}, exact: true), true);
+
+        // Empty cases
+        expect(notifier.checkQueryOverlap({}, {}), true);
+        expect(notifier.checkQueryOverlap({'a': '1'}, {}), true);
+        expect(notifier.checkQueryOverlap({}, {'a': '1'}), true);
+
+        // Date overlap cases
+        // Event date inside range
+        expect(
+          notifier.checkQueryOverlap(
+            {'startDate': '2026-06-01', 'endDate': '2026-06-30'},
+            {'date': '2026-06-15'},
+          ),
+          true,
+        );
+        // Event date before range
+        expect(
+          notifier.checkQueryOverlap(
+            {'startDate': '2026-06-01', 'endDate': '2026-06-30'},
+            {'date': '2026-05-31'},
+          ),
+          false,
+        );
+        // Event date after range
+        expect(
+          notifier.checkQueryOverlap(
+            {'startDate': '2026-06-01', 'endDate': '2026-06-30'},
+            {'date': '2026-07-01'},
+          ),
+          false,
+        );
+        // Event date is DateTime directly
+        expect(
+          notifier.checkQueryOverlap(
+            {'startDate': DateTime(2026, 6, 1), 'endDate': DateTime(2026, 6, 30)},
+            {'date': DateTime(2026, 6, 15)},
+          ),
+          true,
+        );
+        // Invalid or unsupported types in _parseDateTime
+        expect(
+          notifier.checkQueryOverlap(
+            {'startDate': 123, 'endDate': 456},
+            {'date': 789},
+          ),
+          true,
+        );
+      });
+
+      test('regularRetry helper logic', () {
+        final notifier = TestNotifier();
+        expect(notifier.regularRetry(null, null), false);
+        expect(notifier.regularRetry(LikeStateResponse<String>.idle(), null), false);
+        expect(notifier.regularRetry(LikeStateResponse<String>.exception('err'), null), true);
+        expect(notifier.regularRetry(LikeStateResponse<String>.error(LikeError(message: 'err', type: LikeApiErrorType.badRequest)), null), true);
+        expect(notifier.regularRetry(LikeStateResponse<String>.success('data', isResiliencyFallback: true), null), true);
+        
+        final ct = CancelToken()..cancel();
+        expect(notifier.regularRetry(LikeStateResponse<String>.exception('err'), ct), false);
+      });
+
+      test('loadOrFetch helper logic', () async {
+        final notifier = TestNotifier();
+        final resSuccess = LikeStateResponse<String>.success('prefetched');
+        final val1 = await notifier.loadOrFetch(resSuccess, () async => LikeStateResponse<String>.success('fresh'));
+        expect(val1, 'prefetched');
+
+        final resLoading = LikeStateResponse<String>.loading();
+        final val2 = await notifier.loadOrFetch(resLoading, () async => LikeStateResponse<String>.success('fresh'));
+        expect(val2, 'fresh');
+
+        expect(
+          () => notifier.loadOrFetch(resLoading, () async => LikeStateResponse<String>.exception('failed')),
+          throwsA(equals('failed')),
+        );
+      });
+
+      test('granular tasks from syncWith and syncWithState', () async {
+        final notifierSync = TestNotifierSync();
+        notifierSync.initAutoReconnect();
+
+        final notifierSyncState = TestNotifierSyncState();
+        notifierSyncState.initAutoReconnect();
+
+        // Initially no sync trigger because states are idle
+        LikeClient().notifySync('/users/profile', {});
+        await Future.delayed(const Duration(milliseconds: 100));
+        expect(notifierSync.syncCalled, false);
+
+        // Transition states to success
+        notifierSync.syncState.value = LikeStateResponse<String>.success('profile_data');
+        notifierSyncState.syncState.value = LikeStateResponse<String>.success('settings_data');
+
+        // Trigger sync notifications
+        LikeClient().notifySync('/users/profile', {});
+        LikeClient().notifySync('/users/settings', {});
+
+        await Future.delayed(const Duration(milliseconds: 800));
+        expect(notifierSync.syncCalled, true);
+        expect(notifierSyncState.syncCalled, true);
+
+        notifierSync.dispose();
+        notifierSyncState.dispose();
+      });
+
+      test('reconnection sync flow via legacy triggerReconnectionSync', () async {
+        final notifierRetry = TestNotifierRetry();
+        notifierRetry.initAutoReconnect();
+
+        LikeClient().triggerReconnectionSync();
+
+        await Future.delayed(const Duration(milliseconds: 800));
+        expect(notifierRetry.reconnectedCalled, true);
+
+        notifierRetry.dispose();
+      });
+
+      test('auto-refresh flow via onAutoRefresh', () async {
+        final notifierRefresh = TestNotifierAutoRefresh();
+        notifierRefresh.initAutoReconnect();
+
+        LikeClient().notifyRefresh('/custom/path');
+
+        await Future.delayed(const Duration(milliseconds: 100));
+        expect(notifierRefresh.refreshedPath, '/custom/path');
+
+        notifierRefresh.dispose();
+      });
+
+      test('pipeline binding with failing mapper', () async {
+        final notifier = TestNotifierWithFailingMapper();
+        
+        notifier.initAutoReconnect();
+        await notifier.fetchData();
+
+        // Emit pipeline response
+        LikeClient().notifyRefresh('/users/profile'); 
+
+        await Future.delayed(const Duration(milliseconds: 100));
+        // Verify it didn't crash
         notifier.dispose();
       });
     });

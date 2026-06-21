@@ -21,6 +21,7 @@ export 'src/models/like_sync_event.dart';
 
 // Client
 export 'src/client/like_client.dart';
+export 'src/client/like_websocket_client.dart';
 export 'src/client/like_error_handler.dart';
 export 'src/client/like_request_registry.dart';
 export 'src/client/like_client_factory.dart';

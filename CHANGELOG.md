@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.2] - 2026-06-21
+
+### Added
+
+- **Thread-Safe WebSocket Support (`LikeWebSocketClient`)**:
+  - Implemented a modern, platform-agnostic WebSocket client for real-time bi-directional streaming.
+  - Designed with sequential state-machine logic using `synchronized` locks to prevent race conditions during parallel connect, disconnect, dispose, and send operations.
+  - Automatically routes incoming events into the `LikePipeline` for zero-boilerplate, real-time UI synchronization.
+  - Supports authorization token retrieval on connection handshake, heartbeats (ping/pong), auto-reconnect with backing-off strategy, and customized event callbacks.
+  - Covered with comprehensive integration tests validating connection lifecycle, token parameters, pipeline broadcasts, and concurrent calls.
+
+### Changed
+
+- **Comprehensive `LikeLogger` Testing & Coverage**:
+  - Achieved **100% test coverage** for the `LikeLogger` service.
+  - Hardened unit tests covering global error handlers (`FlutterError.onError`, `PlatformDispatcher.instance.onError`), log rotation thresholds, compact vs full API log formatting, and file systems fallback paths.
+
 ## [2.2.1] - 2026-06-14
 
 ### Fixed

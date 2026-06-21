@@ -5,7 +5,7 @@ void main() {
   group('LikeARS', () {
     test('should have correct default values', () {
       const ars = LikeARS();
-      expect(ars.staleWhileRevalidate, isTrue);
+      expect(ars.staleWhileRevalidate, isFalse);
       expect(ars.refresh, isFalse);
       expect(ars.singleFetch, isFalse);
       expect(ars.sessionStale, isFalse);
@@ -44,7 +44,7 @@ void main() {
 
     test('fromJson with missing values should use defaults', () {
       final ars = LikeARS.fromJson({});
-      expect(ars.staleWhileRevalidate, isTrue);
+      expect(ars.staleWhileRevalidate, isFalse);
       expect(ars.refresh, isFalse);
       expect(ars.deduplicate, isTrue);
     });

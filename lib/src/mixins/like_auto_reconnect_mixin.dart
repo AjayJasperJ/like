@@ -276,6 +276,20 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
   /// * `onUpdate` callback
   ///
   /// It automatically registers the state for auto-cancellation when this mixin is disposed.
+  ///
+  /// ### State Transitions and Returns
+  /// Depending on the request lifecycle and parameters, the state transitions and returned values are:
+  ///
+  /// | Action / Phase | Condition | State Transition (`state.value`) | Returned Value |
+  /// | :--- | :--- | :--- | :--- |
+  /// | **Start (Clean)** | `!ars.refresh` | `LikeStateResponse.loading()` | N/A (In-flight) |
+  /// | **Start (Refresh)** | `ars.refresh` & `currentData != null` | `LikeStateResponse.refreshing(currentData)` | N/A (In-flight) |
+  /// | **Start (Refresh)** | `ars.refresh` & `currentData == null` | *Preserves current state* | N/A (In-flight) |
+  /// | **Completion** | Request is not obsolete | `LikeStateResponse.success(...)` or error | The result state |
+  /// | **Completion** | Request is obsolete | *No change (ignored)* | The result state |
+  /// | **Cancellation (Obsolete)** | `DioException.cancel` | *No change (ignored)* | Reverted previous state |
+  /// | **Cancellation (Active)** | `DioException.cancel` | Reverted previous state | Reverted previous state |
+  /// | **Failure** | Generic Exception | `LikeStateResponse.exception(...)` | `LikeStateResponse.exception(...)` |
   Future<LikeStateResponse<T>> fetch<T>({
     required LikeNotifierState<T> state,
     LikeARS? ars,
@@ -333,7 +347,9 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
         onRotate: (next) => state.ct = next,
         onUpdate: (newState) => state.value = newState,
         disableRequestCancellation: disableRequestCancellation,
+        isObsolete: (next) => state.ct != next,
         action: action,
+        previousState: state.value,
       );
     }, zoneValues: {#likeActiveState: state});
   }
@@ -347,6 +363,20 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
   /// 4. **UI Notification**: Automatically calls [notifyListeners] in the appropriate phases.
   ///
   /// Use this for primary data fetching logic in your providers.
+  ///
+  /// ### State Transitions and Returns
+  /// Depending on the request lifecycle and parameters, the state transitions and returned values are:
+  ///
+  /// | Action / Phase | Condition | State Transition (`onUpdate`) | Returned Value |
+  /// | :--- | :--- | :--- | :--- |
+  /// | **Start (Clean)** | `!ars.refresh` | `LikeStateResponse.loading()` | N/A (In-flight) |
+  /// | **Start (Refresh)** | `ars.refresh` & `currentData != null` | `LikeStateResponse.refreshing(currentData)` | N/A (In-flight) |
+  /// | **Start (Refresh)** | `ars.refresh` & `currentData == null` | *Preserves current state* | N/A (In-flight) |
+  /// | **Completion** | Request is not obsolete | `LikeStateResponse.success(...)` or error | The result state |
+  /// | **Completion** | Request is obsolete | *No change (ignored)* | The result state |
+  /// | **Cancellation (Obsolete)** | `DioException.cancel` | *No change (ignored)* | Reverted previous state |
+  /// | **Cancellation (Active)** | `DioException.cancel` | Reverted previous state | Reverted previous state |
+  /// | **Failure** | Generic Exception | `LikeStateResponse.exception(...)` | `LikeStateResponse.exception(...)` |
   Future<LikeStateResponse<T>> fetcher<T>({
     LikeARS? ars,
     required CancelToken? ct,
@@ -355,6 +385,8 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
         action,
     required void Function(LikeStateResponse<T> state) onUpdate,
     bool disableRequestCancellation = false,
+    bool Function(CancelToken next)? isObsolete,
+    LikeStateResponse<T>? previousState,
   }) async {
     ars ??= const ARS();
 
@@ -363,11 +395,42 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     onRotate(next);
 
     final activeState = Zone.current[#likeActiveState];
+    
+    bool checkObsolete() {
+      if (isObsolete != null) {
+        return isObsolete(next);
+      }
+      if (activeState is LikeNotifierState) {
+        return activeState.ct != next;
+      }
+      return false;
+    }
+
     T? currentData;
+    LikeStateResponse<T>? resolvedPreviousState = previousState;
     if (activeState is LikeNotifierState) {
       try {
+        resolvedPreviousState ??= activeState.value as LikeStateResponse<T>?;
         currentData = activeState.data as T?;
       } catch (_) {}
+    }
+
+    final LikeStateResponse<T> fallbackState;
+    if (resolvedPreviousState != null) {
+      if (resolvedPreviousState.isRefreshing) {
+        final data = resolvedPreviousState.data;
+        fallbackState = data != null
+            ? LikeStateResponse<T>.success(data)
+            : LikeStateResponse<T>.idle();
+      } else if (resolvedPreviousState.isLoading) {
+        fallbackState = LikeStateResponse<T>.idle();
+      } else {
+        fallbackState = resolvedPreviousState;
+      }
+    } else {
+      fallbackState = currentData != null
+          ? LikeStateResponse<T>.success(currentData)
+          : LikeStateResponse<T>.idle();
     }
 
     try {
@@ -384,34 +447,31 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
 
       // 3. Execution
       final result = await action(next, ars);
-      onUpdate(result);
-      // Notify immediately after the result is assigned so the provider
-      // rebuilds with the actual (potentially fresh) data. Previously this
-      // lived in a `finally` block which fired *after* `return`, meaning
-      // the SWR stale value was already returned and the parent rebuilt
-      // with old data before the real network result could be applied.
-      if (!_isDisposed) notifyListeners();
+      
+      if (!checkObsolete()) {
+        onUpdate(result);
+        if (!_isDisposed) notifyListeners();
+      }
       return result;
     } catch (e) {
-      // Cancellation is always triggered by a NEWER request (via newCT).
-      // Never surface the cancelled state — the new in-flight request will
-      // complete and update the state on its own.
-      if (e is DioException && CancelToken.isCancel(e)) {
-        if (currentData != null) {
-          // Had prior success data: restore it so the UI stays continuous.
-          // The new request will overwrite this when it resolves.
-          final restored = LikeStateResponse<T>.success(currentData);
-          onUpdate(restored);
+      final isCancel = e is DioException && CancelToken.isCancel(e);
+      final obsolete = checkObsolete();
+
+      if (isCancel) {
+        final shouldRevertState = !obsolete ||
+            (activeState is LikeNotifierState &&
+                activeState.ct == null &&
+                (activeState.value.isLoading || activeState.value.isRefreshing));
+
+        if (shouldRevertState) {
+          onUpdate(fallbackState);
           if (!_isDisposed) notifyListeners();
-          return restored;
         }
-        // No prior data: ensure the state is explicitly loading so the UI
-        // shows a spinner while the new in-flight request resolves.
-        // (The refresh+null-data path above skips the loading() onUpdate,
-        // so we must set it here to guarantee a well-defined state.)
-        onUpdate(LikeStateResponse<T>.loading());
-        if (!_isDisposed) notifyListeners();
-        return LikeStateResponse<T>.loading();
+        return fallbackState;
+      }
+
+      if (obsolete) {
+        return LikeStateResponse<T>.exception(e.toString());
       }
 
       final exception = LikeStateResponse<T>.exception(e.toString());
