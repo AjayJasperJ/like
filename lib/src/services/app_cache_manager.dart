@@ -13,7 +13,8 @@ import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/like_logger.dart';
 
 class AppCacheManager extends CacheManager {
-  static String get key => '${LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}_universalImageCache';
+  static String get key =>
+      '${LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}_universalImageCache';
   static AppCacheManager? _instance;
 
   @visibleForTesting
@@ -278,7 +279,8 @@ class AppCacheSecurity {
   static encrypt.Encrypter? _encrypter;
   static bool _initialized = false;
   static const int _ivLength = 16;
-  static String get _deviceKeyPrefKey => '${LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}_cache_encryption_key_v2';
+  static String get _deviceKeyPrefKey =>
+      '${LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}_cache_encryption_key_v2';
 
   /// Initializes the encryption engine.
   ///

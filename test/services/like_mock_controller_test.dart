@@ -154,8 +154,12 @@ void main() {
 
     test('init loading rules and engine state', () async {
       final box = Hive.box(boxName);
-      
-      final rule = MockRule(id: 'rule_load', pathPattern: '/test', method: 'GET', responseBody: '{}');
+
+      final rule = MockRule(
+          id: 'rule_load',
+          pathPattern: '/test',
+          method: 'GET',
+          responseBody: '{}');
       await box.put('rule_load', rule.toMap());
       await box.put('__engine_enabled', false);
 
@@ -170,15 +174,21 @@ void main() {
     });
 
     test('addRule, updateRule, deleteRule, toggleRule', () async {
-      final rule = MockRule(id: 'r1', pathPattern: '/p1', method: 'GET', responseBody: '{}', isEnabled: true);
-      
+      final rule = MockRule(
+          id: 'r1',
+          pathPattern: '/p1',
+          method: 'GET',
+          responseBody: '{}',
+          isEnabled: true);
+
       await controller.addRule(rule);
       expect(controller.rules.value.length, equals(1));
       expect(controller.rules.value.first.id, equals('r1'));
 
       final updatedRule = rule.copyWith(responseBody: '{"updated": true}');
       await controller.updateRule(updatedRule);
-      expect(controller.rules.value.first.responseBody, equals('{"updated": true}'));
+      expect(controller.rules.value.first.responseBody,
+          equals('{"updated": true}'));
 
       // toggleRule
       await controller.toggleRule('r1');
@@ -198,9 +208,12 @@ void main() {
     });
 
     test('importRules cleans or appends rules', () async {
-      final rule1 = MockRule(id: 'imp1', pathPattern: '/p1', method: 'GET', responseBody: '{}');
-      final rule2 = MockRule(id: 'imp2', pathPattern: '/p2', method: 'POST', responseBody: '{}');
-      final ruleNoId = MockRule(id: '', pathPattern: '/p3', method: 'GET', responseBody: '{}');
+      final rule1 = MockRule(
+          id: 'imp1', pathPattern: '/p1', method: 'GET', responseBody: '{}');
+      final rule2 = MockRule(
+          id: 'imp2', pathPattern: '/p2', method: 'POST', responseBody: '{}');
+      final ruleNoId = MockRule(
+          id: '', pathPattern: '/p3', method: 'GET', responseBody: '{}');
 
       // Clear existing
       await controller.importRules([rule1], clearExisting: true);

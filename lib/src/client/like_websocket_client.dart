@@ -40,7 +40,8 @@ class LikeWebSocketClient {
   Stream<dynamic> get messages => _messageController.stream;
 
   /// Returns true if the WebSocket is currently open.
-  bool get isConnected => _socket != null && _socket!.readyState == WebSocket.open;
+  bool get isConnected =>
+      _socket != null && _socket!.readyState == WebSocket.open;
 
   /// Connects to the WebSocket server sequentially.
   Future<void> connect() async {

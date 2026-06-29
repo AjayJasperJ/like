@@ -135,9 +135,11 @@ mixin LikePipelineMixin on ChangeNotifier {
 
       // Extract path for matching
       String cleanIncomingPath;
-      if (incomingKey.startsWith('http://') || incomingKey.startsWith('https://')) {
+      if (incomingKey.startsWith('http://') ||
+          incomingKey.startsWith('https://')) {
         final uri = Uri.tryParse(incomingKey);
-        cleanIncomingPath = uri != null ? uri.path : incomingKey.split('?').first;
+        cleanIncomingPath =
+            uri != null ? uri.path : incomingKey.split('?').first;
       } else {
         final incomingPath = incomingKey.contains(':')
             ? incomingKey.split(':').last

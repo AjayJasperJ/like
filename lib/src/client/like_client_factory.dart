@@ -1,8 +1,7 @@
 // Conditional import: compiler selects the correct SSL implementation.
 //   - Web   → like_ssl_stub.dart  (no-op, browser handles TLS)
 //   - Native → like_ssl_io.dart   (IOHttpClientAdapter + HttpClient pinning)
-import 'like_ssl_stub.dart'
-    if (dart.library.io) 'like_ssl_io.dart' as ssl;
+import 'like_ssl_stub.dart' if (dart.library.io) 'like_ssl_io.dart' as ssl;
 
 import 'package:dio/dio.dart';
 import 'package:like/src/core/like_constants.dart';

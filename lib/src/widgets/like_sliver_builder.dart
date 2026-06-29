@@ -4,19 +4,19 @@ import 'package:like/src/models/like_notifier_state.dart';
 import 'package:like/src/models/like_error.dart';
 
 /// # `LikeSliverBuilder<T>`
-/// 
-/// A dedicated sliver-compatible version of [LikeBuilder] engineered for rendering 
+///
+/// A dedicated sliver-compatible version of [LikeBuilder] engineered for rendering
 /// network lifecycle states directly inside a [CustomScrollView].
-/// 
-/// Instead of building a single box widget, its builder functions return a list of 
+///
+/// Instead of building a single box widget, its builder functions return a list of
 /// slivers (`List<Widget>`).
-/// 
+///
 /// ### CustomScrollView Scroll Integration
-/// In traditional Flutter development, placing a standard `CircularProgressIndicator` or 
-/// error `Container` directly into a `CustomScrollView`'s `slivers` property causes a crash! 
-/// `LikeSliverBuilder` prevents this by automatically wrapping default placeholders inside 
+/// In traditional Flutter development, placing a standard `CircularProgressIndicator` or
+/// error `Container` directly into a `CustomScrollView`'s `slivers` property causes a crash!
+/// `LikeSliverBuilder` prevents this by automatically wrapping default placeholders inside
 /// sliver containers (e.g. wrapping standard loaders inside a `SliverFillRemaining`).
-/// 
+///
 /// ### Example Usage:
 /// ```dart
 /// CustomScrollView(
@@ -43,13 +43,13 @@ import 'package:like/src/models/like_error.dart';
 /// ```
 class LikeSliverBuilder<T extends Object> extends StatefulWidget {
   /// **observe**
-  /// 
-  /// A closure returning the notifier state (`LikeNotifierState<T>`) or immutable response 
+  ///
+  /// A closure returning the notifier state (`LikeNotifierState<T>`) or immutable response
   /// snapshot (`LikeStateResponse<T>`) to listen to.
   final dynamic Function() observe;
 
   /// **onSuccess**
-  /// 
+  ///
   /// The builder function called when the request resolves successfully.
   /// Must return a list of sliver widgets.
   final List<Widget> Function(
@@ -59,28 +59,28 @@ class LikeSliverBuilder<T extends Object> extends StatefulWidget {
   ) onSuccess;
 
   /// **onLoading**
-  /// 
-  /// Optional loading builder. Must return a list of slivers. 
+  ///
+  /// Optional loading builder. Must return a list of slivers.
   /// Defaults to a centered loader wrapped inside `SliverFillRemaining`.
   final List<Widget> Function()? onLoading;
 
   /// **onIdle**
-  /// 
+  ///
   /// Optional uninitialized (idle) builder. Must return a list of slivers.
   final List<Widget> Function()? onIdle;
 
   /// **onError**
-  /// 
+  ///
   /// Optional server-side error builder. Receives a [LikeError]. Must return a list of slivers.
   final List<Widget> Function(LikeError error)? onError;
 
   /// **onException**
-  /// 
+  ///
   /// Optional client-side exception builder. Receives an error message. Must return a list of slivers.
   final List<Widget> Function(String message)? onException;
 
   /// **listener**
-  /// 
+  ///
   /// An optional side-effect callback that triggers whenever the observed state changes.
   final void Function(LikeStateResponse<dynamic> response)? listener;
 
@@ -231,9 +231,9 @@ class _LikeSliverBuilderState<T extends Object>
 }
 
 /// # `LikeStateResponseBuilderSliver<T>`
-/// 
-/// A specialized, lightweight version of [LikeSliverBuilder] useful when you already have an immutable 
-/// [LikeStateResponse] directly in scope (e.g. from local variables, streams, or sliver-child indices) 
+///
+/// A specialized, lightweight version of [LikeSliverBuilder] useful when you already have an immutable
+/// [LikeStateResponse] directly in scope (e.g. from local variables, streams, or sliver-child indices)
 /// rather than observing a dynamic [LikeNotifierState].
 class LikeStateResponseBuilderSliver<T extends Object> extends StatelessWidget {
   /// The [LikeStateResponse] to build the slivers from.

@@ -5,20 +5,20 @@ import 'package:like/src/models/like_error.dart';
 import 'package:like/src/widgets/like_multi_helper.dart';
 
 /// # LikeMultiSliverBuilder
-/// 
-/// A specialized, performance-optimized layout widget designed to aggregate **multiple** 
+///
+/// A specialized, performance-optimized layout widget designed to aggregate **multiple**
 /// network or data requests directly within a [CustomScrollView].
-/// 
-/// Similar to [LikeMultiBuilder], but instead of returning standard box layout widgets 
-/// (like Columns/Containers), `LikeMultiSliverBuilder` builders return a **List of Slivers** 
+///
+/// Similar to [LikeMultiBuilder], but instead of returning standard box layout widgets
+/// (like Columns/Containers), `LikeMultiSliverBuilder` builders return a **List of Slivers**
 /// (`List<Widget>`).
-/// 
+///
 /// ### Beginner Note: What is a Sliver?
-/// In Flutter, a "Sliver" is a portion of a scrollable area that behaves dynamically during scrolling. 
-/// Standard widgets (like `ListView` or `Container`) cannot be placed directly inside a 
-/// `CustomScrollView`'s slivers property. Instead, you must use sliver-compatible versions 
+/// In Flutter, a "Sliver" is a portion of a scrollable area that behaves dynamically during scrolling.
+/// Standard widgets (like `ListView` or `Container`) cannot be placed directly inside a
+/// `CustomScrollView`'s slivers property. Instead, you must use sliver-compatible versions
 /// (such as `SliverList`, `SliverGrid`, or wrap standard boxes in `SliverToBoxAdapter`).
-/// 
+///
 /// ### Example Usage:
 /// ```dart
 /// CustomScrollView(
@@ -32,7 +32,7 @@ import 'package:like/src/widgets/like_multi_helper.dart';
 ///       onSuccess: (results, isRefreshing, isSWR) {
 ///         final List<Story> stories = results[0] as List<Story>;
 ///         final List<Post> posts = results[1] as List<Post>;
-/// 
+///
 ///         return [
 ///           SliverToBoxAdapter(child: HorizontalStoryList(stories)),
 ///           SliverList(
@@ -49,22 +49,22 @@ import 'package:like/src/widgets/like_multi_helper.dart';
 /// ```
 class LikeMultiSliverBuilder extends StatefulWidget {
   /// **observes**
-  /// 
-  /// A flat list of callback functions, each returning either a `LikeNotifierState` or 
+  ///
+  /// A flat list of callback functions, each returning either a `LikeNotifierState` or
   /// `LikeStateResponse` to monitor.
   final List<dynamic Function()> observes;
 
   /// **onSuccess**
-  /// 
+  ///
   /// The builder function called when all observed requests have resolved successfully.
-  /// 
+  ///
   /// Receives:
-  /// * `results`: A list containing the unwrapped `data` payloads. The order of items in this 
+  /// * `results`: A list containing the unwrapped `data` payloads. The order of items in this
   ///   list **exactly matches** the index order defined in the [observes] list.
   /// * `isRefreshing`: True if at least one of the observed requests is undergoing an active background refresh.
-  /// * `isFromStaleWhileRevalidate`: True if at least one of the observed requests is currently 
+  /// * `isFromStaleWhileRevalidate`: True if at least one of the observed requests is currently
   ///   displaying cached data while a network update resolves in the background.
-  /// 
+  ///
   /// Must return a `List<Widget>` of slivers.
   final List<Widget> Function(
     List<dynamic> results,
@@ -73,32 +73,32 @@ class LikeMultiSliverBuilder extends StatefulWidget {
   ) onSuccess;
 
   /// **onLoading**
-  /// 
+  ///
   /// Optional builder active when at least one of the observed states is loading for the first time.
-  /// Must return a list of sliver widgets. If not provided, displays a centered circular loader 
+  /// Must return a list of sliver widgets. If not provided, displays a centered circular loader
   /// wrapped inside a `SliverFillRemaining`.
   final List<Widget> Function()? onLoading;
 
   /// **onIdle**
-  /// 
+  ///
   /// Optional builder active when at least one of the states is in an uninitialized (idle) state.
   final List<Widget> Function()? onIdle;
 
   /// **onError**
-  /// 
+  ///
   /// Optional builder active when at least one of the requests fails with a server error.
   /// Receives the [LikeError] of the first failed request found.
   final List<Widget> Function(LikeError error)? onError;
 
   /// **onException**
-  /// 
+  ///
   /// Optional builder active when at least one of the requests triggers a client-side exception.
   /// Receives the exception string of the first crashed request found.
   final List<Widget> Function(String message)? onException;
 
   /// **listener**
-  /// 
-  /// An optional side-effect callback that triggers whenever the aggregated state or individual 
+  ///
+  /// An optional side-effect callback that triggers whenever the aggregated state or individual
   /// responses change.
   final void Function(
     LikeState aggregatedState,
@@ -179,13 +179,14 @@ class _LikeMultiSliverBuilderState extends State<LikeMultiSliverBuilder> {
           ? raw.value
           : raw as LikeStateResponse<dynamic>;
     }).toList();
-    
+
     // 2. Compute the single aggregated state representing all responses.
     final aggregatedState = LikeMultiHelper.aggregate(responses);
 
     // 3. Keep track of sticky data.
     final hasResolvedAll = responses.every(
-      (r) => (r.state == LikeState.success ||
+      (r) =>
+          (r.state == LikeState.success ||
               r.state == LikeState.refreshing ||
               r.state == LikeState.staleWhileRevalidate) &&
           r.data != null,
@@ -227,7 +228,8 @@ class _LikeMultiSliverBuilderState extends State<LikeMultiSliverBuilder> {
             // Sticky Data Support: Display old success slivers instead of a blank loader sliver
             if (_lastSuccessfulResults != null) {
               final isRefreshing = responses.any((r) => r.isRefreshing);
-              return widget.onSuccess(_lastSuccessfulResults!, isRefreshing, false);
+              return widget.onSuccess(
+                  _lastSuccessfulResults!, isRefreshing, false);
             }
             return widget.onLoading?.call() ??
                 [

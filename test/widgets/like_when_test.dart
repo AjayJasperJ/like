@@ -4,7 +4,8 @@ import 'package:like/like.dart';
 
 void main() {
   group('LikeWhen Widget Tests', () {
-    testWidgets('renders onSuccess builder when state is success', (WidgetTester tester) async {
+    testWidgets('renders onSuccess builder when state is success',
+        (WidgetTester tester) async {
       final response = LikeStateResponse<String>.success('Hello World');
 
       await tester.pumpWidget(
@@ -21,7 +22,8 @@ void main() {
       expect(find.text('Hello World'), findsOneWidget);
     });
 
-    testWidgets('renders onLoading builder when state is loading', (WidgetTester tester) async {
+    testWidgets('renders onLoading builder when state is loading',
+        (WidgetTester tester) async {
       final response = LikeStateResponse<String>.loading();
 
       await tester.pumpWidget(
@@ -39,8 +41,10 @@ void main() {
       expect(find.text('Loading...'), findsOneWidget);
     });
 
-    testWidgets('renders onError builder when state is error', (WidgetTester tester) async {
-      final error = LikeError(message: 'Network Failure', type: LikeApiErrorType.network);
+    testWidgets('renders onError builder when state is error',
+        (WidgetTester tester) async {
+      final error =
+          LikeError(message: 'Network Failure', type: LikeApiErrorType.network);
       final response = LikeStateResponse<String>.error(error);
 
       await tester.pumpWidget(

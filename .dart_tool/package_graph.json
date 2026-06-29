@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "like",
-      "version": "2.2.2",
+      "version": "2.2.3",
       "dependencies": [
         "cached_network_image",
         "collection",
@@ -223,7 +223,7 @@
     },
     {
       "name": "path_provider",
-      "version": "2.1.5",
+      "version": "2.1.6",
       "dependencies": [
         "flutter",
         "path_provider_android",
@@ -274,7 +274,7 @@
     },
     {
       "name": "connectivity_plus",
-      "version": "7.1.1",
+      "version": "7.2.0",
       "dependencies": [
         "collection",
         "connectivity_plus_platform_interface",
@@ -305,7 +305,7 @@
     },
     {
       "name": "dio",
-      "version": "5.9.2",
+      "version": "5.10.0",
       "dependencies": [
         "async",
         "collection",
@@ -850,9 +850,10 @@
     },
     {
       "name": "shared_preferences_android",
-      "version": "2.4.25",
+      "version": "2.4.26",
       "dependencies": [
         "flutter",
+        "meta",
         "shared_preferences_platform_interface"
       ]
     },
@@ -880,7 +881,7 @@
     },
     {
       "name": "path_provider_platform_interface",
-      "version": "2.1.2",
+      "version": "2.1.3",
       "dependencies": [
         "flutter",
         "platform",
@@ -889,7 +890,7 @@
     },
     {
       "name": "path_provider_linux",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "dependencies": [
         "ffi",
         "flutter",
@@ -977,7 +978,7 @@
     },
     {
       "name": "dio_web_adapter",
-      "version": "2.1.2",
+      "version": "2.2.0",
       "dependencies": [
         "dio",
         "http_parser",
@@ -1089,7 +1090,7 @@
     },
     {
       "name": "sqflite_common",
-      "version": "2.5.9",
+      "version": "2.5.11",
       "dependencies": [
         "meta",
         "path",
@@ -1109,7 +1110,7 @@
     },
     {
       "name": "sqflite_darwin",
-      "version": "2.4.3",
+      "version": "2.4.3+1",
       "dependencies": [
         "flutter",
         "meta",

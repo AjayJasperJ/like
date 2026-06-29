@@ -5,20 +5,20 @@ import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/widgets/like_builder.dart';
 
 /// # `LikeSelector<N, T>`
-/// 
-/// A performance-optimized state management widget designed for complex screens 
+///
+/// A performance-optimized state management widget designed for complex screens
 /// powered by the `provider` package.
-/// 
-/// It integrates standard `LikeBuilder` state rendering with Provider's `Selector` 
+///
+/// It integrates standard `LikeBuilder` state rendering with Provider's `Selector`
 /// optimization pattern.
-/// 
+///
 /// ### Why is this useful? (The "Selector" Advantage)
-/// Normally, using `context.watch<MyNotifier>()` causes your widget to rebuild *every single time* 
+/// Normally, using `context.watch<MyNotifier>()` causes your widget to rebuild *every single time*
 /// **any** property inside `MyNotifier` changes, even if your widget doesn't care about that property.
-/// 
-/// `LikeSelector` solves this. It filters state updates so that your widget **only rebuilds** when 
-/// the *specific* `LikeStateResponse` selected by your [selector] function actually mutates. 
-/// 
+///
+/// `LikeSelector` solves this. It filters state updates so that your widget **only rebuilds** when
+/// the *specific* `LikeStateResponse` selected by your [selector] function actually mutates.
+///
 /// ### Example Usage:
 /// ```dart
 /// LikeSelector<DashboardNotifier, List<NewsItem>>(
@@ -36,17 +36,17 @@ import 'package:like/src/widgets/like_builder.dart';
 /// ```
 class LikeSelector<N, T> extends StatelessWidget {
   /// **selector**
-  /// 
-  /// A selector function that receives the notifier [N] from the widget context and returns 
+  ///
+  /// A selector function that receives the notifier [N] from the widget context and returns
   /// the specific [LikeStateResponse] you want this widget to observe.
   final LikeStateResponse<dynamic> Function(BuildContext context, N notifier)
       selector;
 
   /// **builder**
-  /// 
-  /// An optional builder function providing full granular control over both the [LikeStateResponse] 
+  ///
+  /// An optional builder function providing full granular control over both the [LikeStateResponse]
   /// and the pre-built [child] widget.
-  /// * **Note:** If you supply [builder], then [onSuccess], [onLoading], [onError], and other specific 
+  /// * **Note:** If you supply [builder], then [onSuccess], [onLoading], [onError], and other specific
   ///   sub-builders are completely ignored.
   final Widget Function(
     BuildContext context,
@@ -55,9 +55,9 @@ class LikeSelector<N, T> extends StatelessWidget {
   )? builder;
 
   /// **onSuccess**
-  /// 
+  ///
   /// The builder function called when the selected state contains successful data.
-  /// 
+  ///
   /// Receives:
   /// * `data`: The parsed model object of type [T]. Guaranteed to be non-null.
   /// * `isRefreshing`: True if the user manually triggered a refresh.
@@ -69,33 +69,33 @@ class LikeSelector<N, T> extends StatelessWidget {
   )? onSuccess;
 
   /// **onLoading**
-  /// 
+  ///
   /// Optional builder active when the selected state is loading for the very first time.
   final Widget Function()? onLoading;
 
   /// **onIdle**
-  /// 
+  ///
   /// Optional builder active when the selected state is in an idle, uninitialized phase.
   final Widget Function()? onIdle;
 
   /// **onError**
-  /// 
+  ///
   /// Optional builder active when a server-side error is returned.
   final Widget Function(LikeError error)? onError;
 
   /// **onException**
-  /// 
+  ///
   /// Optional builder active when a client-side exception occurs.
   final Widget Function(String message)? onException;
 
   /// **listener**
-  /// 
+  ///
   /// An optional side-effect callback that triggers whenever the selected state changes.
   final void Function(LikeStateResponse<dynamic> response)? listener;
 
   /// **child**
-  /// 
-  /// An optional, pre-built constant child widget that is passed to your custom [builder]. 
+  ///
+  /// An optional, pre-built constant child widget that is passed to your custom [builder].
   /// Useful to prevent rebuilding static elements of your page.
   final Widget? child;
 

@@ -5,22 +5,22 @@ import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/app_cache_manager.dart';
 
 /// # LikeCacheImage
-/// 
-/// A universal, premium network image widget designed to load, render, and automatically 
+///
+/// A universal, premium network image widget designed to load, render, and automatically
 /// cache images.
-/// 
-/// It integrates seamlessly with the custom encrypted L2 disk cache (`AppCacheManager`) 
+///
+/// It integrates seamlessly with the custom encrypted L2 disk cache (`AppCacheManager`)
 /// and honors LIKE's web/native dual-runtime safety constraints automatically.
-/// 
+///
 /// ### How Caching Works:
-/// * **Native Platforms (iOS/Android):** Powered by `CachedNetworkImage` with our custom 
-///   `AppCacheManager`. Images are downloaded, parsed, encrypted on-the-fly, and saved to disk. 
-///   Subsequent requests retrieve the image instantly from the local database instead of hitting 
+/// * **Native Platforms (iOS/Android):** Powered by `CachedNetworkImage` with our custom
+///   `AppCacheManager`. Images are downloaded, parsed, encrypted on-the-fly, and saved to disk.
+///   Subsequent requests retrieve the image instantly from the local database instead of hitting
 ///   the internet again.
-/// * **Web Platform (Chrome/Safari/etc.):** Since native file paths and directory accesses aren't 
-///   supported in browser security sandboxes, it gracefully falls back to standard `Image.network` 
+/// * **Web Platform (Chrome/Safari/etc.):** Since native file paths and directory accesses aren't
+///   supported in browser security sandboxes, it gracefully falls back to standard `Image.network`
 ///   without throwing exceptions, utilizing native browser caching headers.
-/// 
+///
 /// ### Example Usage:
 /// ```dart
 /// LikeCacheImage(
@@ -51,7 +51,7 @@ class LikeCacheImage extends StatelessWidget {
   /// Optional builder that renders a custom error UI if the download or parsing fails.
   final Widget Function(BuildContext, String, dynamic)? errorWidget;
 
-  /// Optional builder that allows wrapping the resolved [ImageProvider] inside a styled custom container 
+  /// Optional builder that allows wrapping the resolved [ImageProvider] inside a styled custom container
   /// (e.g. adding rounded borders, shadows, or background filters).
   final Widget Function(BuildContext, ImageProvider)? imageBuilder;
 
@@ -67,7 +67,7 @@ class LikeCacheImage extends StatelessWidget {
   /// The duration of the smooth fade-out animation.
   final Duration fadeOutDuration;
 
-  /// If true, normalizes query string parameters or paths to prevent duplicate entries 
+  /// If true, normalizes query string parameters or paths to prevent duplicate entries
   /// for identical images with varying URL query parameters.
   final bool normalizeUrl;
 

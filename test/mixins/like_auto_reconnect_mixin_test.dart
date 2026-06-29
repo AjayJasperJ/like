@@ -35,7 +35,8 @@ class TestNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
 class TestNotifierWithState extends ChangeNotifier with LikeAutoReconnectMixin {
   final stringState = LikeNotifierState<String>();
 
-  Future<void> fetchData({LikeARS? ars, bool disableRequestCancellation = false}) async {
+  Future<void> fetchData(
+      {LikeARS? ars, bool disableRequestCancellation = false}) async {
     await fetch<String>(
       state: stringState,
       ars: ars,
@@ -55,7 +56,8 @@ class TestNotifierWithState extends ChangeNotifier with LikeAutoReconnectMixin {
   }
 }
 
-class TestNotifierWithMapper extends ChangeNotifier with LikeAutoReconnectMixin {
+class TestNotifierWithMapper extends ChangeNotifier
+    with LikeAutoReconnectMixin {
   final stringState = LikeNotifierState<String>(
     mapper: (json) => json['name'] as String,
   );
@@ -71,7 +73,8 @@ class TestNotifierWithMapper extends ChangeNotifier with LikeAutoReconnectMixin 
   }
 }
 
-class TestNotifierWithFailingMapper extends ChangeNotifier with LikeAutoReconnectMixin {
+class TestNotifierWithFailingMapper extends ChangeNotifier
+    with LikeAutoReconnectMixin {
   final stringState = LikeNotifierState<String>(
     mapper: (json) => throw 'Mapping failed!',
   );
@@ -87,7 +90,8 @@ class TestNotifierWithFailingMapper extends ChangeNotifier with LikeAutoReconnec
   }
 }
 
-class TestNotifierWithInitialSync extends ChangeNotifier with LikeAutoReconnectMixin {
+class TestNotifierWithInitialSync extends ChangeNotifier
+    with LikeAutoReconnectMixin {
   TestNotifierWithInitialSync() {
     initAutoReconnect(registerInitialTask: true);
   }
@@ -136,7 +140,8 @@ class TestNotifierRetry extends ChangeNotifier with LikeAutoReconnectMixin {
   }
 }
 
-class TestNotifierAutoRefresh extends ChangeNotifier with LikeAutoReconnectMixin {
+class TestNotifierAutoRefresh extends ChangeNotifier
+    with LikeAutoReconnectMixin {
   String? refreshedPath;
 
   @override
@@ -211,7 +216,8 @@ void main() {
       expect(notifier.state.isSuccess, true);
     });
 
-    test('cancelled request should not overwrite the state of a newer request', () async {
+    test('cancelled request should not overwrite the state of a newer request',
+        () async {
       // 1. Initial success
       await stateNotifier.fetchData();
       expect(stateNotifier.stringState.isSuccess, true);
@@ -432,7 +438,9 @@ void main() {
         mapperNotifier.dispose();
       });
 
-      test('should auto-update state via mapper on pipeline event matching path & query', () async {
+      test(
+          'should auto-update state via mapper on pipeline event matching path & query',
+          () async {
         // 1. Run fetch to initial state and register it.
         await mapperNotifier.fetchData();
 
@@ -493,7 +501,9 @@ void main() {
     });
 
     group('disableRequestCancellation Support', () {
-      test('should NOT cancel previous request and should reuse token when disableRequestCancellation is true', () async {
+      test(
+          'should NOT cancel previous request and should reuse token when disableRequestCancellation is true',
+          () async {
         final notifier = TestNotifierWithState();
 
         // 1. Fetch once
@@ -518,7 +528,9 @@ void main() {
         notifier.dispose();
       });
 
-      test('should cancel previous request by default (disableRequestCancellation = false)', () async {
+      test(
+          'should cancel previous request by default (disableRequestCancellation = false)',
+          () async {
         final notifier = TestNotifierWithState();
 
         // 1. Fetch once
@@ -552,9 +564,14 @@ void main() {
       test('checkQueryOverlap exact matching and date parsing', () {
         final notifier = TestNotifier();
         // Exact matching cases
-        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '2'}, exact: true), false);
-        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '1', 'b': '2'}, exact: true), false);
-        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '1'}, exact: true), true);
+        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '2'}, exact: true),
+            false);
+        expect(
+            notifier.checkQueryOverlap({'a': '1'}, {'a': '1', 'b': '2'},
+                exact: true),
+            false);
+        expect(notifier.checkQueryOverlap({'a': '1'}, {'a': '1'}, exact: true),
+            true);
 
         // Empty cases
         expect(notifier.checkQueryOverlap({}, {}), true);
@@ -589,7 +606,10 @@ void main() {
         // Event date is DateTime directly
         expect(
           notifier.checkQueryOverlap(
-            {'startDate': DateTime(2026, 6, 1), 'endDate': DateTime(2026, 6, 30)},
+            {
+              'startDate': DateTime(2026, 6, 1),
+              'endDate': DateTime(2026, 6, 30)
+            },
             {'date': DateTime(2026, 6, 15)},
           ),
           true,
@@ -607,27 +627,47 @@ void main() {
       test('regularRetry helper logic', () {
         final notifier = TestNotifier();
         expect(notifier.regularRetry(null, null), false);
-        expect(notifier.regularRetry(LikeStateResponse<String>.idle(), null), false);
-        expect(notifier.regularRetry(LikeStateResponse<String>.exception('err'), null), true);
-        expect(notifier.regularRetry(LikeStateResponse<String>.error(LikeError(message: 'err', type: LikeApiErrorType.badRequest)), null), true);
-        expect(notifier.regularRetry(LikeStateResponse<String>.success('data', isResiliencyFallback: true), null), true);
-        
+        expect(notifier.regularRetry(LikeStateResponse<String>.idle(), null),
+            false);
+        expect(
+            notifier.regularRetry(
+                LikeStateResponse<String>.exception('err'), null),
+            true);
+        expect(
+            notifier.regularRetry(
+                LikeStateResponse<String>.error(LikeError(
+                    message: 'err', type: LikeApiErrorType.badRequest)),
+                null),
+            true);
+        expect(
+            notifier.regularRetry(
+                LikeStateResponse<String>.success('data',
+                    isResiliencyFallback: true),
+                null),
+            true);
+
         final ct = CancelToken()..cancel();
-        expect(notifier.regularRetry(LikeStateResponse<String>.exception('err'), ct), false);
+        expect(
+            notifier.regularRetry(
+                LikeStateResponse<String>.exception('err'), ct),
+            false);
       });
 
       test('loadOrFetch helper logic', () async {
         final notifier = TestNotifier();
         final resSuccess = LikeStateResponse<String>.success('prefetched');
-        final val1 = await notifier.loadOrFetch(resSuccess, () async => LikeStateResponse<String>.success('fresh'));
+        final val1 = await notifier.loadOrFetch(
+            resSuccess, () async => LikeStateResponse<String>.success('fresh'));
         expect(val1, 'prefetched');
 
         final resLoading = LikeStateResponse<String>.loading();
-        final val2 = await notifier.loadOrFetch(resLoading, () async => LikeStateResponse<String>.success('fresh'));
+        final val2 = await notifier.loadOrFetch(
+            resLoading, () async => LikeStateResponse<String>.success('fresh'));
         expect(val2, 'fresh');
 
         expect(
-          () => notifier.loadOrFetch(resLoading, () async => LikeStateResponse<String>.exception('failed')),
+          () => notifier.loadOrFetch(resLoading,
+              () async => LikeStateResponse<String>.exception('failed')),
           throwsA(equals('failed')),
         );
       });
@@ -645,8 +685,10 @@ void main() {
         expect(notifierSync.syncCalled, false);
 
         // Transition states to success
-        notifierSync.syncState.value = LikeStateResponse<String>.success('profile_data');
-        notifierSyncState.syncState.value = LikeStateResponse<String>.success('settings_data');
+        notifierSync.syncState.value =
+            LikeStateResponse<String>.success('profile_data');
+        notifierSyncState.syncState.value =
+            LikeStateResponse<String>.success('settings_data');
 
         // Trigger sync notifications
         LikeClient().notifySync('/users/profile', {});
@@ -660,7 +702,8 @@ void main() {
         notifierSyncState.dispose();
       });
 
-      test('reconnection sync flow via legacy triggerReconnectionSync', () async {
+      test('reconnection sync flow via legacy triggerReconnectionSync',
+          () async {
         final notifierRetry = TestNotifierRetry();
         notifierRetry.initAutoReconnect();
 
@@ -686,12 +729,12 @@ void main() {
 
       test('pipeline binding with failing mapper', () async {
         final notifier = TestNotifierWithFailingMapper();
-        
+
         notifier.initAutoReconnect();
         await notifier.fetchData();
 
         // Emit pipeline response
-        LikeClient().notifyRefresh('/users/profile'); 
+        LikeClient().notifyRefresh('/users/profile');
 
         await Future.delayed(const Duration(milliseconds: 100));
         // Verify it didn't crash

@@ -166,25 +166,29 @@ void main() {
 
   group('LikeErrorHandler.handle exceptions', () {
     test('handles FormatException', () async {
-      final error = await LikeErrorHandler.handle(const FormatException('Malformed JSON'));
+      final error = await LikeErrorHandler.handle(
+          const FormatException('Malformed JSON'));
       expect(error.type, LikeApiErrorType.parsing);
       expect(error.message, 'Bad response format');
     });
 
     test('handles SocketException', () async {
-      final error = await LikeErrorHandler.handle(const SocketException('Connection refused'));
+      final error = await LikeErrorHandler.handle(
+          const SocketException('Connection refused'));
       expect(error.type, LikeApiErrorType.network);
       expect(error.message, contains('connect'));
     });
 
     test('handles TimeoutException', () async {
-      final error = await LikeErrorHandler.handle(TimeoutException('Task exceeded duration'));
+      final error = await LikeErrorHandler.handle(
+          TimeoutException('Task exceeded duration'));
       expect(error.type, LikeApiErrorType.timeout);
       expect(error.message, contains('timed out'));
     });
 
     test('handles HttpException', () async {
-      final error = await LikeErrorHandler.handle(const HttpException('Invalid protocol headers'));
+      final error = await LikeErrorHandler.handle(
+          const HttpException('Invalid protocol headers'));
       expect(error.type, LikeApiErrorType.network);
       expect(error.message, contains('HTTP Protocol Error'));
     });
@@ -207,13 +211,15 @@ void main() {
     });
 
     test('handles AssertionError', () async {
-      final error = await LikeErrorHandler.handle(AssertionError('Precondition fails'));
+      final error =
+          await LikeErrorHandler.handle(AssertionError('Precondition fails'));
       expect(error.type, LikeApiErrorType.unknown);
       expect(error.message, contains('Assertion Failed'));
     });
 
     test('handles generic Unknown Exception', () async {
-      final error = await LikeErrorHandler.handle(Exception('Something strange'));
+      final error =
+          await LikeErrorHandler.handle(Exception('Something strange'));
       expect(error.type, LikeApiErrorType.unknown);
       expect(error.message, contains('Unexpected error'));
     });

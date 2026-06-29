@@ -8,134 +8,134 @@ class LikeConfig {
   final String projectName;
 
   /// The main web address (API root URL) that your app talks to.
-  /// 
+  ///
   /// **Example:** If you set this to `https://api.example.com`, all your API
   /// requests will start with this URL (e.g. fetching `/profile` will call `https://api.example.com/profile`).
   final String baseUrl;
 
   /// Extra web addresses you can use if your app talks to multiple different servers.
-  /// 
+  ///
   /// **Example:** You might have your main server at [baseUrl], but keep your chat server
   /// at `https://chat.example.com` or your payment server at `https://pay.example.com`.
   /// You map them like: `{'chat': 'https://chat.example.com'}`.
   final Map<String, String> extraBaseUrls;
 
   /// How long the app should wait to establish a connection with the server before giving up.
-  /// 
+  ///
   /// **Analogy:** If you dial a friend's phone number, how long will you let it ring
   /// before hanging up? If they don't pick up within this time, your app will trigger a "Connection Timeout" error.
   final Duration connectTimeout;
 
   /// How long the app should wait to receive data from the server once a connection is made.
-  /// 
+  ///
   /// **Analogy:** Once your friend picks up the phone, how long are you willing to wait for
   /// them to start speaking or send the next sentence? If the server goes completely silent mid-response
   /// for longer than this duration, your app will trigger a "Receive Timeout" error.
   final Duration receiveTimeout;
 
   /// How long the app should wait while sending data (like uploading a file or photo) to the server.
-  /// 
+  ///
   /// **Analogy:** How long are you willing to wait for a large package you sent by mail to be
   /// delivered to the recipient? If your phone takes too long to upload a post payload, this triggers a "Send Timeout".
   final Duration sendTimeout;
 
   /// How long the engine is allowed to take to set up and open its local databases (Hive) when the app starts.
-  /// 
+  ///
   /// If your app takes longer than this duration to open local storage boxes at startup, it will fail with an error.
   final Duration initTimeout;
 
   /// How long to wait when doing a real-world internet check (like pinging a reliable website).
-  /// 
+  ///
   /// Rationale: Sometimes your device says it is connected to Wi-Fi, but that Wi-Fi has no actual internet.
   /// We do a quick background ping to check, and this is the maximum time we wait for that ping to respond.
   final Duration connTimeout;
 
   /// The wait time (in milliseconds) before acting on a change in your internet connection.
-  /// 
+  ///
   /// **Why it's useful:** When a user walks out of their house, their phone might rapidly switch
   /// back and forth between Wi-Fi and mobile data. This "debounce" waits a split second to make sure
   /// the connection is stable before triggering UI alerts or reconnection workflows.
   final int connDebounceMs;
 
   /// The master switch to turn the console logging system ON or OFF.
-  /// 
+  ///
   /// When set to `true`, the LIKE package prints green/red messages in your terminal
   /// explaining exactly what requests are being sent, what cache is loaded, and any errors.
   final bool enableLogging;
 
   /// Suppresses all logs in the console, even if [enableLogging] is `true`.
-  /// 
+  ///
   /// Useful in production releases when you want a completely clean console with no debug messages.
   final bool silentConsole;
 
   /// Hides background logs related to internet checks and sync actions.
-  /// 
+  ///
   /// When set to `true`, this keeps your terminal focused on active foreground screen actions
   /// instead of repetitive background loops.
   final bool silentSyncLogs;
 
   /// Condenses all network request logs into a single clean line in your terminal.
-  /// 
+  ///
   /// When `true`, instead of printing multiple lines of request and response details, it prints
   /// a simple: `[GET] 200 OK - /users/profile`, which is much easier to scan.
   final bool compactApiLogs;
 
   /// Hides logs that print the exact millisecond a request is initiated.
-  /// 
+  ///
   /// Set this to `true` if you only want to see logs when requests succeed or fail,
   /// reducing noise when multiple calls are fired in parallel.
   final bool silentApiStartLogs;
 
   /// Disables writing log files to the physical device's storage.
-  /// 
+  ///
   /// When `true`, no log files are saved to the device disk. This is highly recommended
   /// for production apps to save disk space and improve security.
   final bool disableFileLogging;
 
   /// Enables extremely deep, detailed logs for internal developer debugging.
-  /// 
+  ///
   /// Shows everything under the hood: when a RAM cache gets saved, when a database write is successful,
   /// and microsecond timers for parser execution.
   final bool verboseLogging;
 
   /// List of headers (like password tokens or auth keys) that should be hidden/masked in logs.
-  /// 
+  ///
   /// **Why it's crucial:** Prevents passwords or sensitive user credentials (like `Authorization` headers)
   /// from being printed out in plain text or saved to debug files.
   final List<String> sensitiveHeaders;
 
   /// The threshold size (in Kilobytes) above which JSON parsing is offloaded to a background thread.
-  /// 
+  ///
   /// **Analogy:** If you have a small grocery bag (small JSON), you can carry it in your hand (UI thread).
   /// If you have a massive furniture box (huge JSON response), you should get a helper to carry it (background Isolate)
   /// so you don't stutter or freeze your application's UI frames.
   final int computeThresholdKB;
 
   /// Optional secret password key used to fully encrypt all cached data saved on disk.
-  /// 
+  ///
   /// **Security:** If provided, all local cache files are encrypted with AES, meaning even if someone hacks
   /// the phone, they cannot read the user's cached offline profile or transaction lists in plain text.
   final String? encryptionKey;
 
   /// A helper class that unpacks your JSON responses and extracts only the relevant data.
-  /// 
+  ///
   /// **Example:** Often, servers wrap lists in envelopes like: `{"status": true, "data": [...your list...]}`.
   /// The unpacker automatically strips away the status envelope and hands you just `[...your list...]`.
   final LikeDataUnpacker unpacker;
 
   /// HTTP Headers that are automatically added to every single outgoing request.
-  /// 
+  ///
   /// Useful for global identifiers like client platform version tags (e.g. `{'X-App-Platform': 'Flutter'}`).
   final Map<String, String> defaultHeaders;
 
   /// Whether to verify SSL/TLS security certificates of the servers you connect to.
-  /// 
+  ///
   /// **Tip:** Keep this `true` for production. You can set it to `false` in local debug/development environments
   /// if your local mock API server does not have a verified security certificate.
   final bool verifySSL;
 
   /// The secure fingerprint string of your server's certificate used for "SSL Pinning".
-  /// 
+  ///
   /// **What it does:** Guarantees that the app will *only* talk to your exact server. If a hacker attempts
   /// to intercept your app's network using a malicious proxy, the app detects a certificate mismatch and blocks the connection.
   final String sslCertSha256;
@@ -143,53 +143,53 @@ class LikeConfig {
   // --- Feature Flags ---
 
   /// Globally turns the caching system ON or OFF.
-  /// 
+  ///
   /// If set to `false`, all cache layers are ignored. Every single request will bypass storage and hit the network.
   final bool cacheEnabled;
 
   /// Master switch to enable the "Stale-While-Revalidate" (SWR) cache flow globally.
-  /// 
+  ///
   /// **How it works:** When enabled, the app instantly shows the user their last stored cached data (even if it's old),
   /// and silently fetches the fresh data from the internet in the background to update the screen. Extremely fast user experience!
   final bool staleWhileRevalidateEnabled;
 
   /// Automatically groups identical network requests made at the exact same moment.
-  /// 
+  ///
   /// **Example:** If two widgets on your screen request the user's profile at the exact same time, the app only
   /// makes one call to the internet and shares the response with both widgets, saving data and bandwidth.
   final bool deduplicateEnabled;
 
   /// Turns performance benchmark tracking ON or OFF globally.
-  /// 
+  ///
   /// When `true`, the engine measures and reports how long each network request and parsing cycle takes,
   /// helping you find bottlenecks in your app.
   final bool perfTrackingEnabled;
 
   /// Prevents your app from spamming your API server with too many requests.
-  /// 
+  ///
   /// Limits how frequently your app can call the same endpoint to protect servers from overload.
   final bool rateLimitEnabled;
 
   /// Automatically handles "Too Many Requests" (HTTP 429) errors from the server.
-  /// 
+  ///
   /// If the server tells the app it is calling too fast, the app will read the server's `Retry-After` header,
   /// wait the exact amount of seconds requested, and automatically retry the call.
   final bool autoRetryRateLimit;
 
   /// Simulates internet responses using offline mock data files.
-  /// 
+  ///
   /// When `true`, requests intercept their calls and return local simulation mock files instead of going to the actual internet.
   /// Excellent for testing when your backend server is down or still being built.
   final bool mockEnabled;
 
   /// Blocks consecutive identical requests fired in a tiny split second.
-  /// 
+  ///
   /// **Example:** Prevents issues caused when a user accidentally double-taps a "Submit" button by blocking
   /// the second tap's request from sending.
   final bool throttleEnabled;
 
   /// Keeps background revalidation silent and seamless for the user.
-  /// 
+  ///
   /// When `true`, background updates (like SWR refreshes) happen invisibly. The user does not see visual loading spinners
   /// or screen flickers while the data updates.
   final bool silentRefreshEnabled;
@@ -197,17 +197,17 @@ class LikeConfig {
   // --- Resiliency ---
 
   /// Immediately falls back to your local cache if the user makes a request while offline.
-  /// 
+  ///
   /// Instead of showing an offline error screen, the user will still see their cached data, keeping the app functional.
   final bool cacheOnOffline;
 
   /// Falls back to your local cache if the server crashes (5xx errors).
-  /// 
+  ///
   /// If your server goes down, the app displays the last successfully cached data instead of a blank crash screen.
   final bool cacheOnError;
 
   /// Falls back to your local cache if a request fails due to an exception (like a network timeout).
-  /// 
+  ///
   /// Displays stored data rather than a generic timeout error screen.
   final bool cacheOnException;
 
@@ -215,19 +215,19 @@ class LikeConfig {
   final int maxAutoRetries;
 
   /// The delay times (in seconds) between each automatic retry attempt.
-  /// 
+  ///
   /// **Example:** If set to `[1, 2, 4]`, the app waits 1 second before the 1st retry, 2 seconds before the 2nd retry,
   /// and 4 seconds before the 3rd retry. This exponential backup avoids spamming a recovering server.
   final List<int> retryDelays;
 
   /// Enables the persistent "Offline Action Sync Queue" globally.
-  /// 
+  ///
   /// **How it works:** If a user performs an action that changes data (like "Liking" a post) while offline,
   /// the action is saved locally. The moment the phone gets internet again, the app sends the action to the server in the background.
   final bool offlineSyncEnabled;
 
   /// Allows background sync tasks to run even when the user closes or minimizes the app.
-  /// 
+  ///
   /// Dispatches the offline sync queue and refreshes critical caches in the background so the app is up-to-date when reopened.
   final bool backgroundSyncEnabled;
 
@@ -252,7 +252,7 @@ class LikeConfig {
   final bool staleWhileRevalidateByDefault;
 
   /// Saves request results in fast RAM memory for the current session by default.
-  /// 
+  ///
   /// The app will fetch the data once, and subsequent calls in the same session return it instantly from RAM with no network call.
   final bool sessionStaleByDefault;
 
@@ -416,10 +416,14 @@ class LikeConfig {
     this.supportWeb = false,
     this.interceptors = const [],
   })  : verifySSL = verifySSL ?? !kDebugMode,
-        boxApiCache = boxApiCache ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_api_cache',
-        boxOfflineQueue = boxOfflineQueue ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_offline_queue',
-        boxCacheMetadata = boxCacheMetadata ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_cache_metadata',
-        boxEtags = boxEtags ?? '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_etags';
+        boxApiCache = boxApiCache ??
+            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_api_cache',
+        boxOfflineQueue = boxOfflineQueue ??
+            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_offline_queue',
+        boxCacheMetadata = boxCacheMetadata ??
+            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_cache_metadata',
+        boxEtags = boxEtags ??
+            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_etags';
 
   LikeConfig copyWith({
     String? projectName,
@@ -557,9 +561,12 @@ class LikeConfig {
       maxImageCacheItems: maxImageCacheItems ?? this.maxImageCacheItems,
       maxImageCacheMB: maxImageCacheMB ?? this.maxImageCacheMB,
       minImageCacheMB: minImageCacheMB ?? this.minImageCacheMB,
-      boxApiCache: boxApiCache ?? (projectName != null ? null : this.boxApiCache),
-      boxOfflineQueue: boxOfflineQueue ?? (projectName != null ? null : this.boxOfflineQueue),
-      boxCacheMetadata: boxCacheMetadata ?? (projectName != null ? null : this.boxCacheMetadata),
+      boxApiCache:
+          boxApiCache ?? (projectName != null ? null : this.boxApiCache),
+      boxOfflineQueue: boxOfflineQueue ??
+          (projectName != null ? null : this.boxOfflineQueue),
+      boxCacheMetadata: boxCacheMetadata ??
+          (projectName != null ? null : this.boxCacheMetadata),
       boxEtags: boxEtags ?? (projectName != null ? null : this.boxEtags),
       connCheckHost: connCheckHost ?? this.connCheckHost,
       supportWeb: supportWeb ?? this.supportWeb,

@@ -4,18 +4,18 @@ import 'package:like/src/models/like_notifier_state.dart';
 import 'package:like/src/models/like_error.dart';
 
 /// # `LikeBuilder<T>`
-/// 
-/// A powerful, beginner-friendly Flutter widget designed to manage and render user interfaces 
+///
+/// A powerful, beginner-friendly Flutter widget designed to manage and render user interfaces
 /// dynamically based on network/data request lifecycles (`LikeStateResponse`).
-/// 
-/// It acts like a smart `AnimatedBuilder` or `ValueListenableBuilder`, automatically listening 
+///
+/// It acts like a smart `AnimatedBuilder` or `ValueListenableBuilder`, automatically listening
 /// to changes in a state provider and instantly rebuilding the widget tree when the state changes.
-/// 
+///
 /// ### Key Feature: Sticky Data (SWR - Stale While Revalidate)
-/// Beginners often struggle with "UI flicker" (when the screen turns white/shows a loader briefly 
-/// while fetching new data). `LikeBuilder` solves this by keeping old data visible on screen 
-/// (*sticky data*) while a background refresh is in progress. 
-/// 
+/// Beginners often struggle with "UI flicker" (when the screen turns white/shows a loader briefly
+/// while fetching new data). `LikeBuilder` solves this by keeping old data visible on screen
+/// (*sticky data*) while a background refresh is in progress.
+///
 /// ### Example Usage:
 /// ```dart
 /// LikeBuilder<UserProf>(
@@ -34,25 +34,25 @@ import 'package:like/src/models/like_error.dart';
 /// ```
 class LikeBuilder<T> extends StatefulWidget {
   /// **observe**
-  /// 
-  /// A closure/callback function that returns either a `LikeNotifierState<T>` (which is a 
+  ///
+  /// A closure/callback function that returns either a `LikeNotifierState<T>` (which is a
   /// ChangeNotifier) or a direct immutable `LikeStateResponse<T>`.
-  /// 
-  /// * **Rule of Thumb:** Always pass the state container itself: `observe: () => provider.myState` 
-  ///   so the widget can subscribe to updates. Do *not* pass the value field directly 
-  ///   like `observe: () => provider.myState.value` because that returns an immutable object 
+  ///
+  /// * **Rule of Thumb:** Always pass the state container itself: `observe: () => provider.myState`
+  ///   so the widget can subscribe to updates. Do *not* pass the value field directly
+  ///   like `observe: () => provider.myState.value` because that returns an immutable object
   ///   that can't be listened to!
   final dynamic Function() observe;
 
   /// **onSuccess**
-  /// 
+  ///
   /// The builder function called when the request has completed successfully and data is available.
-  /// 
+  ///
   /// Receives:
   /// * `data`: The parsed model object of type [T]. Guaranteed to be non-null.
-  /// * `isRefreshing`: True if the user manually triggered a refresh (e.g., Pull-to-Refresh) 
+  /// * `isRefreshing`: True if the user manually triggered a refresh (e.g., Pull-to-Refresh)
   ///   and the widget is displaying old data while loading new data.
-  /// * `isFromStaleWhileRevalidate`: True if the widget is displaying cached data from disk/RAM 
+  /// * `isFromStaleWhileRevalidate`: True if the widget is displaying cached data from disk/RAM
   ///   while a background fetch is silently resolving.
   final Widget Function(
     T data,
@@ -61,38 +61,38 @@ class LikeBuilder<T> extends StatefulWidget {
   ) onSuccess;
 
   /// **onLoading**
-  /// 
+  ///
   /// Optional builder that renders a loading indicator.
   /// Only active when fetching data for the very first time (when no cached or old data is available).
   /// If not provided, defaults to a centered [CircularProgressIndicator].
   final Widget Function()? onLoading;
 
   /// **onIdle**
-  /// 
+  ///
   /// Optional builder active when the state is [LikeState.idle] (uninitialized/ready to fetch).
   /// If not provided, renders an empty widget ([SizedBox.shrink]).
   final Widget Function()? onIdle;
 
   /// **onError**
-  /// 
+  ///
   /// Optional builder active when a server-side or API error is returned.
   /// Receives a [LikeError] containing status codes, messages, and raw responses.
   final Widget Function(LikeError error)? onError;
 
   /// **onException**
-  /// 
-  /// Optional builder active when a client-side or system-level exception (e.g. SocketException, 
+  ///
+  /// Optional builder active when a client-side or system-level exception (e.g. SocketException,
   /// JSON parsing error, or hardware failure) occurs.
   /// Receives the exception error message.
   final Widget Function(String message)? onException;
 
   /// **listener**
-  /// 
+  ///
   /// An optional side-effect callback that triggers whenever the observed state changes.
-  /// 
-  /// * **Use Case:** Trigger actions that shouldn't render UI directly, such as showing a Toast, 
+  ///
+  /// * **Use Case:** Trigger actions that shouldn't render UI directly, such as showing a Toast,
   ///   opening a dialog, or navigating to another page based on the request result.
-  /// * **Safety Guarantee:** Automatically called inside a post-frame callback so it won't 
+  /// * **Safety Guarantee:** Automatically called inside a post-frame callback so it won't
   ///   interfere with the active widget build cycle.
   final void Function(LikeStateResponse<dynamic> response)? listener;
 
@@ -238,9 +238,9 @@ class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
 }
 
 /// # `LikeStateResponseBuilder<T>`
-/// 
-/// A specialized, lightweight version of [LikeBuilder] useful when you already have an immutable 
-/// [LikeStateResponse] directly in scope (e.g. from local variables, FutureBuilders, or Streams) 
+///
+/// A specialized, lightweight version of [LikeBuilder] useful when you already have an immutable
+/// [LikeStateResponse] directly in scope (e.g. from local variables, FutureBuilders, or Streams)
 /// rather than observing a dynamic [LikeNotifierState].
 class LikeStateResponseBuilder<T> extends StatelessWidget {
   /// The static [LikeStateResponse] containing current state data.

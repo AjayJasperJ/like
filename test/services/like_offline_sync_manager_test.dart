@@ -1,9 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:like/like.dart';
-import 'package:like/src/core/like_constants.dart';
-import 'package:like/src/services/like_connectivity_manager.dart';
-import 'package:like/src/services/like_offline_sync_manager.dart';
 import '../mocks/mocks.dart';
 
 void main() {
@@ -47,7 +44,8 @@ void main() {
       expect(refreshVal, equals('reconnected'));
     });
 
-    test('should trigger sync when connection changes from offline to online', () async {
+    test('should trigger sync when connection changes from offline to online',
+        () async {
       // Start offline (internet true, server false -> hasConnection false)
       connectivityManager.debugSetStatus(internet: true, server: false);
 

@@ -23,7 +23,8 @@ class LikeLogger {
 
   /// Initializes the logging system.
   static Future<void> init() async {
-    if (LikeConstants.disableFileLogging || (kIsWeb && LikeConstants.supportWeb)) {
+    if (LikeConstants.disableFileLogging ||
+        (kIsWeb && LikeConstants.supportWeb)) {
       _isInitialized = true;
       return;
     }
@@ -32,7 +33,9 @@ class LikeLogger {
       if (_isInitialized) return;
       try {
         final dir = await getApplicationDocumentsDirectory();
-        final projectNamespace = LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+        final projectNamespace = LikeConstants.projectName
+            .toLowerCase()
+            .replaceAll(RegExp(r'[^a-z0-9_]'), '_');
         _logFile = File('${dir.path}/${projectNamespace}_api_log.txt');
         if (!await _logFile!.exists()) {
           await _logFile!.create(recursive: true);

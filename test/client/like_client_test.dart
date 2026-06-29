@@ -188,7 +188,8 @@ void main() {
       expect(result.data?.data['source'], equals('cache'));
     });
 
-    test('request should propagate verifySSL and sslCertSha256 to Zone context', () async {
+    test('request should propagate verifySSL and sslCertSha256 to Zone context',
+        () async {
       const path = '/ssl-test';
       bool? capturedVerifySSL;
       String? capturedSha;

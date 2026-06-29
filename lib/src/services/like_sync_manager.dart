@@ -146,7 +146,8 @@ class LikeSyncManager {
           LikeLogger.log(
             level: LikeLogLevel.error,
             category: 'sync',
-            message: 'Error executing task ${task.id} (failure $_consecutiveFailures): $e',
+            message:
+                'Error executing task ${task.id} (failure $_consecutiveFailures): $e',
           );
 
           // Circuit Breaker: Halt queue execution if server/network fails repeatedly
@@ -154,12 +155,13 @@ class LikeSyncManager {
             LikeLogger.log(
               level: LikeLogLevel.error,
               category: 'sync',
-              message: 'Circuit breaker tripped after $_consecutiveFailures consecutive failures. Pausing queue and marking server as offline.',
+              message:
+                  'Circuit breaker tripped after $_consecutiveFailures consecutive failures. Pausing queue and marking server as offline.',
             );
             // Put failed task back to front or let it be handled later. Since it was removed, we should re-register it to not lose it.
             _taskQueue.add(task);
             _pendingTasks[task.id] = task;
-            
+
             // Trip: mark server as offline
             LikeConnectivityManager().markServerUnavailable();
             _consecutiveFailures = 0;

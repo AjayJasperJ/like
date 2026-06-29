@@ -42,7 +42,7 @@ void main() {
   group('LikeWebSocketClient - Basic Functionality', () {
     test('connects and receives echo messages', () async {
       final client = LikeWebSocketClient(url: wsUrl);
-      
+
       await client.connect();
       expect(client.isConnected, isTrue);
 
@@ -52,7 +52,7 @@ void main() {
       });
 
       await client.send(jsonEncode({'hello': 'world'}));
-      
+
       // Wait for echo
       await Future.delayed(const Duration(milliseconds: 200));
 
@@ -90,8 +90,9 @@ void main() {
 
     test('token injection updates the URL query parameters', () async {
       String? capturedUrl;
-      final tokenServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      
+      final tokenServer =
+          await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+
       tokenServer.listen((HttpRequest request) async {
         capturedUrl = request.uri.toString();
         if (WebSocketTransformer.isUpgradeRequest(request)) {
@@ -114,7 +115,8 @@ void main() {
       await tokenServer.close(force: true);
     });
 
-    test('broadcasts pipeline events when JSON contains path and data keys', () async {
+    test('broadcasts pipeline events when JSON contains path and data keys',
+        () async {
       final client = LikeWebSocketClient(url: wsUrl);
       await client.connect();
 
@@ -140,7 +142,8 @@ void main() {
       await client.dispose();
     });
 
-    test('sequential calls to connect/disconnect do not cause race conditions', () async {
+    test('sequential calls to connect/disconnect do not cause race conditions',
+        () async {
       final client = LikeWebSocketClient(url: wsUrl);
 
       // Run multiple connects and disconnects in parallel.

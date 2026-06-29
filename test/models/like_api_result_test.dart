@@ -91,7 +91,8 @@ void main() {
       expect(mapped.data, equals(20));
 
       // Mapper fails
-      final failedMap = success.mapSuccess((val) => throw Exception('map fail'));
+      final failedMap =
+          success.mapSuccess((val) => throw Exception('map fail'));
       expect(failedMap.isSuccess, isFalse);
       expect(failedMap.error?.message, contains('Mapping failed'));
 
@@ -104,7 +105,8 @@ void main() {
       expect(mappedError.error?.message, equals('err'));
     });
 
-    test('mapSuccessAsync should transform data on compute or catch exception', () async {
+    test('mapSuccessAsync should transform data on compute or catch exception',
+        () async {
       final success = LikeApiResult.success('{"value": 42}');
       final mapped = await success.mapSuccessAsync((data) => 42);
       expect(mapped.isSuccess, isTrue);
@@ -114,12 +116,14 @@ void main() {
       final successResponse = LikeApiResult.success(
         Response(requestOptions: RequestOptions(), data: '{"value": 100}'),
       );
-      final mappedResponse = await successResponse.mapSuccessAsync((data) => 100);
+      final mappedResponse =
+          await successResponse.mapSuccessAsync((data) => 100);
       expect(mappedResponse.isSuccess, isTrue);
       expect(mappedResponse.data, equals(100));
 
       // Mapper fails
-      final failedMap = await success.mapSuccessAsync((data) => throw Exception('async map fail'));
+      final failedMap = await success
+          .mapSuccessAsync((data) => throw Exception('async map fail'));
       expect(failedMap.isSuccess, isFalse);
       expect(failedMap.error?.message, contains('Async mapping failed'));
 
@@ -165,13 +169,15 @@ void main() {
       final responseSuccess = LikeApiResult.success(
         Response(requestOptions: RequestOptions(), data: 'data'),
       );
-      final Future<LikeApiResult<Response>> futureResult = Future.value(responseSuccess);
+      final Future<LikeApiResult<Response>> futureResult =
+          Future.value(responseSuccess);
 
       final mappedSync = await futureResult.mapSync((data) => 'sync_$data');
       expect(mappedSync.isSuccess, isTrue);
       expect(mappedSync.data, equals('sync_data'));
 
-      final mappedAsync = await Future.value(responseSuccess).mapAsync((data) => 'async_$data');
+      final mappedAsync =
+          await Future.value(responseSuccess).mapAsync((data) => 'async_$data');
       expect(mappedAsync.isSuccess, isTrue);
       expect(mappedAsync.data, equals('async_data'));
     });

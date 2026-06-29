@@ -6,20 +6,20 @@ import 'package:like/src/models/like_error.dart';
 import 'package:like/src/services/like_toast_manager.dart';
 
 /// # `updateNotifier<T>`
-/// 
-/// The **Full Service** async action handler designed to manage user feedback and side-effects 
+///
+/// The **Full Service** async action handler designed to manage user feedback and side-effects
 /// automatically when an API action changes state.
-/// 
+///
 /// ### Built-in Automated Actions:
 /// 1. **Toasting:** Automatically pops up styled toast messages for success, error, or loading.
-/// 2. **Haptic Feedback:** Vibrates the device using custom weights (Light impact on success, 
+/// 2. **Haptic Feedback:** Vibrates the device using custom weights (Light impact on success,
 ///    Medium on warnings/errors, Heavy on severe network exceptions) to provide professional physical feedback.
-/// 3. **Callback Mapping:** Automatically routes to [onSuccess], [onError], [onException], and [onInit] 
+/// 3. **Callback Mapping:** Automatically routes to [onSuccess], [onError], [onException], and [onInit]
 ///    async functions.
-/// 4. **Context Safety Guards:** Since API requests resolve asynchronously, the user might navigate 
-///    away from the active page before the request completes. This helper strictly checks 
+/// 4. **Context Safety Guards:** Since API requests resolve asynchronously, the user might navigate
+///    away from the active page before the request completes. This helper strictly checks
 ///    `context.mounted` to prevent popping toasts or calling widgets on discarded/unmounted contexts!
-/// 
+///
 /// ### Example Usage:
 /// ```dart
 /// ElevatedButton(
@@ -106,7 +106,8 @@ Future<void> updateNotifier<T extends Object>({
 
       if (response.state == LikeState.success && !disableSuccessToast) {
         if (context != null && !context.mounted) return;
-        if (enableHaptics) HapticFeedback.lightImpact(); // Light vibration on success
+        if (enableHaptics)
+          HapticFeedback.lightImpact(); // Light vibration on success
         LikeToastManager.showToast(
           context: context,
           message: resolveMessage(response.resolvedMessage, LikeState.success),
@@ -128,7 +129,8 @@ Future<void> updateNotifier<T extends Object>({
 
       if (!disableErrorToast) {
         if (context != null && !context.mounted) return;
-        if (enableHaptics) HapticFeedback.mediumImpact(); // Medium warning vibration
+        if (enableHaptics)
+          HapticFeedback.mediumImpact(); // Medium warning vibration
         if (error.type != LikeApiErrorType.cancelled ||
             !disableCancelledToast) {
           LikeToastManager.showToast(
@@ -146,7 +148,8 @@ Future<void> updateNotifier<T extends Object>({
 
       if (!disableExceptionToast) {
         if (context != null && !context.mounted) return;
-        if (enableHaptics) HapticFeedback.heavyImpact(); // Strong warning vibration for crashes
+        if (enableHaptics)
+          HapticFeedback.heavyImpact(); // Strong warning vibration for crashes
         LikeToastManager.showToast(
           context: context,
           message: resolveMessage(response.message, LikeState.exception),
@@ -158,14 +161,14 @@ Future<void> updateNotifier<T extends Object>({
 }
 
 /// # `likeWhenNotifier<T>`
-/// 
+///
 /// The **Silent / Raw** action handler.
-/// 
-/// Unlike `updateNotifier`, this contains absolutely **no** automated toasts, physical vibrations, 
+///
+/// Unlike `updateNotifier`, this contains absolutely **no** automated toasts, physical vibrations,
 /// or context guards. It is a pure, functional state-mapping callback tool.
-/// 
+///
 /// ### Use Case:
-/// Use this when you want 100% manual, custom control over what happens during state changes, 
+/// Use this when you want 100% manual, custom control over what happens during state changes,
 /// or when triggering requests silently in background processes.
 Future<void> likeWhenNotifier<T extends Object>({
   required LikeStateResponse<dynamic> response,
@@ -209,12 +212,12 @@ Future<void> likeWhenNotifier<T extends Object>({
 }
 
 /// # `LikeWhen<T>`
-/// 
+///
 /// A clean, declarative **pattern-matching widget** for resolving [LikeStateResponse] snapshots inline.
-/// 
-/// Rather than writing full verbose switch-case statements inside your `build` methods, 
+///
+/// Rather than writing full verbose switch-case statements inside your `build` methods,
 /// `LikeWhen` allows matching states in a elegant functional declarative style.
-/// 
+///
 /// ### Example Usage:
 /// ```dart
 /// LikeWhen<UserProfile>(

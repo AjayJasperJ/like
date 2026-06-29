@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.3] - 2026-06-29
+
+### Fixed
+
+- **Static Analysis & Platform Support**: Fixed a static analysis compilation failure on pub.dev by ensuring `DioExceptionType.transformTimeout` is exhaustively matched in `LikeErrorHandler`.
+- **Analyzer Warnings**: Removed unused imports, added missing `const` constructors in models, and stripped `print()` debug diagnostic blocks from toast tests to achieve a perfect 100% clean analyzer score.
+- **Dependency Requirements**: Bumped the minimum `dio` dependency constraint to `5.5.0` to guarantee the availability of the `transformTimeout` enum value.
+
 ## [2.2.2] - 2026-06-21
 
 ### Added

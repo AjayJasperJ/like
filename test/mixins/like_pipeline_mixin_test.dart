@@ -26,7 +26,8 @@ void main() {
       notifier.dispose();
     });
 
-    test('bindPipeline should auto-update state when matching event is emitted', () async {
+    test('bindPipeline should auto-update state when matching event is emitted',
+        () async {
       notifier.stringState.endpointPath = '/users/profile';
       notifier.stringState.activeQuery = {'userId': '123'};
       notifier.bindMyState();
@@ -100,7 +101,8 @@ void main() {
       expect(notifier.stringState.data, isNull);
     });
 
-    test('bindPipeline should ignore event if state is currently loading', () async {
+    test('bindPipeline should ignore event if state is currently loading',
+        () async {
       notifier.stringState.endpointPath = '/users/profile';
       notifier.stringState.activeQuery = {'userId': '123'};
       notifier.stringState.value = LikeStateResponse<String>.loading();
@@ -148,7 +150,8 @@ void main() {
       expect(receivedData, 'alert_data');
     });
 
-    test('registerPipelineListener and unregisterPipelineListener should work', () async {
+    test('registerPipelineListener and unregisterPipelineListener should work',
+        () async {
       var manualCalledCount = 0;
 
       notifier.registerPipelineListener(

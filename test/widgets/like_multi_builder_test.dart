@@ -4,7 +4,8 @@ import 'package:like/like.dart';
 
 void main() {
   group('LikeMultiBuilder Widget Tests', () {
-    testWidgets('renders onSuccess when all responses are successful', (WidgetTester tester) async {
+    testWidgets('renders onSuccess when all responses are successful',
+        (WidgetTester tester) async {
       final res1 = LikeStateResponse<String>.success('Hello');
       final res2 = LikeStateResponse<int>.success(42);
 
@@ -13,7 +14,8 @@ void main() {
           home: Scaffold(
             body: LikeMultiBuilder(
               observes: [() => res1, () => res2],
-              onSuccess: (results, isRef, isSWR) => Text('${results[0]} - ${results[1]}'),
+              onSuccess: (results, isRef, isSWR) =>
+                  Text('${results[0]} - ${results[1]}'),
             ),
           ),
         ),
@@ -22,7 +24,8 @@ void main() {
       expect(find.text('Hello - 42'), findsOneWidget);
     });
 
-    testWidgets('renders onLoading when at least one response is loading', (WidgetTester tester) async {
+    testWidgets('renders onLoading when at least one response is loading',
+        (WidgetTester tester) async {
       final res1 = LikeStateResponse<String>.success('Hello');
       final res2 = LikeStateResponse<int>.loading();
 
@@ -31,7 +34,8 @@ void main() {
           home: Scaffold(
             body: LikeMultiBuilder(
               observes: [() => res1, () => res2],
-              onSuccess: (results, isRef, isSWR) => Text('${results[0]} - ${results[1]}'),
+              onSuccess: (results, isRef, isSWR) =>
+                  Text('${results[0]} - ${results[1]}'),
               onLoading: () => const Text('Loading Multi...'),
             ),
           ),
@@ -41,7 +45,9 @@ void main() {
       expect(find.text('Loading Multi...'), findsOneWidget);
     });
 
-    testWidgets('renders onSuccess in CustomScrollView with LikeMultiSliverBuilder', (WidgetTester tester) async {
+    testWidgets(
+        'renders onSuccess in CustomScrollView with LikeMultiSliverBuilder',
+        (WidgetTester tester) async {
       final res1 = LikeStateResponse<String>.success('SliverHello');
       final res2 = LikeStateResponse<int>.success(100);
 

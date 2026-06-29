@@ -9,9 +9,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const channel = MethodChannel('plugins.flutter.io/path_provider');
-  
+
   bool simulatePathError = false;
-  
+
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, (methodCall) async {
     if (simulatePathError) {
@@ -40,9 +40,10 @@ void main() {
   });
 
   group('LikeLogger - Initialization and Basic Logging', () {
-    test('1. init handles error when getApplicationDocumentsDirectory fails', () async {
+    test('1. init handles error when getApplicationDocumentsDirectory fails',
+        () async {
       simulatePathError = true;
-      
+
       LikeConstants.apply(LikeConfig(
         projectName: 'shared_logger_project',
         enableLogging: true,
@@ -63,16 +64,18 @@ void main() {
       ));
 
       await LikeLogger.init();
-      
+
       // Call init again to test the early return under the lock when _isInitialized is true
       await LikeLogger.init();
 
-      final logFilePath = '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
+      final logFilePath =
+          '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
       final file = io.File(logFilePath);
       expect(await file.exists(), isTrue);
     });
 
-    test('3. log records messages to file and stream, and handles rotation', () async {
+    test('3. log records messages to file and stream, and handles rotation',
+        () async {
       LikeConstants.apply(LikeConfig(
         projectName: 'shared_logger_project',
         enableLogging: true,
@@ -106,7 +109,8 @@ void main() {
       expect(fileContent, contains('Hello, Logger!'));
 
       // Test log rotation: write a large file
-      final logFilePath = '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
+      final logFilePath =
+          '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
       final file = io.File(logFilePath);
       final largeBytes = Uint8List(5 * 1024 * 1024 + 100);
       await file.writeAsBytes(largeBytes);
@@ -133,14 +137,15 @@ void main() {
         verboseLogging: true,
       ));
 
-      final logFilePath = '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
+      final logFilePath =
+          '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
       final logFile = io.File(logFilePath);
-      
+
       // Delete the file and create a directory at its path to trigger a FileSystemException
       if (await logFile.exists()) {
         await logFile.delete();
       }
-      
+
       final fileDir = io.Directory(logFilePath);
       await fileDir.create(recursive: true);
 
@@ -271,7 +276,9 @@ void main() {
       await subscription.cancel();
     });
 
-    test('8. initGlobalErrorHandling captures and logs Flutter and platform errors', () async {
+    test(
+        '8. initGlobalErrorHandling captures and logs Flutter and platform errors',
+        () async {
       LikeConstants.apply(LikeConfig(
         projectName: 'shared_logger_project',
         enableLogging: true,
@@ -309,16 +316,17 @@ void main() {
     });
 
     test('9. readLogs and clearLogs when file does not exist', () async {
-      final logFilePath = '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
+      final logFilePath =
+          '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
       final file = io.File(logFilePath);
-      
+
       // Delete the file at the very end to cover the "file does not exist" path
       if (await file.exists()) {
         await file.delete();
       }
-      
+
       expect(await LikeLogger.readLogs(), isEmpty);
-      
+
       await LikeLogger.clearLogs();
     });
   });

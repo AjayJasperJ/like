@@ -220,12 +220,10 @@ class LikeRequestConfig {
   bool get hasCustomBaseUrl => baseUrl != null || namedBaseUrl != null;
 
   /// Returns `true` if this config carries per-request interceptors.
-  bool get hasInterceptors =>
-      interceptors != null && interceptors!.isNotEmpty;
+  bool get hasInterceptors => interceptors != null && interceptors!.isNotEmpty;
 
   /// Returns `true` if a custom SSL fingerprint pin is specified.
-  bool get hasSslPin =>
-      sslCertSha256 != null && sslCertSha256!.isNotEmpty;
+  bool get hasSslPin => sslCertSha256 != null && sslCertSha256!.isNotEmpty;
 
   /// Returns `true` if any resiliency override is explicitly set,
   /// meaning this call deviates from the global fallback behaviour.

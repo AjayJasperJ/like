@@ -15,7 +15,8 @@ class TestNotifier extends ChangeNotifier {
 
 void main() {
   group('LikeSelector Widget Tests', () {
-    testWidgets('renders SUCCESS state correctly through LikeSelector', (WidgetTester tester) async {
+    testWidgets('renders SUCCESS state correctly through LikeSelector',
+        (WidgetTester tester) async {
       final notifier = TestNotifier();
 
       await tester.pumpWidget(
@@ -41,7 +42,8 @@ void main() {
       expect(find.text('Hello Selector'), findsOneWidget);
     });
 
-    testWidgets('renders SUCCESS state correctly through LikeSelectorSliver', (WidgetTester tester) async {
+    testWidgets('renders SUCCESS state correctly through LikeSelectorSliver',
+        (WidgetTester tester) async {
       final notifier = TestNotifier();
 
       await tester.pumpWidget(
@@ -57,7 +59,8 @@ void main() {
                       SliverToBoxAdapter(child: Text(data)),
                     ],
                     onLoading: () => [
-                      const SliverToBoxAdapter(child: Text('Sliver Loading...')),
+                      const SliverToBoxAdapter(
+                          child: Text('Sliver Loading...')),
                     ],
                   ),
                 ],
@@ -69,7 +72,8 @@ void main() {
 
       expect(find.text('Sliver Loading...'), findsOneWidget);
 
-      notifier.setResponse(LikeStateResponse<String>.success('Hello Sliver Selector'));
+      notifier.setResponse(
+          LikeStateResponse<String>.success('Hello Sliver Selector'));
       await tester.pump();
 
       expect(find.text('Hello Sliver Selector'), findsOneWidget);

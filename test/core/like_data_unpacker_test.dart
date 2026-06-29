@@ -18,7 +18,8 @@ void main() {
       expect(unpacked.isSuccess, isTrue);
     });
 
-    test('unpack should return null for data when data key is explicitly null', () {
+    test('unpack should return null for data when data key is explicitly null',
+        () {
       final json = {'data': null, 'status': 'success'};
       final unpacked = unpacker.unpack(json);
       expect(unpacked.data, isNull);
@@ -59,7 +60,9 @@ void main() {
       expect(unpacker.unpack(statusFail).isSuccess, isFalse);
     });
 
-    test('unpack should default to true when neither success nor status keys exist', () {
+    test(
+        'unpack should default to true when neither success nor status keys exist',
+        () {
       final flatJson = {'id': 1, 'name': 'Item 1'};
       expect(unpacker.unpack(flatJson).isSuccess, isTrue);
     });

@@ -13,7 +13,8 @@ void main() {
       expect(event.payload, equals({'id': 123, 'name': 'John'}));
       expect(
         event.toString(),
-        equals('LikeSyncEvent(path: /users/update, payload: {id: 123, name: John})'),
+        equals(
+            'LikeSyncEvent(path: /users/update, payload: {id: 123, name: John})'),
       );
     });
   });

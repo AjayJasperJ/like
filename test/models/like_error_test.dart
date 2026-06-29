@@ -17,7 +17,8 @@ void main() {
       expect(error.rawResponse, equals('Raw data'));
     });
 
-    test('errors getter should extract structured errors from map response', () {
+    test('errors getter should extract structured errors from map response',
+        () {
       // 1. Success path: rawResponse has 'errors' as map
       final errorWithErrors = LikeError(
         message: 'Validation failed',
@@ -62,7 +63,8 @@ void main() {
 
       expect(
         error.toString(),
-        equals('LikeError(message: Not Found, code: 404, type: LikeApiErrorType.notFound)'),
+        equals(
+            'LikeError(message: Not Found, code: 404, type: LikeApiErrorType.notFound)'),
       );
     });
   });

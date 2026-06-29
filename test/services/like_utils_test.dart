@@ -5,7 +5,9 @@ import 'package:toastification/toastification.dart';
 
 void main() {
   group('LikeUtils', () {
-    test('castToMapStringDynamic converts keys to String and maps nested values', () {
+    test(
+        'castToMapStringDynamic converts keys to String and maps nested values',
+        () {
       final dynamic inputMap = {
         1: 'a',
         'list': [
@@ -33,7 +35,9 @@ void main() {
       expect(LikeUtils.castToMapStringDynamic(null), null);
     });
 
-    testWidgets('showToast and cache/swr notification helpers run without exception', (WidgetTester tester) async {
+    testWidgets(
+        'showToast and cache/swr notification helpers run without exception',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: ToastificationWrapper(
@@ -81,7 +85,7 @@ void main() {
 
       await tester.tap(find.text('Show Toast'));
       await tester.pumpAndSettle();
-      
+
       // Verify Toastification has some child displayed (like the message text)
       expect(find.text('Test Message'), findsOneWidget);
 

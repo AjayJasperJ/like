@@ -18,7 +18,8 @@ void main() {
       final idleDefault = LikeStateResponse<String>.idle();
       expect(idleDefault.message, equals('Idle'));
 
-      final loading = LikeStateResponse<String>.loading(message: 'custom loading');
+      final loading =
+          LikeStateResponse<String>.loading(message: 'custom loading');
       expect(loading.state, equals(LikeState.loading));
       expect(loading.message, equals('custom loading'));
       expect(loading.isLoading, isTrue);
@@ -26,7 +27,8 @@ void main() {
       final loadingDefault = LikeStateResponse<String>.loading();
       expect(loadingDefault.message, equals('Loading...'));
 
-      final success = LikeStateResponse<String>.success('data_payload', message: 'custom success');
+      final success = LikeStateResponse<String>.success('data_payload',
+          message: 'custom success');
       expect(success.state, equals(LikeState.success));
       expect(success.data, equals('data_payload'));
       expect(success.message, equals('custom success'));
@@ -35,7 +37,8 @@ void main() {
       final successDefault = LikeStateResponse<String>.success('data_payload');
       expect(successDefault.message, equals('Success'));
 
-      final swr = LikeStateResponse<String>.staleWhileRevalidate('stale_data', message: 'custom swr');
+      final swr = LikeStateResponse<String>.staleWhileRevalidate('stale_data',
+          message: 'custom swr');
       expect(swr.state, equals(LikeState.staleWhileRevalidate));
       expect(swr.data, equals('stale_data'));
       expect(swr.message, equals('custom swr'));
@@ -43,28 +46,34 @@ void main() {
       expect(swr.isFromCache, isTrue);
       expect(swr.isFromStaleWhileRevalidate, isTrue);
 
-      final swrDefault = LikeStateResponse<String>.staleWhileRevalidate('stale_data');
+      final swrDefault =
+          LikeStateResponse<String>.staleWhileRevalidate('stale_data');
       expect(swrDefault.message, equals('Serving from cache...'));
 
-      final refreshing = LikeStateResponse<String>.refreshing('refresh_data', message: 'custom ref', isFromCache: true);
+      final refreshing = LikeStateResponse<String>.refreshing('refresh_data',
+          message: 'custom ref', isFromCache: true);
       expect(refreshing.state, equals(LikeState.refreshing));
       expect(refreshing.data, equals('refresh_data'));
       expect(refreshing.message, equals('custom ref'));
       expect(refreshing.isRefreshing, isTrue);
       expect(refreshing.isFromCache, isTrue);
 
-      final refreshingDefault = LikeStateResponse<String>.refreshing('refresh_data');
+      final refreshingDefault =
+          LikeStateResponse<String>.refreshing('refresh_data');
       expect(refreshingDefault.message, equals('Refreshing...'));
 
-      final errObject = LikeError(message: 'error msg', type: LikeApiErrorType.server, code: 500);
-      final error = LikeStateResponse<String>.error(errObject, data: 'err_data');
+      final errObject = LikeError(
+          message: 'error msg', type: LikeApiErrorType.server, code: 500);
+      final error =
+          LikeStateResponse<String>.error(errObject, data: 'err_data');
       expect(error.state, equals(LikeState.error));
       expect(error.error, equals(errObject));
       expect(error.data, equals('err_data'));
       expect(error.message, equals('error msg'));
       expect(error.isError, isTrue);
 
-      final exception = LikeStateResponse<String>.exception('ex_msg', data: 'ex_data');
+      final exception =
+          LikeStateResponse<String>.exception('ex_msg', data: 'ex_data');
       expect(exception.state, equals(LikeState.exception));
       expect(exception.message, equals('ex_msg'));
       expect(exception.data, equals('ex_data'));
@@ -93,13 +102,16 @@ void main() {
         type: LikeApiErrorType.badRequest,
         rawResponse: 12345,
       );
-      final response2 = LikeStateResponse<String>.error(errWithIncompatibleData);
+      final response2 =
+          LikeStateResponse<String>.error(errWithIncompatibleData);
       expect(response2.data, isNull);
     });
 
     test('fromResult creates correct state response', () {
-      final successResult = LikeApiResult.success('result_data', isFromCache: true);
-      final successResponse = LikeStateResponse<String>.fromResult(successResult);
+      final successResult =
+          LikeApiResult.success('result_data', isFromCache: true);
+      final successResponse =
+          LikeStateResponse<String>.fromResult(successResult);
       expect(successResponse.isSuccess, isTrue);
       expect(successResponse.data, equals('result_data'));
       expect(successResponse.isFromCache, isTrue);
@@ -127,7 +139,8 @@ void main() {
         ModelWithMessage('Extracted Object Message'),
         message: '',
       );
-      expect(objDataResponse.resolvedMessage, equals('Extracted Object Message'));
+      expect(
+          objDataResponse.resolvedMessage, equals('Extracted Object Message'));
 
       // 3. Success, custom/empty message, data has nothing
       final emptyDataResponse = LikeStateResponse.success(
@@ -137,12 +150,13 @@ void main() {
       expect(emptyDataResponse.resolvedMessage, equals('Success'));
 
       // 4. Not success state
-      final loadingResponse = LikeStateResponse.loading(message: 'Loading status');
+      final loadingResponse =
+          LikeStateResponse.loading(message: 'Loading status');
       expect(loadingResponse.resolvedMessage, equals('Loading status'));
     });
 
     test('copyWith works correctly', () {
-      final base = LikeStateResponse<String>(
+      const base = LikeStateResponse<String>(
         state: LikeState.idle,
         message: 'base_msg',
         data: 'base_data',
@@ -179,21 +193,21 @@ void main() {
     });
 
     test('equality and hashCode work correctly', () {
-      final response1 = LikeStateResponse<String>(
+      const response1 = LikeStateResponse<String>(
         state: LikeState.success,
         message: 'msg',
         data: 'data',
         isFrom304: true,
       );
 
-      final response2 = LikeStateResponse<String>(
+      const response2 = LikeStateResponse<String>(
         state: LikeState.success,
         message: 'msg',
         data: 'data',
         isFrom304: true,
       );
 
-      final responseDiff = LikeStateResponse<String>(
+      const responseDiff = LikeStateResponse<String>(
         state: LikeState.success,
         message: 'msg2',
         data: 'data',
@@ -236,7 +250,8 @@ void main() {
       );
 
       // 3. Error state
-      final error = LikeStateResponse<String>.error(LikeError(message: 'err', type: LikeApiErrorType.unknown));
+      final error = LikeStateResponse<String>.error(
+          LikeError(message: 'err', type: LikeApiErrorType.unknown));
       expect(
         error.when(
           onSuccess: (data, ref, swr, fall) => 'success',
@@ -268,7 +283,8 @@ void main() {
       );
 
       // 6. Success state but null data returns orElse
-      final successNull = LikeStateResponse<String>(state: LikeState.success, message: 'msg');
+      const successNull =
+          LikeStateResponse<String>(state: LikeState.success, message: 'msg');
       expect(
         successNull.when(
           onSuccess: (data, ref, swr, fall) => 'success',

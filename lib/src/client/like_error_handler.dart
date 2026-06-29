@@ -44,7 +44,8 @@ class LikeErrorHandler {
       );
     } else if (error is TypeError) {
       return LikeError(
-        message: 'Type Mismatch Error – Failed to process server data structures.',
+        message:
+            'Type Mismatch Error – Failed to process server data structures.',
         type: LikeApiErrorType.parsing,
       );
     } else if (error is AssertionError) {
@@ -83,6 +84,7 @@ class LikeErrorHandler {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
         if (!conn.isInternetConnected) {
           defaultMsg = 'No internet connection – Please check your network.';
           type = LikeApiErrorType.network;
@@ -155,27 +157,33 @@ class LikeErrorHandler {
 
     switch (res.statusCode) {
       case 300:
-        defaultMsg = 'Multiple Choices – The request has more than one possible response.';
+        defaultMsg =
+            'Multiple Choices – The request has more than one possible response.';
         type = LikeApiErrorType.badRequest;
         break;
       case 301:
-        defaultMsg = 'Moved Permanently – The resource has been permanently moved to a new URI.';
+        defaultMsg =
+            'Moved Permanently – The resource has been permanently moved to a new URI.';
         type = LikeApiErrorType.badRequest;
         break;
       case 302:
-        defaultMsg = 'Moved Temporarily – The resource resides temporarily under a different URI.';
+        defaultMsg =
+            'Moved Temporarily – The resource resides temporarily under a different URI.';
         type = LikeApiErrorType.badRequest;
         break;
       case 304:
-        defaultMsg = 'Not Modified – The resource has not changed since the last request.';
+        defaultMsg =
+            'Not Modified – The resource has not changed since the last request.';
         type = LikeApiErrorType.badRequest;
         break;
       case 307:
-        defaultMsg = 'Temporary Redirect – The resource resides temporarily under a different URI.';
+        defaultMsg =
+            'Temporary Redirect – The resource resides temporarily under a different URI.';
         type = LikeApiErrorType.badRequest;
         break;
       case 308:
-        defaultMsg = 'Permanent Redirect – The resource resides permanently under a different URI.';
+        defaultMsg =
+            'Permanent Redirect – The resource resides permanently under a different URI.';
         type = LikeApiErrorType.badRequest;
         break;
       case 400:
@@ -188,7 +196,8 @@ class LikeErrorHandler {
         type = LikeApiErrorType.unauthorized;
         break;
       case 402:
-        defaultMsg = 'Payment Required – Access to this resource requires payment.';
+        defaultMsg =
+            'Payment Required – Access to this resource requires payment.';
         type = LikeApiErrorType.forbidden;
         break;
       case 403:
@@ -210,7 +219,8 @@ class LikeErrorHandler {
         type = LikeApiErrorType.badRequest;
         break;
       case 407:
-        defaultMsg = 'Proxy Authentication Required – You must first authenticate with the proxy.';
+        defaultMsg =
+            'Proxy Authentication Required – You must first authenticate with the proxy.';
         type = LikeApiErrorType.unauthorized;
         break;
       case 408:
@@ -228,11 +238,13 @@ class LikeErrorHandler {
         type = LikeApiErrorType.gone;
         break;
       case 411:
-        defaultMsg = 'Length Required – The Content-Length header field is not defined.';
+        defaultMsg =
+            'Length Required – The Content-Length header field is not defined.';
         type = LikeApiErrorType.badRequest;
         break;
       case 412:
-        defaultMsg = 'Precondition Failed – Access to this resource has been denied.';
+        defaultMsg =
+            'Precondition Failed – Access to this resource has been denied.';
         type = LikeApiErrorType.badRequest;
         break;
       case 413:
@@ -241,7 +253,8 @@ class LikeErrorHandler {
         type = LikeApiErrorType.payloadTooLarge;
         break;
       case 414:
-        defaultMsg = 'URI Too Long – The URI provided was too long for the server to process.';
+        defaultMsg =
+            'URI Too Long – The URI provided was too long for the server to process.';
         type = LikeApiErrorType.badRequest;
         break;
       case 415:
@@ -250,19 +263,23 @@ class LikeErrorHandler {
         type = LikeApiErrorType.badRequest;
         break;
       case 416:
-        defaultMsg = 'Range Not Satisfiable – The request cannot be satisfied by the server.';
+        defaultMsg =
+            'Range Not Satisfiable – The request cannot be satisfied by the server.';
         type = LikeApiErrorType.badRequest;
         break;
       case 417:
-        defaultMsg = 'Expectation Failed – The expectation given in the Expect header could not be met.';
+        defaultMsg =
+            'Expectation Failed – The expectation given in the Expect header could not be met.';
         type = LikeApiErrorType.badRequest;
         break;
       case 418:
-        defaultMsg = 'I\'m a teapot – The server refuses to brew coffee because it is a teapot.';
+        defaultMsg =
+            'I\'m a teapot – The server refuses to brew coffee because it is a teapot.';
         type = LikeApiErrorType.badRequest;
         break;
       case 421:
-        defaultMsg = 'Misdirected Request – The server cannot produce a response.';
+        defaultMsg =
+            'Misdirected Request – The server cannot produce a response.';
         type = LikeApiErrorType.badRequest;
         break;
       case 422:
@@ -274,19 +291,23 @@ class LikeErrorHandler {
         type = LikeApiErrorType.forbidden;
         break;
       case 424:
-        defaultMsg = 'Failed Dependency – The request failed due to failure of a previous request.';
+        defaultMsg =
+            'Failed Dependency – The request failed due to failure of a previous request.';
         type = LikeApiErrorType.badRequest;
         break;
       case 425:
-        defaultMsg = 'Too Early – The server is unwilling to risk processing a request that might be replayed.';
+        defaultMsg =
+            'Too Early – The server is unwilling to risk processing a request that might be replayed.';
         type = LikeApiErrorType.badRequest;
         break;
       case 426:
-        defaultMsg = 'Upgrade Required – The client should switch to a different protocol.';
+        defaultMsg =
+            'Upgrade Required – The client should switch to a different protocol.';
         type = LikeApiErrorType.badRequest;
         break;
       case 428:
-        defaultMsg = 'Precondition Required – The origin server requires the request to be conditional.';
+        defaultMsg =
+            'Precondition Required – The origin server requires the request to be conditional.';
         type = LikeApiErrorType.badRequest;
         break;
       case 429:
@@ -294,11 +315,13 @@ class LikeErrorHandler {
         type = LikeApiErrorType.rateLimit;
         break;
       case 431:
-        defaultMsg = 'Request Header Fields Too Large – The server is unwilling to process the request because header fields are too large.';
+        defaultMsg =
+            'Request Header Fields Too Large – The server is unwilling to process the request because header fields are too large.';
         type = LikeApiErrorType.badRequest;
         break;
       case 451:
-        defaultMsg = 'Unavailable For Legal Reasons – Access to the resource is blocked due to legal demands.';
+        defaultMsg =
+            'Unavailable For Legal Reasons – Access to the resource is blocked due to legal demands.';
         type = LikeApiErrorType.forbidden;
         break;
       case 500:
@@ -307,7 +330,8 @@ class LikeErrorHandler {
         type = LikeApiErrorType.server;
         break;
       case 501:
-        defaultMsg = 'Not Implemented – The server does not support the functionality required.';
+        defaultMsg =
+            'Not Implemented – The server does not support the functionality required.';
         type = LikeApiErrorType.server;
         break;
       case 502:
@@ -332,15 +356,18 @@ class LikeErrorHandler {
         type = LikeApiErrorType.server;
         break;
       case 507:
-        defaultMsg = 'Insufficient Storage – The server is unable to store the representation.';
+        defaultMsg =
+            'Insufficient Storage – The server is unable to store the representation.';
         type = LikeApiErrorType.server;
         break;
       case 508:
-        defaultMsg = 'Loop Detected – The server detected an infinite loop while processing the request.';
+        defaultMsg =
+            'Loop Detected – The server detected an infinite loop while processing the request.';
         type = LikeApiErrorType.server;
         break;
       case 511:
-        defaultMsg = 'Network Authentication Required – The client needs to authenticate to gain network access.';
+        defaultMsg =
+            'Network Authentication Required – The client needs to authenticate to gain network access.';
         type = LikeApiErrorType.unauthorized;
         break;
       default:

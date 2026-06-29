@@ -47,8 +47,10 @@ void printRandomSuggestion() {
 void printAllSuggestions() {
   final separator = '\x1B[90m${'─' * 70}\x1B[0m';
   debugPrint(separator);
-  debugPrint('\x1B[1m\x1B[32m🚀 [LIKE] Link Intelligent Kernel Engine Help & Quickstart Guide\x1B[0m');
-  debugPrint('\x1B[90mRun `Like.help()` anytime in development to print this guide.\x1B[0m');
+  debugPrint(
+      '\x1B[1m\x1B[32m🚀 [LIKE] Link Intelligent Kernel Engine Help & Quickstart Guide\x1B[0m');
+  debugPrint(
+      '\x1B[90mRun `Like.help()` anytime in development to print this guide.\x1B[0m');
   debugPrint(separator);
 
   final types = ['Widget', 'Class', 'Method', 'Mixin'];

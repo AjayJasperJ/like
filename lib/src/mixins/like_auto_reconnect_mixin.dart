@@ -89,7 +89,8 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
             final uri = Uri.tryParse(path);
             cleanPath = uri != null ? uri.path : path.split('?').first;
           } else {
-            final incomingPath = path.contains(':') ? path.split(':').last : path;
+            final incomingPath =
+                path.contains(':') ? path.split(':').last : path;
             cleanPath = incomingPath.split('?').first;
           }
 
@@ -110,7 +111,8 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
             state.endpointPath != null &&
             state.refreshAction != null) {
           String cleanPath;
-          if (event.path.startsWith('http://') || event.path.startsWith('https://')) {
+          if (event.path.startsWith('http://') ||
+              event.path.startsWith('https://')) {
             final uri = Uri.tryParse(event.path);
             cleanPath = uri != null ? uri.path : event.path.split('?').first;
           } else {
@@ -118,9 +120,11 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
           }
 
           String statePath;
-          if (state.endpointPath!.startsWith('http://') || state.endpointPath!.startsWith('https://')) {
+          if (state.endpointPath!.startsWith('http://') ||
+              state.endpointPath!.startsWith('https://')) {
             final uri = Uri.tryParse(state.endpointPath!);
-            statePath = uri != null ? uri.path : state.endpointPath!.split('?').first;
+            statePath =
+                uri != null ? uri.path : state.endpointPath!.split('?').first;
           } else {
             statePath = state.endpointPath!.split('?').first;
           }
@@ -148,9 +152,11 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     _pipelineSubscription = LikePipeline().stream.listen((event) {
       final incomingKey = event.key;
       String cleanIncomingPath;
-      if (incomingKey.startsWith('http://') || incomingKey.startsWith('https://')) {
+      if (incomingKey.startsWith('http://') ||
+          incomingKey.startsWith('https://')) {
         final uri = Uri.tryParse(incomingKey);
-        cleanIncomingPath = uri != null ? uri.path : incomingKey.split('?').first;
+        cleanIncomingPath =
+            uri != null ? uri.path : incomingKey.split('?').first;
       } else {
         final incomingPath = incomingKey.contains(':')
             ? incomingKey.split(':').last
@@ -395,7 +401,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
     onRotate(next);
 
     final activeState = Zone.current[#likeActiveState];
-    
+
     bool checkObsolete() {
       if (isObsolete != null) {
         return isObsolete(next);
@@ -447,7 +453,7 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
 
       // 3. Execution
       final result = await action(next, ars);
-      
+
       if (!checkObsolete()) {
         onUpdate(result);
         if (!_isDisposed) notifyListeners();
@@ -461,7 +467,8 @@ mixin LikeAutoReconnectMixin on ChangeNotifier {
         final shouldRevertState = !obsolete ||
             (activeState is LikeNotifierState &&
                 activeState.ct == null &&
-                (activeState.value.isLoading || activeState.value.isRefreshing));
+                (activeState.value.isLoading ||
+                    activeState.value.isRefreshing));
 
         if (shouldRevertState) {
           onUpdate(fallbackState);

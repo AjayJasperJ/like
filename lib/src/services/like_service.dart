@@ -60,7 +60,9 @@ class LikeService {
 
     // 1b. Core Storage
     logDebug('DEBUG: Hive.initFlutter starting');
-    final projectNamespace = LikeConstants.projectName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    final projectNamespace = LikeConstants.projectName
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '_');
     await Hive.initFlutter(projectNamespace);
     logDebug('DEBUG: Hive.initFlutter completed');
 

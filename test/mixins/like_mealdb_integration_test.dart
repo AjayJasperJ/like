@@ -67,7 +67,8 @@ class MealProvider extends ChangeNotifier with LikeAutoReconnectMixin {
               name: 'Spaghetti Arrabiata',
               category: 'Vegetarian',
               area: 'Italian',
-              thumbnail: 'https://www.themealdb.com/images/media/meals/ustqqw1468250487.jpg',
+              thumbnail:
+                  'https://www.themealdb.com/images/media/meals/ustqqw1468250487.jpg',
             ),
           ]),
         );
@@ -97,14 +98,16 @@ void main() {
       provider.dispose();
     });
 
-    test('should successfully fetch, map, and synchronize MealDB API response using pipeline', () async {
+    test(
+        'should successfully fetch, map, and synchronize MealDB API response using pipeline',
+        () async {
       // 1. Initial fetch of Spaghetti
       await provider.fetchMeals('Arrabiata');
 
       // Verify the state is success and parses the MealDB schema correctly
       expect(provider.mealsState.isSuccess, true);
       expect(provider.mealsState.data!.meals.length, 1);
-      
+
       final spaghetti = provider.mealsState.data!.meals.first;
       expect(spaghetti.id, '52771');
       expect(spaghetti.name, 'Spaghetti Arrabiata');
@@ -124,14 +127,16 @@ void main() {
             'strMeal': 'Spaghetti Arrabiata (Extra Spicy)',
             'strCategory': 'Vegetarian',
             'strArea': 'Italian',
-            'strMealThumb': 'https://www.themealdb.com/images/media/meals/ustqqw1468250487.jpg'
+            'strMealThumb':
+                'https://www.themealdb.com/images/media/meals/ustqqw1468250487.jpg'
           },
           {
             'idMeal': '52800',
             'strMeal': 'Lasagna',
             'strCategory': 'Pasta',
             'strArea': 'Italian',
-            'strMealThumb': 'https://www.themealdb.com/images/media/meals/lasagna.jpg'
+            'strMealThumb':
+                'https://www.themealdb.com/images/media/meals/lasagna.jpg'
           }
         ]
       };

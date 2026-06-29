@@ -63,7 +63,8 @@ void main() {
       expect(manager.isOnline, isTrue);
     });
 
-    test('markServerAvailable and markServerUnavailable work correctly', () async {
+    test('markServerAvailable and markServerUnavailable work correctly',
+        () async {
       final manager = LikeConnectivityManager();
       manager.debugSetStatus(internet: true, server: true);
 
@@ -72,7 +73,7 @@ void main() {
       manager.markServerUnavailable();
       expect(manager.isServerAvailable, isFalse);
       expect(manager.hasConnection, isFalse);
-      
+
       final bool streamValue = await streamFuture;
       expect(streamValue, isFalse);
 
@@ -88,7 +89,7 @@ void main() {
 
     test('init and forceCheck process channel responses', () async {
       final manager = LikeConnectivityManager();
-      
+
       // Perform init
       await manager.init(serverUrl: 'https://test-server.com');
       expect(log.length, greaterThanOrEqualTo(1));

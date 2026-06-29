@@ -65,8 +65,6 @@ class LikeRetryInterceptor extends RetryInterceptor {
     if (raw is List<int>) {
       return raw.map((s) => Duration(seconds: s)).toList();
     }
-    return LikeConstants.retryDelays
-        .map((s) => Duration(seconds: s))
-        .toList();
+    return LikeConstants.retryDelays.map((s) => Duration(seconds: s)).toList();
   }
 }
