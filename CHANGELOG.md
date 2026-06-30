@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.4] - 2026-06-30
+
+### Fixed
+
+- **Static Analysis**: Enclosed single-line if statements in blocks to fix `curly_braces_in_flow_control_structures` lints.
+- **Dependency Constraints**: Tightened dependencies to prevent downgrade analysis failure on pub.dev due to missing `transformTimeout` in older `dio` versions.
+
 ## [2.2.3] - 2026-06-29
 
 ### Fixed

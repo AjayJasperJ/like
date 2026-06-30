@@ -91,6 +91,34 @@ class LikeARS {
     this.suppressErrors = true,
   });
 
+  LikeARS copyWith({
+    bool? staleWhileRevalidate,
+    bool? refresh,
+    bool? singleFetch,
+    bool? sessionStale,
+    bool? disableCache,
+    bool? resetSingleFetch,
+    bool? resetSessionStale,
+    bool? offlineSync,
+    bool? verifySSL,
+    bool? deduplicate,
+    bool? suppressErrors,
+  }) {
+    return LikeARS(
+      staleWhileRevalidate: staleWhileRevalidate ?? this.staleWhileRevalidate,
+      refresh: refresh ?? this.refresh,
+      singleFetch: singleFetch ?? this.singleFetch,
+      sessionStale: sessionStale ?? this.sessionStale,
+      disableCache: disableCache ?? this.disableCache,
+      resetSingleFetch: resetSingleFetch ?? this.resetSingleFetch,
+      resetSessionStale: resetSessionStale ?? this.resetSessionStale,
+      offlineSync: offlineSync ?? this.offlineSync,
+      verifySSL: verifySSL ?? this.verifySSL,
+      deduplicate: deduplicate ?? this.deduplicate,
+      suppressErrors: suppressErrors ?? this.suppressErrors,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'staleWhileRevalidate': staleWhileRevalidate,
         'refresh': refresh,

@@ -106,8 +106,9 @@ Future<void> updateNotifier<T extends Object>({
 
       if (response.state == LikeState.success && !disableSuccessToast) {
         if (context != null && !context.mounted) return;
-        if (enableHaptics)
+        if (enableHaptics) {
           HapticFeedback.lightImpact(); // Light vibration on success
+        }
         LikeToastManager.showToast(
           context: context,
           message: resolveMessage(response.resolvedMessage, LikeState.success),
@@ -129,8 +130,9 @@ Future<void> updateNotifier<T extends Object>({
 
       if (!disableErrorToast) {
         if (context != null && !context.mounted) return;
-        if (enableHaptics)
+        if (enableHaptics) {
           HapticFeedback.mediumImpact(); // Medium warning vibration
+        }
         if (error.type != LikeApiErrorType.cancelled ||
             !disableCancelledToast) {
           LikeToastManager.showToast(
@@ -148,8 +150,9 @@ Future<void> updateNotifier<T extends Object>({
 
       if (!disableExceptionToast) {
         if (context != null && !context.mounted) return;
-        if (enableHaptics)
+        if (enableHaptics) {
           HapticFeedback.heavyImpact(); // Strong warning vibration for crashes
+        }
         LikeToastManager.showToast(
           context: context,
           message: resolveMessage(response.message, LikeState.exception),
