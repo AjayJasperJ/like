@@ -7,12 +7,15 @@ environment:
   flutter: ">=3.16.0"
 
 dependencies:
+  dio: ">=5.0.0 <6.0.0"
   flutter:
     sdk: flutter
   like:
     path: ../
+
   provider: ">=6.0.0 <7.0.0"
   toastification: ">=3.0.0 <4.0.0"
+  like_devtool: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -21,3 +24,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+dependency_overrides:
+  like:
+    path: ../
+  like_devtool:
+    path: ../../like_devtool

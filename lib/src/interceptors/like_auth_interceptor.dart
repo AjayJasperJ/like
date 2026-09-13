@@ -9,8 +9,8 @@ import 'package:like/src/services/like_connectivity_manager.dart';
 /// Matches enterprise's AuthInterceptor parity.
 class LikeAuthInterceptor extends Interceptor {
   final Dio dio;
-  static DateTime? _rateLimitedUntil;
-  static int get _maxRetries => LikeConstants.maxAutoRetries;
+  static final Map<String, DateTime> _rateLimitedUntilByOrigin = {};
+  static const Duration _maximumRateLimitDelay = Duration(seconds: 60);
   static const String _retryCountKey = 'x-retry-count';
 
   /// Synchronization lock for concurrent token refreshes.
@@ -38,11 +38,19 @@ class LikeAuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    // 1. Check for global rate limiting
-    if (_rateLimitedUntil != null &&
-        DateTime.now().isBefore(_rateLimitedUntil!)) {
-      final waitTime = _rateLimitedUntil!.difference(DateTime.now());
-      await Future.delayed(waitTime);
+    // Rate-limit evidence is scoped to the outgoing request's origin.
+    final origin =
+        LikeConnectivityManager.canonicalOrigin(options.uri.toString());
+    final limitedUntil =
+        origin == null ? null : _rateLimitedUntilByOrigin[origin];
+    if (limitedUntil != null && DateTime.now().isBefore(limitedUntil)) {
+      final waitTime = limitedUntil.difference(DateTime.now());
+      try {
+        await _cancellableDelay(waitTime, options.cancelToken);
+      } on DioException catch (error) {
+        handler.reject(error);
+        return;
+      }
     }
 
     final bool withAuth =
@@ -101,7 +109,7 @@ class LikeAuthInterceptor extends Interceptor {
           _refreshCompleter?.complete(newToken);
 
           if (newToken != null) {
-            return _retryRequest(err.requestOptions, newToken, handler);
+            return await _retryRequest(err.requestOptions, newToken, handler);
           } else {
             if (onLogout != null) await onLogout!(statusCode: 401, force: true);
             return handler.next(err);
@@ -117,40 +125,80 @@ class LikeAuthInterceptor extends Interceptor {
       }
     }
 
-    // Handle 429 Too Many Requests
-    if (err.response?.statusCode == 429 && LikeConstants.rateLimitEnabled) {
-      final retryCount = (err.requestOptions.extra[_retryCountKey] ?? 0) as int;
+    // This interceptor is the sole owner of 429 retries. The retry remains
+    // bounded, origin-aware, and cancellable as part of the original request.
+    if (err.response?.statusCode == 429 &&
+        LikeConstants.rateLimitEnabled &&
+        LikeConstants.autoRetryRateLimit) {
+      final options = err.requestOptions;
+      final retryCount = (options.extra[_retryCountKey] as int?) ?? 0;
+      final configuredMaximum = (options.extra['maxAutoRetries'] as int?) ??
+          LikeConstants.maxAutoRetries;
+      final maximumRetries = configuredMaximum < 0 ? 0 : configuredMaximum;
 
-      if (retryCount >= _maxRetries) {
-        return handler.next(err);
+      if (retryCount >= maximumRetries) return handler.next(err);
+
+      final waitDuration = _rateLimitDelay(err, retryCount);
+      final origin =
+          LikeConnectivityManager.canonicalOrigin(options.uri.toString());
+      if (origin != null) {
+        _rateLimitedUntilByOrigin[origin] = DateTime.now().add(waitDuration);
       }
 
-      final retryAfterStr = err.response?.headers.value('retry-after');
-      final retryAfterSeconds = int.tryParse(retryAfterStr ?? '');
-
-      final waitDuration = retryAfterSeconds != null
-          ? Duration(seconds: retryAfterSeconds)
-          : Duration(seconds: 1 << retryCount);
-
-      _rateLimitedUntil = DateTime.now().add(waitDuration);
-      await Future.delayed(waitDuration);
-
-      err.requestOptions.extra[_retryCountKey] = retryCount + 1;
       try {
-        if (!LikeConnectivityManager().hasConnection) {
+        await _cancellableDelay(waitDuration, options.cancelToken);
+        if (!LikeConnectivityManager()
+            .isOriginAvailable(options.uri.toString())) {
           return handler.next(err);
         }
-        final response = await dio.fetch(err.requestOptions);
+        options.extra[_retryCountKey] = retryCount + 1;
+        final response = await dio.fetch(options);
         return handler.resolve(response);
-      } catch (e) {
-        if (e is DioException) return handler.next(e);
+      } on DioException catch (error) {
+        return handler.next(error);
+      } catch (error, stackTrace) {
         return handler.reject(
-          DioException(requestOptions: err.requestOptions, error: e),
+          DioException(
+            requestOptions: options,
+            error: error,
+            stackTrace: stackTrace,
+          ),
         );
       }
     }
 
     return handler.next(err);
+  }
+
+  static Duration _rateLimitDelay(DioException error, int retryCount) {
+    final retryAfter = error.response?.headers.value('retry-after');
+    final seconds = int.tryParse(retryAfter ?? '');
+    final requested = seconds == null
+        ? Duration(seconds: 1 << retryCount.clamp(0, 6))
+        : Duration(seconds: seconds < 0 ? 0 : seconds);
+    return requested > _maximumRateLimitDelay
+        ? _maximumRateLimitDelay
+        : requested;
+  }
+
+  static Future<void> _cancellableDelay(
+    Duration duration,
+    CancelToken? cancelToken,
+  ) {
+    if (cancelToken?.isCancelled ?? false) {
+      return Future<void>.error(cancelToken!.cancelError!);
+    }
+    if (duration <= Duration.zero) return Future<void>.value();
+
+    final completer = Completer<void>();
+    final timer = Timer(duration, completer.complete);
+    cancelToken?.whenCancel.then((error) {
+      if (!completer.isCompleted) {
+        timer.cancel();
+        completer.completeError(error);
+      }
+    });
+    return completer.future;
   }
 
   Future<void> _retryRequest(

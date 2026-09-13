@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_api_result.dart';
 
+/// A shorter, cleaner alias for [LikeStateResponse].
+typedef StateResponse<T> = LikeStateResponse<T>;
+
 /// Function signature for creating models from JSON.
 typedef LikeModelFactory<T> = T Function(dynamic json);
 

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:like/src/client/like_client.dart';
+import 'package:like/src/core/like_constants.dart';
+import 'package:like/src/models/like_connectivity_transition.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_logger.dart';
 
@@ -10,7 +12,7 @@ class LikeOfflineSyncManager {
       LikeOfflineSyncManager._internal();
   factory LikeOfflineSyncManager() => _instance;
 
-  StreamSubscription? _connectivitySubscription;
+  StreamSubscription<LikeConnectivityTransition>? _connectivitySubscription;
   bool _isInitialized = false;
 
   LikeOfflineSyncManager._internal();
@@ -22,29 +24,37 @@ class LikeOfflineSyncManager {
     _isInitialized = true;
 
     _connectivitySubscription?.cancel();
-    _connectivitySubscription =
-        LikeConnectivityManager().connectionChange.listen((isConnected) {
-      if (isConnected) {
-        _triggerSync();
-      }
-    });
+    _connectivitySubscription = LikeConnectivityManager()
+        .originRestorations
+        .listen((event) => _triggerSync(event.origin));
 
-    // Check initial state
-    if (LikeConnectivityManager().hasConnection) {
-      _triggerSync();
+    // Preserve the existing background-sync default for startup drains. Unlike
+    // restoration drains, this manually scans all currently eligible origins.
+    if (LikeConstants.backgroundSyncEnabled &&
+        LikeConnectivityManager().hasConnection) {
+      _triggerSync(null);
     }
   }
 
-  void _triggerSync() {
+  void _triggerSync(String? origin) {
+    if (!LikeConstants.backgroundSyncEnabled) return;
     LikeLogger.log(
       level: LikeLogLevel.info,
       category: 'sync',
-      message: 'Connectivity restored. Initiating sync orchestration...',
+      message: origin == null
+          ? 'Initiating eligible durable sync.'
+          : 'Origin restored. Initiating matching durable sync: $origin',
     );
 
-    final client = LikeClient();
-    client.syncOfflineData();
-    client.triggerReconnectionSync();
+    LikeClient().triggerReconnectionSync();
+
+    unawaited(LikeClient().syncOfflineData(origin: origin).catchError((error) {
+      LikeLogger.log(
+        level: LikeLogLevel.error,
+        category: 'sync',
+        message: 'Durable sync failed: $error',
+      );
+    }));
   }
 
   void dispose() {

@@ -125,7 +125,7 @@ void main() {
       final failedMap = await success
           .mapSuccessAsync((data) => throw Exception('async map fail'));
       expect(failedMap.isSuccess, isFalse);
-      expect(failedMap.error?.message, contains('Async mapping failed'));
+      expect(failedMap.error?.message, contains('Mapping failed'));
 
       // Already error result
       final error = LikeApiResult<String>.error(
@@ -165,11 +165,11 @@ void main() {
       expect(stateNullError.error?.message, equals('Unknown error'));
     });
 
-    test('LikeApiResultFutureX extension methods map properly', () async {
-      final responseSuccess = LikeApiResult.success(
+    test('ApiResultFutureX extension methods map properly', () async {
+      final responseSuccess = ApiResult.success(
         Response(requestOptions: RequestOptions(), data: 'data'),
       );
-      final Future<LikeApiResult<Response>> futureResult =
+      final Future<ApiResult<Response>> futureResult =
           Future.value(responseSuccess);
 
       final mappedSync = await futureResult.mapSync((data) => 'sync_$data');
@@ -180,6 +180,15 @@ void main() {
           await Future.value(responseSuccess).mapAsync((data) => 'async_$data');
       expect(mappedAsync.isSuccess, isTrue);
       expect(mappedAsync.data, equals('async_data'));
+
+      // Test mapAsync failure handling
+      final failedMapAsync = await Future.value(responseSuccess).mapAsync(
+        (data) => throw const FormatException('Invalid JSON'),
+      );
+      expect(failedMapAsync.isSuccess, isFalse);
+      expect(failedMapAsync.isError, isTrue);
+      expect(failedMapAsync.error?.type, equals(LikeApiErrorType.parsing));
+      expect(failedMapAsync.error?.message, contains('Mapping failed'));
     });
   });
 }

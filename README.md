@@ -14,23 +14,23 @@
 </p>
 
 <p align="center">
-  <strong>Enterprise-grade, offline-first networking for Flutter — built on Dio with reactive state, encrypted media cache, smart sync, and zero-boilerplate UI bindings.</strong>
+  <strong>Enterprise-grade, offline-first networking for Flutter — built on Dio with reactive state, managed media caching, smart sync, and zero-boilerplate UI bindings.</strong>
 </p>
 
 ---
 
 ## Why LIKE?
 
-| Capability               | Raw Dio / HTTP           | LIKE                                                         |
-| :----------------------- | :----------------------- | :----------------------------------------------------------- |
-| **Cache**                | Manual or none           | L1 RAM → L2 Hive disk → SWR → ETag/304                       |
-| **State machine**        | Hand-rolled booleans     | `LikeNotifierState` — loading / refreshing / SWR / error     |
-| **Cross-screen sync**    | Global event buses       | Zero-config `LikePipeline` — mutations fan-out automatically |
-| **Request cancellation** | `CancelToken` per screen | Auto-rotation & disposal via `fetch`                         |
-| **JSON parsing**         | Main thread → jank       | Isolate parsing for payloads > 100 KB                        |
-| **Image cache**          | Plain disk               | Per-device AES-256, per-file IV, LRU pruning                 |
-| **Offline mutations**    | Crash or custom queues   | Persistent Hive queue, auth-aware replay on reconnect        |
-| **Duplicate requests**   | Wasted bandwidth         | In-flight deduplication via `LikeRequestRegistry`            |
+| Capability               | Raw Dio / HTTP           | LIKE                                                        |
+| :----------------------- | :----------------------- | :---------------------------------------------------------- |
+| **Cache**                | Manual or none           | L1 RAM → L2 Hive disk → SWR → ETag/304                      |
+| **State machine**        | Hand-rolled booleans     | `LikeNotifierState` — loading / refreshing / SWR / error    |
+| **Cross-screen sync**    | Global event buses       | Zero-config`LikePipeline` — mutations fan-out automatically |
+| **Request cancellation** | `CancelToken` per screen | Auto-rotation & disposal via`fetch`                         |
+| **JSON parsing**         | Main thread → jank       | Isolate parsing for payloads > 100 KB                       |
+| **Image cache**          | Manual setup             | Managed disk cache, URL normalization, LRU pruning          |
+| **Offline mutations**    | Crash or custom queues   | Persistent Hive queue, auth-aware replay on reconnect       |
+| **Duplicate requests**   | Wasted bandwidth         | In-flight deduplication via`LikeRequestRegistry`            |
 
 ---
 
@@ -80,7 +80,7 @@
 
 ### Root Widget (Recommended)
 
-Wrap your `MaterialApp` once. LIKE bootstraps Hive, connectivity, AES image-cache, auth interceptors, and toast listeners in a single call.
+Wrap your `MaterialApp` once. LIKE bootstraps Hive, connectivity, auth interceptors, and toast listeners in a single call.
 
 ```dart
 void main() async {
@@ -110,7 +110,6 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
   await LikeService.init(
     config: LikeConfig(
       baseUrl: 'https://api.example.com',
-      encryptionKey: 'your-optional-app-key', // SHA-256 derived; omit for per-device key
       unpacker: const DefaultLikeUnpacker(
         dataKey:    'data',
         messageKey: 'message',
@@ -120,9 +119,6 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
   );
 });
 ```
-
-> [!IMPORTANT]
-> `LikeService.init()` always initialises AES image-cache encryption **before** Hive, so `AppCacheManager` is ready before any file access.
 
 ---
 
@@ -249,7 +245,7 @@ LikeBuilder<User>(
 
 | State                  | Renders                                                        |
 | :--------------------- | :------------------------------------------------------------- |
-| `loading`              | Always `onLoading` — no sticky-data leak                       |
+| `loading`              | Always`onLoading` — no sticky-data leak                        |
 | `refreshing`           | `onSuccess(data, isRefreshing: true)` — keeps old data visible |
 | `staleWhileRevalidate` | `onSuccess(data, isFromSWR: true)`                             |
 | `success`              | `onSuccess(data, false, false)`                                |
@@ -307,7 +303,7 @@ LikeMultiBuilder(
 );
 ```
 
-### `LikeWhen<T>`
+1. `LikeWhen<T>`
 
 Pattern-matching shorthand for simple state-to-widget mapping — useful inside `build()` when you already hold a `LikeStateResponse<T>` snapshot.
 
@@ -398,22 +394,21 @@ await likeWhenNotifier<List<Todo>>(
 | :---------------------------- | :----------------------- | :------------------------------- |
 | Toasts                        | Auto-managed, toggleable | None                             |
 | Haptics                       | Auto by state            | None                             |
-| `refreshing` / `SWR` callback | Fires `onSuccess`        | Silent (skipped)                 |
+| `refreshing` / `SWR` callback | Fires`onSuccess`         | Silent (skipped)                 |
 | Use case                      | Primary actions          | Analytics, navigation, custom UI |
 
 ---
 
-## Encrypted Image Cache
+## Image Cache
 
-### Per-Device AES-256 Encryption
+`AppCacheManager` uses `flutter_cache_manager` to store downloaded image bytes
+unchanged. It updates access times on cache hits, applies configurable LRU
+pruning, and supports explicit clearing through `clearAll()`.
 
-`AppCacheSecurity` generates a cryptographically random 32-byte key on first install and persists it in `SharedPreferences`. A fresh random 16-byte IV is generated **per file** at write time:
-
-```
-[16-byte IV] + [AES-CBC ciphertext]
-```
-
-Every cached image is independently decryptable. Supply your own key via `LikeConfig.encryptionKey` — LIKE derives a stable 32-byte key from it using SHA-256.
+The cache namespace now ends in `_universalImageCache_v2`. This intentionally
+isolates cache entries written by releases that used a different on-disk format,
+so legacy data is never interpreted as an image. The platform temporary-file
+lifecycle can remove the abandoned old namespace normally.
 
 ### `LikeCacheImage`
 
@@ -488,12 +483,54 @@ Custom envelopes (e.g. nested `result.body.payload`) can be handled by implement
 
 ---
 
+## Connectivity Diagnostics
+
+Run an explicit check through the global manager or through a client. Client checks use that client's active base origin, including scoped clients:
+
+```dart
+final globalResult = await LikeConnectivityManager().checkConnectivity(
+  serverUrl: 'https://api.example.com/v1',
+  force: true,
+);
+
+final clientResult = await LikeClient().checkServerReachability(force: true);
+
+if (!clientResult.hasNetworkInterface) {
+  // No usable Wi-Fi, mobile, Ethernet, or other network interface.
+} else if (!clientResult.isInternetReachable) {
+  // The wider internet could not be reached.
+} else if (clientResult.isServerAvailable == false) {
+  // This specific API origin could not be reached.
+}
+
+print(clientResult.origin); // https://api.example.com:443
+print(clientResult.reason); // LikeConnectivityCheckReason.manualServer
+print(clientResult.timestamp);
+print(clientResult.hasConnection); // Legacy-compatible combined status.
+```
+
+Results report interface availability, internet reachability, nullable server availability, the canonical origin, reason, timestamp, and the combined `hasConnection`/`isOnline` status. Origins are isolated by lower-case scheme and host plus effective port; paths, queries, fragments, and credentials are ignored. A response from a scoped client or request-level origin override therefore cannot mutate the primary server status.
+
+After retries are exhausted, LIKE starts a fire-and-forget diagnostic only for ambiguous no-response transport failures: connection errors; connection, send, and receive timeouts; and socket-backed unknown errors. The exact original Dio error is forwarded immediately. HTTP responses of every status are positive origin reachability evidence and do not trigger a check. Cancellation (including take-latest), bad certificates, transform/local mapping failures, synthetic preflight-offline failures, and `OFFLINE_QUEUED` results are also excluded.
+
+Automatic checks are single-flight globally for interface/internet work and per canonical origin for server work. They have a per-origin cooldown, while explicit checks bypass the cooldown and still join equivalent in-flight work. Configure this behavior during initialization:
+
+```dart
+LikeConfig(
+  baseUrl: 'https://api.example.com',
+  automaticConnectivityChecksEnabled: true,
+  automaticFailureCheckCooldown: const Duration(seconds: 3),
+)
+```
+
 ## Web Platform Compatibility
 
-LIKE is designed to be fully platform-agnostic, supporting **Android, iOS, Web, Windows, macOS, and Linux**. 
+LIKE is designed to be fully platform-agnostic, supporting **Android, iOS, Web, Windows, macOS, and Linux**.
+
 * **SSL Isolation**: Uses conditional exports to transparently handle certificate pinning (`verifySSL` and `sslCertSha256`) on native platforms while cleanly stubbing it out for the browser.
 * **Storage Guard**: When running on Flutter Web, the database/file caching layer automatically falls back to `NonStoringObjectProvider` to avoid native SQLite and filesystem dependencies.
 * **HTTP Adapters & Timeouts**: Adapts request timeout configurations dynamically on the Web (disabling `sendTimeout` when no body is present to eliminate Dio console warnings).
+* **Connectivity Safety**: Browser diagnostics never use DNS lookups or raw sockets. A no-response browser error does not establish global internet loss, and origin availability remains unknown (`null`) until real HTTP evidence is available.
 
 ---
 
@@ -502,13 +539,17 @@ LIKE is designed to be fully platform-agnostic, supporting **Android, iOS, Web, 
 LIKE converts all backend response failures and client exceptions into a unified `LikeError` model.
 
 ### 1. Granular HTTP Mappings
+
 Every standard HTTP code is translated into a user-friendly message and categorised into a `LikeApiErrorType` case:
+
 * **3xx Redirections**: 300, 301, 302, 304, 307, 308 (mapped as `badRequest`).
 * **4xx Client Errors**: 400 (`badRequest`), 401 (`unauthorized`), 402 (`forbidden`), 403 (`forbidden`), 404 (`notFound`), 405 (`methodNotAllowed`), 406 (`badRequest`), 407 (`unauthorized`), 408 (`timeout`), 409 (`conflict`), 410 (`gone`), 411/412/414/415/416/417/418/421/422/424/425/426/428/431 (`badRequest`), 423/451 (`forbidden`), 429 (`rateLimit`).
 * **5xx Server Errors**: 500 (`server`), 501/505/507/508 (`server`), 502/503 (`serverUnavailable`), 504 (`timeout`), 511 (`unauthorized`).
 
 ### 2. High-Resilience Exception Traps
+
 `LikeErrorHandler.handle()` catches and maps raw system exceptions before they crash the application or result in generic "Unknown" errors:
+
 * **`SocketException`**: Inspects device connectivity via `LikeConnectivityManager` to return a precise offline message or server outage report.
 * **`TimeoutException`**: Standardizes request/response timeout intervals.
 * **`HttpException`**: Decodes low-level network protocol issues.
@@ -583,15 +624,15 @@ await wsClient.dispose();
 
 ## Connect & Contribute
 
-|                   |                                                                                            |
-| :---------------- | :----------------------------------------------------------------------------------------- |
-| 📦 **pub.dev**     | [pub.dev/packages/like](https://pub.dev/packages/like)                                     |
-| 📖 **Docs / Wiki** | [github.com/AjayJasperJ/like_docs](https://github.com/AjayJasperJ/like_docs)               |
-| 🐛 **Issues**      | [github.com/AjayJasperJ/like_docs/issues](https://github.com/AjayJasperJ/like_docs/issues) |
-| 💻 **GitHub**      | [@AjayJasperJ](https://github.com/AjayJasperJ)                                             |
-| 💼 **LinkedIn**    | [Ajay Jasper J](https://in.linkedin.com/in/ajay-jasper-j-8563852b4)                        |
-| 📸 **Instagram**   | [@ajayjasper.j](https://www.instagram.com/ajayjasper.j)                                    |
-| ✉️ **Email**       | [ajayjasperj@outlook.com](mailto:ajayjasperj@outlook.com)                                  |
+|                  |                                                                                            |
+| :--------------- | :----------------------------------------------------------------------------------------- |
+| 📦**pub.dev**     | [pub.dev/packages/like](https://pub.dev/packages/like)                                     |
+| 📖**Docs / Wiki** | [github.com/AjayJasperJ/like_docs](https://github.com/AjayJasperJ/like_docs)               |
+| 🐛**Issues**      | [github.com/AjayJasperJ/like_docs/issues](https://github.com/AjayJasperJ/like_docs/issues) |
+| 💻**GitHub**      | [@AjayJasperJ](https://github.com/AjayJasperJ)                                             |
+| 💼**LinkedIn**    | [Ajay Jasper J](https://in.linkedin.com/in/ajay-jasper-j-8563852b4)                        |
+| 📸**Instagram**   | [@ajayjasper.j](https://www.instagram.com/ajayjasper.j)                                    |
+| ✉️**Email**       | [ajayjasperj@outlook.com](mailto:ajayjasperj@outlook.com)                                  |
 
 ### Contributing
 

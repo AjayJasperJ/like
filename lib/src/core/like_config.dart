@@ -4,7 +4,8 @@ import 'package:like/src/core/like_data_unpacker.dart';
 
 /// Global configuration for the LIKE engine's behavior and caching system.
 class LikeConfig {
-  /// The name of the project. Used as a namespace prefix for storage, cache directories, encryption keys, and Hive boxes.
+  /// The name of the project. Used as a namespace prefix for storage, cache
+  /// directories, and Hive boxes.
   final String projectName;
 
   /// The main web address (API root URL) that your app talks to.
@@ -111,12 +112,6 @@ class LikeConfig {
   /// so you don't stutter or freeze your application's UI frames.
   final int computeThresholdKB;
 
-  /// Optional secret password key used to fully encrypt all cached data saved on disk.
-  ///
-  /// **Security:** If provided, all local cache files are encrypted with AES, meaning even if someone hacks
-  /// the phone, they cannot read the user's cached offline profile or transaction lists in plain text.
-  final String? encryptionKey;
-
   /// A helper class that unpacks your JSON responses and extracts only the relevant data.
   ///
   /// **Example:** Often, servers wrap lists in envelopes like: `{"status": true, "data": [...your list...]}`.
@@ -220,6 +215,17 @@ class LikeConfig {
   /// and 4 seconds before the 3rd retry. This exponential backup avoids spamming a recovering server.
   final List<int> retryDelays;
 
+  /// Enables background connectivity checks after ambiguous terminal transport failures.
+  ///
+  /// These checks are fire-and-forget and never delay or replace the original
+  /// request failure.
+  final bool automaticConnectivityChecksEnabled;
+
+  /// Minimum delay between automatic failure-triggered checks for one origin.
+  ///
+  /// Explicit checks are not throttled by this cooldown.
+  final Duration automaticFailureCheckCooldown;
+
   /// Enables the persistent "Offline Action Sync Queue" globally.
   ///
   /// **How it works:** If a user performs an action that changes data (like "Liking" a post) while offline,
@@ -236,7 +242,10 @@ class LikeConfig {
   /// Attaches authorization/login headers to requests by default.
   final bool withAuthByDefault;
 
-  /// Automatically saves mutation requests (POST/PUT/DELETE) to the offline sync queue by default if offline.
+  /// Legacy configuration hook for mutation replay defaults.
+  ///
+  /// The built-in mutation APIs intentionally require a request-local explicit
+  /// opt-in, so the package default is `false`.
   final bool offlineSyncByDefault;
 
   /// Bypasses the cache and goes directly to the internet by default for all requests.
@@ -369,7 +378,6 @@ class LikeConfig {
     this.verboseLogging = false,
     this.sensitiveHeaders = const ['Authorization', 'Cookie', 'Set-Cookie'],
     this.computeThresholdKB = 100,
-    this.encryptionKey,
     bool? verifySSL,
     this.sslCertSha256 = '',
     this.cacheEnabled = true,
@@ -386,14 +394,16 @@ class LikeConfig {
     this.cacheOnException = false,
     this.maxAutoRetries = 3,
     this.retryDelays = const [1, 2, 4],
+    this.automaticConnectivityChecksEnabled = true,
+    this.automaticFailureCheckCooldown = const Duration(seconds: 3),
     this.offlineSyncEnabled = true,
     this.backgroundSyncEnabled = true,
     this.withAuthByDefault = true,
-    this.offlineSyncByDefault = true,
+    this.offlineSyncByDefault = false,
     this.disableCacheByDefault = false,
     this.disableLoggerByDefault = false,
-    this.suppressErrorsByDefault = true,
-    this.staleWhileRevalidateByDefault = true,
+    this.suppressErrorsByDefault = false,
+    this.staleWhileRevalidateByDefault = false,
     this.sessionStaleByDefault = false,
     this.singleFetchByDefault = false,
     this.refreshByDefault = false,
@@ -446,7 +456,6 @@ class LikeConfig {
     bool? verboseLogging,
     List<String>? sensitiveHeaders,
     int? computeThresholdKB,
-    String? encryptionKey,
     bool? verifySSL,
     String? sslCertSha256,
     bool? cacheEnabled,
@@ -463,6 +472,8 @@ class LikeConfig {
     bool? cacheOnException,
     int? maxAutoRetries,
     List<int>? retryDelays,
+    bool? automaticConnectivityChecksEnabled,
+    Duration? automaticFailureCheckCooldown,
     bool? offlineSyncEnabled,
     bool? backgroundSyncEnabled,
     bool? withAuthByDefault,
@@ -514,7 +525,6 @@ class LikeConfig {
       verboseLogging: verboseLogging ?? this.verboseLogging,
       sensitiveHeaders: sensitiveHeaders ?? this.sensitiveHeaders,
       computeThresholdKB: computeThresholdKB ?? this.computeThresholdKB,
-      encryptionKey: encryptionKey ?? this.encryptionKey,
       verifySSL: verifySSL ?? this.verifySSL,
       sslCertSha256: sslCertSha256 ?? this.sslCertSha256,
       cacheEnabled: cacheEnabled ?? this.cacheEnabled,
@@ -532,6 +542,10 @@ class LikeConfig {
       cacheOnException: cacheOnException ?? this.cacheOnException,
       maxAutoRetries: maxAutoRetries ?? this.maxAutoRetries,
       retryDelays: retryDelays ?? this.retryDelays,
+      automaticConnectivityChecksEnabled: automaticConnectivityChecksEnabled ??
+          this.automaticConnectivityChecksEnabled,
+      automaticFailureCheckCooldown:
+          automaticFailureCheckCooldown ?? this.automaticFailureCheckCooldown,
       offlineSyncEnabled: offlineSyncEnabled ?? this.offlineSyncEnabled,
       backgroundSyncEnabled:
           backgroundSyncEnabled ?? this.backgroundSyncEnabled,

@@ -1,62 +1,118 @@
 import 'dart:io' as io;
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:like/src/core/like_config.dart';
+import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/app_cache_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Setup path provider mock channel
   const channel = MethodChannel('plugins.flutter.io/path_provider');
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(channel, (methodCall) async {
-    if (methodCall.method == 'getTemporaryDirectory') {
-      return io.Directory.systemTemp.path;
-    }
-    if (methodCall.method == 'getApplicationSupportDirectory') {
-      return io.Directory.systemTemp.path;
-    }
-    return null;
+  final testRoot = io.Directory(
+    '${io.Directory.systemTemp.path}/like_app_cache_manager_test',
+  );
+
+  setUpAll(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (methodCall) async {
+      if (methodCall.method == 'getTemporaryDirectory' ||
+          methodCall.method == 'getApplicationSupportDirectory') {
+        return testRoot.path;
+      }
+      return null;
+    });
+  });
+
+  setUp(() async {
+    await testRoot.delete(recursive: true).catchError((_) => testRoot);
+    await testRoot.create(recursive: true);
+    LikeConstants.reset();
+    LikeConstants.apply(LikeConfig(projectName: 'cache_test'));
+    AppCacheManager.reset();
+  });
+
+  tearDown(() async {
+    AppCacheManager.reset();
+    LikeConstants.reset();
+    await testRoot.delete(recursive: true).catchError((_) => testRoot);
+  });
+
+  tearDownAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
   });
 
   group('AppCacheManager', () {
-    late AppCacheManager cacheManager;
-
-    setUp(() {
-      cacheManager = AppCacheManager();
+    test('uses a versioned namespace that excludes legacy cache metadata', () {
+      expect(AppCacheManager.key, 'cache_test_universalImageCache_v2');
+      expect(AppCacheManager.key, isNot('cache_test_universalImageCache'));
     });
 
-    test(
-      'clearAll should remove both encrypted and decrypted files from disk',
-      () async {
-        final tempDir = io.Directory.systemTemp;
-        final cacheDir = io.Directory('${tempDir.path}/${AppCacheManager.key}');
-        final decryptedDir = io.Directory('${cacheDir.path}/decrypted');
+    test('putFile stores and returns the original bytes', () async {
+      final manager = AppCacheManager();
+      final bytes = Uint8List.fromList(<int>[0, 1, 2, 127, 128, 254, 255]);
 
-        // Ensure directories exist
-        await cacheDir.create(recursive: true);
-        await decryptedDir.create(recursive: true);
+      final stored = await manager.putFile(
+        'https://example.test/image.png',
+        bytes,
+        fileExtension: 'png',
+      );
+      final cached = await manager.getFileFromCache(
+        'https://example.test/image.png',
+      );
 
-        // Write dummy files
-        final encryptedFile = io.File('${cacheDir.path}/dummy_encrypted.file');
-        await encryptedFile.writeAsString('encrypted_data');
+      expect(await stored.readAsBytes(), bytes);
+      expect(cached, isNotNull);
+      expect(await cached!.file.readAsBytes(), bytes);
+      expect(
+        io.Directory('${testRoot.path}/${AppCacheManager.key}/decrypted')
+            .existsSync(),
+        isFalse,
+      );
+    });
 
-        final decryptedFile = io.File(
-          '${decryptedDir.path}/dummy_decrypted.file',
-        );
-        await decryptedFile.writeAsString('decrypted_data');
+    test('normalizeUrl strips query and fragment and normalizes host casing',
+        () {
+      expect(
+        AppCacheUtils.normalizeUrl(
+          ' HTTPS://Example.COM/avatar.png?token=secret#profile ',
+        ),
+        'https://example.com/avatar.png',
+      );
+      expect(AppCacheUtils.normalizeUrl(''), '');
+    });
 
-        expect(await encryptedFile.exists(), isTrue);
-        expect(await decryptedFile.exists(), isTrue);
+    test('pruning removes the least recently used file first', () async {
+      final directory = io.Directory('${testRoot.path}/${AppCacheManager.key}');
+      await directory.create(recursive: true);
+      final oldest = io.File('${directory.path}/oldest.bin');
+      final newest = io.File('${directory.path}/newest.bin');
+      await oldest.writeAsBytes(List<int>.filled(1024, 1));
+      await newest.writeAsBytes(List<int>.filled(1024, 2));
+      await oldest.setLastModified(DateTime(2020));
+      await newest.setLastModified(DateTime(2021));
 
-        // Clear all
-        await cacheManager.clearAll();
+      await AppCacheManager().pruneCacheIfExceedsSize(
+        maxMB: 0.0015,
+        minMB: 0.001,
+      );
 
-        // Assert decrypted files are deleted
-        expect(await decryptedFile.exists(), isFalse);
-        // Assert encrypted files are deleted
-        expect(await encryptedFile.exists(), isFalse);
-      },
-    );
+      expect(await oldest.exists(), isFalse);
+      expect(await newest.exists(), isTrue);
+    });
+
+    test('clearAll removes ordinary cache files', () async {
+      final manager = AppCacheManager();
+      final directory = io.Directory('${testRoot.path}/${AppCacheManager.key}');
+      await directory.create(recursive: true);
+      final file = io.File('${directory.path}/cached-image.bin');
+      await file.writeAsBytes(<int>[1, 2, 3]);
+
+      await manager.clearAll();
+
+      expect(await file.exists(), isFalse);
+    });
   });
 }

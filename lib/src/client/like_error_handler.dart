@@ -21,7 +21,6 @@ class LikeErrorHandler {
           type: LikeApiErrorType.network,
         );
       } else {
-        conn.markServerUnavailable();
         return LikeError(
           message: 'Network Error – Unable to connect to the server.',
           type: LikeApiErrorType.network,
@@ -89,7 +88,6 @@ class LikeErrorHandler {
           defaultMsg = 'No internet connection – Please check your network.';
           type = LikeApiErrorType.network;
         } else {
-          conn.markServerUnavailable();
           defaultMsg =
               'Request timed out – Please check your connection stability.';
           type = LikeApiErrorType.timeout;
@@ -112,7 +110,6 @@ class LikeErrorHandler {
           defaultMsg = 'No internet connection – Unable to reach the server.';
           type = LikeApiErrorType.network;
         } else {
-          conn.markServerUnavailable();
           defaultMsg = 'Connection Error – Unable to reach the server.';
           type = LikeApiErrorType.network;
         }
@@ -131,7 +128,6 @@ class LikeErrorHandler {
             defaultMsg = 'No internet connection – Please check your network.';
             type = LikeApiErrorType.network;
           } else {
-            conn.markServerUnavailable();
             defaultMsg = 'Network Error – Unable to connect to the server.';
             type = LikeApiErrorType.network;
           }
@@ -335,17 +331,14 @@ class LikeErrorHandler {
         type = LikeApiErrorType.server;
         break;
       case 502:
-        LikeConnectivityManager().markServerUnavailable();
         defaultMsg = 'Bad Gateway – The server received an invalid response.';
         type = LikeApiErrorType.serverUnavailable;
         break;
       case 503:
-        LikeConnectivityManager().markServerUnavailable();
         defaultMsg = 'Service Unavailable – The server is temporarily offline.';
         type = LikeApiErrorType.serverUnavailable;
         break;
       case 504:
-        LikeConnectivityManager().markServerUnavailable();
         defaultMsg =
             'Gateway Timeout – The server is taking too long to respond.';
         type = LikeApiErrorType.timeout;

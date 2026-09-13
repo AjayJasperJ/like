@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:universal_io/io.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/client/like_error_handler.dart';
 import 'package:like/src/models/like_error.dart';
@@ -222,6 +223,125 @@ void main() {
           await LikeErrorHandler.handle(Exception('Something strange'));
       expect(error.type, LikeApiErrorType.unknown);
       expect(error.message, contains('Unexpected error'));
+    });
+  });
+
+  group('LikeErrorHandler Network Simulations', () {
+    void printDebugResult(String scenario, dynamic input, LikeError result) {
+      debugPrint('\n======================================================');
+      debugPrint('Scenario: $scenario');
+      debugPrint('Input Error: ${input.runtimeType}');
+      debugPrint('Parsed Type: ${result.type.name}');
+      debugPrint('Parsed Message: ${result.message}');
+      debugPrint('======================================================');
+    }
+
+    final dummyRequest = RequestOptions(path: 'https://example.com/api');
+
+    test('1. connectionTimeout maps to LikeApiErrorType.timeout', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.connectionTimeout,
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Connection Timeout', input, result);
+      expect(result.type, LikeApiErrorType.timeout);
+    });
+
+    test('2. badCertificate maps to LikeApiErrorType.network', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.badCertificate,
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Bad Certificate', input, result);
+      expect(result.type, LikeApiErrorType.network);
+    });
+
+    test('3. cancel maps to LikeApiErrorType.cancelled', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.cancel,
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Request Cancelled', input, result);
+      expect(result.type, LikeApiErrorType.cancelled);
+    });
+
+    test('4. connectionError maps to LikeApiErrorType.network', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.connectionError,
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Connection Error', input, result);
+      expect(result.type, LikeApiErrorType.network);
+    });
+
+    test('5. unknown with SocketException maps to LikeApiErrorType.network', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.unknown,
+        error: const SocketException('Connection failed'),
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Unknown (SocketException)', input, result);
+      expect(result.type, LikeApiErrorType.network);
+    });
+
+    test('6. Native SocketException maps to LikeApiErrorType.network', () async {
+      const input = SocketException('Failed host lookup');
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Native SocketException', input, result);
+      expect(result.type, LikeApiErrorType.network);
+    });
+
+    test('7. Native TimeoutException maps to LikeApiErrorType.timeout', () async {
+      final input = TimeoutException('Operation timed out');
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Native TimeoutException', input, result);
+      expect(result.type, LikeApiErrorType.timeout);
+    });
+
+    test('8. badResponse (401) maps to LikeApiErrorType.unauthorized', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: dummyRequest,
+          statusCode: 401,
+          data: {},
+        ),
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Bad Response (401)', input, result);
+      expect(result.type, LikeApiErrorType.unauthorized);
+    });
+
+    test('9. badResponse (404) maps to LikeApiErrorType.notFound', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: dummyRequest,
+          statusCode: 404,
+          data: {},
+        ),
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Bad Response (404)', input, result);
+      expect(result.type, LikeApiErrorType.notFound);
+    });
+    
+    test('10. OFFLINE_QUEUED maps to LikeApiErrorType.offlineQueued', () async {
+      final input = DioException(
+        requestOptions: dummyRequest,
+        type: DioExceptionType.unknown,
+        error: 'OFFLINE_QUEUED',
+      );
+      final result = await LikeErrorHandler.handle(input);
+      printDebugResult('Offline Queued String', input, result);
+      expect(result.type, LikeApiErrorType.offlineQueued);
     });
   });
 }

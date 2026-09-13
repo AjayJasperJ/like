@@ -24,7 +24,8 @@ class LikeConstants {
   @visibleForTesting
   static void reset() => _config = LikeConfig(projectName: 'default_project');
 
-  /// The name of the project. Used as a namespace prefix for storage, cache directories, encryption keys, and Hive boxes.
+  /// The name of the project. Used as a namespace prefix for storage, cache
+  /// directories, and Hive boxes.
   static String get projectName => _config.projectName;
 
   // --- Logs ---
@@ -93,6 +94,14 @@ class LikeConstants {
   static bool get autoRetryRateLimit => _config.autoRetryRateLimit;
 
   // --- Resiliency Flags ---
+
+  /// Whether terminal ambiguous transport failures trigger background checks.
+  static bool get automaticConnectivityChecksEnabled =>
+      _config.automaticConnectivityChecksEnabled;
+
+  /// Per-origin cooldown between automatic failure-triggered checks.
+  static Duration get automaticFailureCheckCooldown =>
+      _config.automaticFailureCheckCooldown;
 
   /// Whether to automatically serve cached data when a request is made while offline.
   static bool get cacheOnOffline => _config.cacheOnOffline;

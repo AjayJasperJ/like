@@ -9,14 +9,13 @@ import 'package:like/src/services/app_cache_manager.dart';
 /// A universal, premium network image widget designed to load, render, and automatically
 /// cache images.
 ///
-/// It integrates seamlessly with the custom encrypted L2 disk cache (`AppCacheManager`)
+/// It integrates seamlessly with the custom L2 disk cache (`AppCacheManager`)
 /// and honors LIKE's web/native dual-runtime safety constraints automatically.
 ///
 /// ### How Caching Works:
 /// * **Native Platforms (iOS/Android):** Powered by `CachedNetworkImage` with our custom
-///   `AppCacheManager`. Images are downloaded, parsed, encrypted on-the-fly, and saved to disk.
-///   Subsequent requests retrieve the image instantly from the local database instead of hitting
-///   the internet again.
+///   `AppCacheManager`. Images are downloaded and saved to disk unchanged. Subsequent
+///   requests retrieve the image from the local cache instead of hitting the internet again.
 /// * **Web Platform (Chrome/Safari/etc.):** Since native file paths and directory accesses aren't
 ///   supported in browser security sandboxes, it gracefully falls back to standard `Image.network`
 ///   without throwing exceptions, utilizing native browser caching headers.

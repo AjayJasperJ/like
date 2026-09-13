@@ -71,13 +71,20 @@ class LikeARS {
   /// if your local mock API server does not have a verified security certificate.
   final bool verifySSL;
 
-  /// Automatically groups identical network requests made at the exact same moment.
+  /// Checks whether the requested resource is available before proceeding.
+  final bool checkAvailability;
+
+  /// Automatically cancels previous identical network requests if a new one is made.
   ///
-  /// **Example:** If two widgets on your screen request the user's profile at the exact same time, the app only
-  /// makes one call to the internet and shares the response with both widgets, saving data and bandwidth.
+  /// **Example:** If two widgets on your screen request the user's profile at the exact same time,
+  /// the app cancels the first request and only the second widget's request is executed (Take-Latest behavior).
   final bool deduplicate;
 
+  /// Enables automatic UI refetching when the bound screen comes into focus.
+  final bool visibility;
+
   const LikeARS({
+    this.visibility = false,
     this.staleWhileRevalidate = false,
     this.refresh = false,
     this.singleFetch = false,
@@ -87,6 +94,7 @@ class LikeARS {
     this.resetSessionStale = false,
     this.offlineSync = false,
     this.verifySSL = true,
+    this.checkAvailability = false,
     this.deduplicate = true,
     this.suppressErrors = true,
   });
@@ -101,8 +109,10 @@ class LikeARS {
     bool? resetSessionStale,
     bool? offlineSync,
     bool? verifySSL,
+    bool? checkAvailability,
     bool? deduplicate,
     bool? suppressErrors,
+    bool? visibility,
   }) {
     return LikeARS(
       staleWhileRevalidate: staleWhileRevalidate ?? this.staleWhileRevalidate,
@@ -114,8 +124,10 @@ class LikeARS {
       resetSessionStale: resetSessionStale ?? this.resetSessionStale,
       offlineSync: offlineSync ?? this.offlineSync,
       verifySSL: verifySSL ?? this.verifySSL,
+      checkAvailability: checkAvailability ?? this.checkAvailability,
       deduplicate: deduplicate ?? this.deduplicate,
       suppressErrors: suppressErrors ?? this.suppressErrors,
+      visibility: visibility ?? this.visibility,
     );
   }
 
@@ -129,8 +141,10 @@ class LikeARS {
         'resetSessionStale': resetSessionStale,
         'offlineSync': offlineSync,
         'verifySSL': verifySSL,
+        'checkAvailability': checkAvailability,
         'deduplicate': deduplicate,
         'suppressErrors': suppressErrors,
+        'visibility': visibility,
       };
 
   factory LikeARS.fromJson(Map<String, dynamic> json) => LikeARS(
@@ -143,7 +157,9 @@ class LikeARS {
         resetSessionStale: json['resetSessionStale'] ?? false,
         offlineSync: json['offlineSync'] ?? false,
         verifySSL: json['verifySSL'] ?? true,
+        checkAvailability: json['checkAvailability'] ?? false,
         deduplicate: json['deduplicate'] ?? true,
         suppressErrors: json['suppressErrors'] ?? true,
+        visibility: json['visibility'] ?? false,
       );
 }

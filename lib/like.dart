@@ -10,13 +10,19 @@ export 'src/core/like_helpers.dart';
 export 'src/core/like_request_config.dart';
 export 'src/core/like_client_config.dart';
 
+// Helpers
+export 'src/helpers/like_pagination.dart';
+
 // Models
 export 'src/models/like_state_response.dart';
 export 'src/models/like_notifier_state.dart';
 export 'src/models/like_error.dart';
 export 'src/models/like_sync_task.dart';
 export 'src/models/like_api_result.dart';
+export 'src/models/like_connectivity_check_result.dart';
+export 'src/models/like_connectivity_transition.dart';
 export 'src/models/like_event.dart';
+export 'src/models/like_resync_state.dart';
 export 'src/models/like_sync_event.dart';
 
 // Client
@@ -34,11 +40,14 @@ export 'src/services/like_sync_manager.dart';
 export 'src/services/like_offline_sync_manager.dart';
 export 'src/services/like_service.dart';
 export 'src/services/like_toast_delegate.dart';
+export 'src/services/like_base_api_service.dart';
 export 'src/services/like_toast_manager.dart';
 export 'src/services/app_cache_manager.dart';
 
 // Mixins
-export 'src/mixins/like_auto_reconnect_mixin.dart';
+export 'src/engine/like_engine.dart';
+export 'src/mixins/like_visibility_mixin.dart';
+
 
 // Mocking
 export 'src/services/like_mock_controller.dart';
@@ -59,6 +68,7 @@ export 'src/interceptors/like_auth_interceptor.dart';
 export 'src/interceptors/like_cache_interceptor.dart';
 export 'src/interceptors/like_etag_interceptor.dart';
 export 'src/interceptors/like_logger_interceptor.dart';
+export 'src/interceptors/like_connectivity_interceptor.dart';
 export 'src/interceptors/like_offline_sync_interceptor.dart';
 export 'src/interceptors/like_retry_interceptor.dart';
 export 'src/interceptors/like_pipeline_interceptor.dart';

@@ -19,8 +19,8 @@ import 'package:like/src/debug/like_suggestions.dart' as sug;
 /// fragile boilerplate code.
 ///
 /// The [Like] widget unifies all of this under a single declarative root wrapper:
-/// 1. **Bootstrap Coordinator:** Automatically initializes offline cache (Hive), encryption systems,
-///    and client network pipelines asynchronously before letting the app render.
+/// 1. **Bootstrap Coordinator:** Automatically initializes offline cache (Hive) and
+///    client network pipelines asynchronously before letting the app render.
 /// 2. **Network Connection Tracker:** Dynamically observes real-time internet connectivity,
 ///    showing interactive online/offline warning toasts automatically.
 /// 3. **Authentication Hub:** Handles secure header JWT token injection, automatic silent 401 token refresh
@@ -65,8 +65,8 @@ class Like extends StatefulWidget {
   /// while critical local outboxes are synced to your server upon internet recovery.
   final Widget? syncOverlay;
 
-  /// A custom loading screen displayed while the LIKE engine initializes Hive database files,
-  /// loads encryption keys, and checks initial internet connectivity.
+  /// A custom loading screen displayed while the LIKE engine initializes Hive database files
+  /// and checks initial internet connectivity.
   ///
   /// If your app starts up instantly, this prevents any "flash" of empty layout by holding
   /// a beautiful splash loader until the underlying storage layers are fully ready.

@@ -25,7 +25,11 @@ class LikeSyncManager {
   });
 
   final Map<String, LikeSyncTask> _pendingTasks = {};
+  StreamSubscription<bool>? _connectivitySubscription;
+  Future<void>? _processingFuture;
+  Timer? _idleTimer;
   bool _isProcessing = false;
+  bool _isDisposed = false;
   LikeSyncStatus _status = LikeSyncStatus.idle;
 
   final _statusController = StreamController<LikeSyncStatus>.broadcast();
@@ -44,9 +48,10 @@ class LikeSyncManager {
   bool get hasRecoveryTask => _hasRecoveryTask;
 
   void _init() {
-    LikeConnectivityManager().connectionChange.listen((hasConnection) {
+    _connectivitySubscription =
+        LikeConnectivityManager().connectionChange.listen((hasConnection) {
       if (hasConnection && _taskQueue.isNotEmpty && !_isProcessing) {
-        processQueue();
+        unawaited(processQueue());
       }
     });
   }
@@ -57,6 +62,7 @@ class LikeSyncManager {
   /// same ID already exists, its priority will be upgraded if the new task
   /// has a higher priority level.
   void registerTask(LikeSyncTask task) {
+    if (_isDisposed) return;
     final existingTask = _pendingTasks[task.id];
     if (existingTask != null) {
       if (task.priority.index < existingTask.priority.index) {
@@ -95,24 +101,37 @@ class LikeSyncManager {
     _updateProgress();
 
     if (LikeConnectivityManager().hasConnection && !_isProcessing) {
-      processQueue();
+      unawaited(processQueue());
     }
   }
 
-  int _consecutiveFailures = 0;
-  static const int _maxConsecutiveFailures = 3;
+  static const int _maxTaskAttempts = 3;
 
-  /// Manually starts the execution of the synchronization queue.
+  /// Manually starts or joins execution of the synchronization queue.
   ///
   /// The queue will only be processed if the device has an active connection.
-  Future<void> processQueue() async {
-    if (_isProcessing || _taskQueue.isEmpty) return;
+  /// Concurrent callers receive the same processing future.
+  Future<void> processQueue() {
+    final active = _processingFuture;
+    if (active != null) return active;
+    if (_isDisposed || _taskQueue.isEmpty) return Future<void>.value();
 
+    final run = _processQueue();
+    _processingFuture = run;
+    run.whenComplete(() {
+      if (identical(_processingFuture, run)) _processingFuture = null;
+    });
+    return run;
+  }
+
+  Future<void> _processQueue() async {
     _isProcessing = true;
+    _idleTimer?.cancel();
     _updateStatus(LikeSyncStatus.syncing);
+    var hadTerminalFailure = false;
 
     try {
-      while (_taskQueue.isNotEmpty) {
+      while (_taskQueue.isNotEmpty && !_isDisposed) {
         if (!LikeConnectivityManager().hasConnection) {
           LikeLogger.log(
             level: LikeLogLevel.warning,
@@ -123,82 +142,79 @@ class LikeSyncManager {
         }
 
         final task = _taskQueue.removeFirst();
-        _pendingTasks.remove(task.id);
+        var succeeded = false;
+        final maximumAttempts = task.retryOnError ? _maxTaskAttempts : 1;
 
-        try {
-          LikeLogger.log(
-            level: LikeLogLevel.info,
-            category: 'sync',
-            message: 'Executing sync task: ${task.id}',
-          );
-
-          await task.run();
-
-          _completedTasks++;
-          _updateProgress();
-          _consecutiveFailures = 0; // Reset consecutive failures on success
-
-          if (_taskQueue.isNotEmpty) {
-            await Future.delayed(const Duration(milliseconds: 300));
-          }
-        } catch (e) {
-          _consecutiveFailures++;
-          LikeLogger.log(
-            level: LikeLogLevel.error,
-            category: 'sync',
-            message:
-                'Error executing task ${task.id} (failure $_consecutiveFailures): $e',
-          );
-
-          // Circuit Breaker: Halt queue execution if server/network fails repeatedly
-          if (_consecutiveFailures >= _maxConsecutiveFailures) {
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++) {
+          if (_isDisposed || !LikeConnectivityManager().hasConnection) break;
+          try {
+            LikeLogger.log(
+              level: LikeLogLevel.info,
+              category: 'sync',
+              message:
+                  'Executing sync task: ${task.id} (attempt $attempt/$maximumAttempts)',
+            );
+            await task.run();
+            succeeded = true;
+            break;
+          } catch (error) {
             LikeLogger.log(
               level: LikeLogLevel.error,
               category: 'sync',
               message:
-                  'Circuit breaker tripped after $_consecutiveFailures consecutive failures. Pausing queue and marking server as offline.',
+                  'Error executing task ${task.id} (attempt $attempt/$maximumAttempts): $error',
             );
-            // Put failed task back to front or let it be handled later. Since it was removed, we should re-register it to not lose it.
-            _taskQueue.add(task);
-            _pendingTasks[task.id] = task;
-
-            // Trip: mark server as offline
-            LikeConnectivityManager().markServerUnavailable();
-            _consecutiveFailures = 0;
-            break;
+            if (attempt < maximumAttempts &&
+                LikeConnectivityManager().hasConnection) {
+              await Future<void>.delayed(
+                Duration(milliseconds: 300 * attempt),
+              );
+            }
           }
+        }
+
+        if (!LikeConnectivityManager().hasConnection && !succeeded) {
+          _taskQueue.add(task);
+          break;
+        }
+
+        _pendingTasks.remove(task.id);
+        if (succeeded) {
+          _completedTasks++;
+          _updateProgress();
+        } else {
+          hadTerminalFailure = true;
+        }
+
+        if (_taskQueue.isNotEmpty && !_isDisposed) {
+          await Future<void>.delayed(const Duration(milliseconds: 300));
         }
       }
     } finally {
       _isProcessing = false;
-      _updateStatus(
-        _taskQueue.isEmpty ? LikeSyncStatus.completed : LikeSyncStatus.error,
-      );
-
-      // Safety check: if tasks were added while we were finishing, restart the loop
-      if (_taskQueue.isNotEmpty && LikeConnectivityManager().hasConnection) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (LikeConnectivityManager().hasConnection && !_isProcessing) {
-            processQueue();
-          }
-        });
-      }
-
-      if (_status == LikeSyncStatus.completed) {
-        Future.delayed(
-          const Duration(seconds: 2),
-          () => _updateStatus(LikeSyncStatus.idle),
+      if (!_isDisposed) {
+        final completed = _taskQueue.isEmpty && !hadTerminalFailure;
+        _updateStatus(
+          completed ? LikeSyncStatus.completed : LikeSyncStatus.error,
         );
+        if (completed) {
+          _idleTimer = Timer(const Duration(seconds: 2), () {
+            if (!_isDisposed && !_isProcessing && _taskQueue.isEmpty) {
+              _updateStatus(LikeSyncStatus.idle);
+            }
+          });
+        }
       }
     }
   }
 
   void _updateStatus(LikeSyncStatus newStatus) {
     _status = newStatus;
-    _statusController.add(newStatus);
+    if (!_statusController.isClosed) _statusController.add(newStatus);
   }
 
   void _updateProgress() {
+    if (_progressController.isClosed) return;
     if (_totalTasks == 0) {
       _progressController.add(0.0);
     } else {
@@ -208,6 +224,12 @@ class LikeSyncManager {
   }
 
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    _idleTimer?.cancel();
+    _connectivitySubscription?.cancel();
+    _taskQueue.clear();
+    _pendingTasks.clear();
     _statusController.close();
     _progressController.close();
   }

@@ -48,15 +48,16 @@ class MealResponse {
 }
 
 // 2. A real-world ChangeNotifier Provider representing a Meal catalog feature
-class MealProvider extends ChangeNotifier with LikeAutoReconnectMixin {
+class MealProvider extends ChangeNotifier {
+  final LikeEngine engine = LikeEngine();
   final mealsState = LikeNotifierState<MealResponse>(
     mapper: (json) => MealResponse.fromJson(json as Map<String, dynamic>),
   );
 
   Future<void> fetchMeals(String searchKeyword) async {
-    await fetch<MealResponse>(
+    await engine.fetch<MealResponse>(
       state: mealsState,
-      action: (token, ars) async {
+      action: () async {
         // In a real app this would call the MealDB API:
         // https://www.themealdb.com/api/json/v1/1/search.php?s=searchKeyword
         // We simulate the API client returning the standard MealDB response:
@@ -78,6 +79,8 @@ class MealProvider extends ChangeNotifier with LikeAutoReconnectMixin {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('MealDB API Pipeline & Mixin Integration', () {
     late MealProvider provider;
 
@@ -95,6 +98,7 @@ void main() {
     });
 
     tearDown(() {
+      provider.engine.dispose();
       provider.dispose();
     });
 

@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_state_response.dart';
 
 /// Generic result wrapper for API responses.
 /// Note: Both 200 OK and 304 Not Modified are considered success states.
+typedef ApiResult<T> = LikeApiResult<T>;
+
 class LikeApiResult<T> {
   /// The data payload returned from the network or cache.
   final T? data;
@@ -53,9 +56,10 @@ class LikeApiResult<T> {
     required R Function(T data) onSuccess,
     required R Function(LikeError error) onError,
   }) {
-    if (isSuccess && data != null) {
+    if (isSuccess) {
       return onSuccess(data as T);
     } else {
+      if (error == null) throw Exception('API result failed but error is null');
       return onError(error!);
     }
   }
@@ -130,7 +134,7 @@ class LikeApiResult<T> {
       } catch (e) {
         return LikeApiResult.error(
           LikeError(
-            message: 'Async mapping failed: $e',
+            message: 'Mapping failed: $e',
             type: LikeApiErrorType.parsing,
           ),
           isFromCache: isFromCache,
@@ -179,15 +183,15 @@ class LikeApiResult<T> {
 }
 
 /// Extension to reduce boilerplate in repositories when dealing with Futures of results.
-extension LikeApiResultFutureX on Future<LikeApiResult<Response>> {
+extension ApiResultFutureX on Future<ApiResult<Response>> {
   /// Maps a [Response] to a model [R] asynchronously in a background isolate.
-  Future<LikeApiResult<R>> mapAsync<R>(LikeModelFactory<R> mapper) async {
+  Future<ApiResult<R>> mapAsync<R>(LikeModelFactory<R> mapper) async {
     final result = await this;
     return await result.mapSuccessAsync(mapper);
   }
 
   /// Maps a [Response] to a model [R] synchronously on the main thread.
-  Future<LikeApiResult<R>> mapSync<R>(LikeModelFactory<R> mapper) async {
+  Future<ApiResult<R>> mapSync<R>(LikeModelFactory<R> mapper) async {
     final result = await this;
     return result.mapSuccess((res) => mapper(res.data));
   }

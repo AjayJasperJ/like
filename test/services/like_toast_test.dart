@@ -97,6 +97,37 @@ class FakeLikeToastDelegate implements LikeToastDelegate {
   }
 }
 
+void toastTest(
+  String description,
+  Future<void> Function(WidgetTester tester) body,
+) {
+  testWidgets(description, (tester) async {
+    try {
+      await body(tester);
+    } finally {
+      toastification.dismissAll(delayForAnimation: false);
+      // Toastification keeps its overlay entry until the configured removal
+      // animation plus its 50 ms grace period has elapsed. Advancing beyond
+      // that delay prevents a disposed overlay from leaking into the next test.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      // Toastification is a singleton whose alignment managers survive widget
+      // teardown. Reset the testing-visible cache so the next test creates an
+      // overlay entry attached to its own Overlay rather than the disposed one.
+      toastification.managers.clear();
+    }
+  });
+}
+
+Future<BuildContext> pumpToastApp(WidgetTester tester) async {
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: Scaffold(body: SizedBox.shrink()),
+    ),
+  );
+  return tester.element(find.byType(SizedBox));
+}
+
 void main() {
   group('LikeToastManager - Delegation', () {
     late FakeLikeToastDelegate fakeDelegate;
@@ -277,184 +308,181 @@ void main() {
       LikeToastManager.offlineWidget = null;
     });
 
-    testWidgets('showConnectivityToast uses standard toast without overrides',
+    toastTest('showConnectivityToast uses standard toast without overrides',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           navigatorKey: LikeToastManager.navigatorKey,
-          builder: (context, child) =>
-              ToastificationWrapper(child: child ?? const SizedBox.shrink()),
-          home: const Scaffold(body: SizedBox.shrink()),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => delegate.showConnectivityToast(context, true),
+                child: const Text('Show online toast'),
+              ),
+            ),
+          ),
         ),
       );
 
-      LikeToastManager.showConnectivityToast(true);
-      await tester.pump(); // Start animation
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('Show online toast'));
+      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('Back Online'), findsOneWidget);
       expect(find.text('Internet connection restored.'), findsOneWidget);
 
-      LikeToastManager.showConnectivityToast(false);
+      delegate.showConnectivityToast(
+        tester.element(find.byType(ElevatedButton)),
+        false,
+      );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(find.text('No Connection'), findsOneWidget);
       expect(find.text('Please check your network.'), findsOneWidget);
     });
 
-    testWidgets(
+    toastTest(
         'showConnectivityToast uses custom online/offline widgets when set',
         (tester) async {
       LikeToastManager.onlineWidget = const Text('Custom Online Widget');
       LikeToastManager.offlineWidget = const Text('Custom Offline Widget');
 
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: LikeToastManager.navigatorKey,
-          builder: (context, child) =>
-              ToastificationWrapper(child: child ?? const SizedBox.shrink()),
-          home: const Scaffold(body: SizedBox.shrink()),
-        ),
-      );
+      final context = await pumpToastApp(tester);
 
-      LikeToastManager.showConnectivityToast(true);
+      delegate.showConnectivityToast(context, true);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
       expect(find.text('Custom Online Widget'), findsOneWidget);
 
-      LikeToastManager.showConnectivityToast(false);
+      delegate.showConnectivityToast(context, false);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
       expect(find.text('Custom Offline Widget'), findsOneWidget);
     });
 
-    testWidgets('showResponseToast displays correct statuses', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: LikeToastManager.navigatorKey,
-          builder: (context, child) =>
-              ToastificationWrapper(child: child ?? const SizedBox.shrink()),
-          home: const Scaffold(body: SizedBox.shrink()),
-        ),
-      );
+    toastTest('showResponseToast displays correct statuses', (tester) async {
+      final context = await pumpToastApp(tester);
 
       // Idle response should do nothing
-      LikeToastManager.showResponseToast(LikeStateResponse.idle());
+      LikeToastManager.showResponseToast(
+        LikeStateResponse.idle(),
+        context: context,
+      );
       await tester.pump();
       expect(find.byType(SnackBar), findsNothing);
 
       // Success response
       LikeToastManager.showResponseToast(
-          LikeStateResponse.success('Good', message: 'Success Message'));
+        LikeStateResponse.success('Good', message: 'Success Message'),
+        context: context,
+      );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
       expect(find.text('Success Message'), findsOneWidget);
 
       // Warning/Error response
-      LikeToastManager.showResponseToast(LikeStateResponse.error(
-          LikeError(message: 'Error Message', type: LikeApiErrorType.server)));
+      LikeToastManager.showResponseToast(
+        LikeStateResponse.error(
+          LikeError(message: 'Error Message', type: LikeApiErrorType.server),
+        ),
+        context: context,
+      );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
       expect(find.text('Error Message'), findsOneWidget);
     });
 
-    testWidgets('showLoadingToast displays progress bar and title',
+    toastTest('showLoadingToast displays progress bar and title',
         (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: LikeToastManager.navigatorKey,
-          builder: (context, child) =>
-              ToastificationWrapper(child: child ?? const SizedBox.shrink()),
-          home: const Scaffold(body: SizedBox.shrink()),
-        ),
-      );
+      final context = await pumpToastApp(tester);
 
       LikeToastManager.showLoadingToast(
-          title: 'Syncing details', message: 'Please wait');
+        context: context,
+        title: 'Syncing details',
+        message: 'Please wait',
+      );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
 
       expect(find.text('Syncing details'), findsOneWidget);
       expect(find.text('Please wait'), findsOneWidget);
     });
 
-    testWidgets('showSyncProgressToast builds custom UI and custom builder',
+    toastTest('showSyncProgressToast builds custom UI and custom builder',
         (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: LikeToastManager.navigatorKey,
-          builder: (context, child) =>
-              ToastificationWrapper(child: child ?? const SizedBox.shrink()),
-          home: const Scaffold(body: SizedBox.shrink()),
-        ),
-      );
+      final context = await pumpToastApp(tester);
 
       // 1. Default progress UI
       LikeToastManager.showSyncProgressToast(
-          title: 'Sync', message: 'Downloading files', progress: 0.75);
+        context: context,
+        title: 'Sync',
+        message: 'Downloading files',
+        progress: 0.75,
+      );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
 
       expect(find.text('Downloading files'), findsOneWidget);
       expect(find.text('75%'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       // 2. Custom builder progress UI
+      delegate.dismiss(context);
+      await tester.pumpAndSettle();
+
       final customDelegate = DefaultLikeToastDelegate(
         syncProgressBuilder: (title, message, progress) =>
             Text('Custom Progress: $progress'),
       );
-      LikeToastManager.setDelegate(customDelegate);
-
-      LikeToastManager.showSyncProgressToast(
-          title: 'Sync', message: 'Downloading files', progress: 0.9);
+      customDelegate.showSyncProgressToast(
+        context,
+        title: 'Sync',
+        message: 'Downloading files',
+        progress: 0.9,
+      );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
       expect(find.text('Custom Progress: 0.9'), findsOneWidget);
     });
 
-    testWidgets(
+    toastTest(
         'showCustomToast supports different animations, dismiss, and mouse actions',
         (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: LikeToastManager.navigatorKey,
-          builder: (context, child) =>
-              ToastificationWrapper(child: child ?? const SizedBox.shrink()),
-          home: const Scaffold(body: SizedBox.shrink()),
-        ),
-      );
+      final context = await pumpToastApp(tester);
 
       // Test FadeAnimation
       LikeToastManager.showCustomToast(
+        context: context,
         child: const Text('Fade Toast'),
         animationType: LikeToastAnimation.fade,
       );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
       expect(find.text('Fade Toast'), findsOneWidget);
       expect(find.byType(FadeTransition), findsWidgets);
 
       // Test ScaleAnimation
       LikeToastManager.showCustomToast(
+        context: context,
         child: const Text('Scale Toast'),
         animationType: LikeToastAnimation.scale,
       );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
       expect(find.text('Scale Toast'), findsOneWidget);
       expect(find.byType(ScaleTransition), findsWidgets);
 
       // Test SlideAnimation with offsets
       LikeToastManager.showCustomToast(
+        context: context,
         child: const Text('Slide Toast'),
         animationType: LikeToastAnimation.slide,
         slideInOffset: const Offset(1, 0),
         slideOutOffset: const Offset(0, 1),
       );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
       expect(find.text('Slide Toast'), findsOneWidget);
       expect(find.byType(SlideTransition), findsWidgets);
 
@@ -464,24 +492,23 @@ void main() {
       expect(find.text('Slide Toast'), findsNothing);
     });
 
-    testWidgets('dismiss removes current toast with or without animation',
+    toastTest('dismiss removes current toast with or without animation',
         (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: LikeToastManager.navigatorKey,
-          builder: (context, child) =>
-              ToastificationWrapper(child: child ?? const SizedBox.shrink()),
-          home: const Scaffold(body: SizedBox.shrink()),
-        ),
-      );
+      final context = await pumpToastApp(tester);
 
       LikeToastManager.showToast(
-          message: 'Toast to remove', type: ToastificationType.success);
+        context: context,
+        message: 'Toast to remove',
+        type: ToastificationType.success,
+      );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
       expect(find.text('Toast to remove'), findsOneWidget);
 
-      LikeToastManager.dismiss(showRemoveAnimation: true);
+      LikeToastManager.dismiss(
+        context: context,
+        showRemoveAnimation: true,
+      );
       await tester.pumpAndSettle();
       expect(find.text('Toast to remove'), findsNothing);
     });

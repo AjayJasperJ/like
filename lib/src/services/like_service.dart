@@ -49,16 +49,7 @@ class LikeService {
     // 0. Apply config settings to LikeConstants
     LikeConstants.apply(config);
 
-    // 1a. Initialize encryption FIRST — must be ready before any file cache
-    //     access occurs. Uses config.encryptionKey if provided, otherwise
-    //     generates a per-device key stored in SharedPreferences.
-    if (!(kIsWeb && LikeConstants.supportWeb)) {
-      logDebug('DEBUG: AppCacheSecurity.init starting');
-      await AppCacheSecurity.init();
-      logDebug('DEBUG: AppCacheSecurity.init completed');
-    }
-
-    // 1b. Core Storage
+    // 1. Core Storage
     logDebug('DEBUG: Hive.initFlutter starting');
     final projectNamespace = LikeConstants.projectName
         .toLowerCase()
@@ -159,6 +150,9 @@ class LikeService {
         decodedData = await compute(LikeHelpers.parseJson, rawData);
       } else if (rawData is String) {
         decodedData = LikeHelpers.parseJson(rawData);
+      } else if (rawData is List) {
+        // Preserve list responses (e.g. GET /posts returns List<dynamic>)
+        decodedData = rawData;
       } else {
         decodedData = LikeUtils.castToMapStringDynamic(rawData);
       }

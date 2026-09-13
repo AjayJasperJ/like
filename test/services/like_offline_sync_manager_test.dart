@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:like/like.dart';
@@ -5,6 +6,7 @@ import '../mocks/mocks.dart';
 
 void main() {
   setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     setupMocks();
     await initTestHive();
   });
@@ -22,6 +24,12 @@ void main() {
       LikeClient.reset();
       LikeClient(baseUrl: 'https://test-api.com');
       connectivityManager = LikeConnectivityManager();
+      connectivityManager.debugConfigure(
+        interfaceCheck: () async => [ConnectivityResult.wifi],
+        internetCheck: (host, timeout) async => true,
+        serverCheck: (host, port, timeout) async => true,
+      );
+      await connectivityManager.init(serverUrl: 'https://test-api.com');
       syncManager = LikeOfflineSyncManager();
     });
 
@@ -48,6 +56,7 @@ void main() {
         () async {
       // Start offline (internet true, server false -> hasConnection false)
       connectivityManager.debugSetStatus(internet: true, server: false);
+      connectivityManager.markServerUnavailable();
 
       // Initialize
       syncManager.init();

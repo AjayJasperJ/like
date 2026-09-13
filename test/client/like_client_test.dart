@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:mocktail/mocktail.dart';
@@ -32,6 +33,34 @@ void main() {
     client.dispose();
   });
 
+  group('LikeClient - Connectivity', () {
+    test('manual checks use the client active base origin', () async {
+      final manager = LikeConnectivityManager();
+      await manager.reset();
+      addTearDown(manager.reset);
+      manager.debugConfigure(
+        interfaceCheck: () async => <ConnectivityResult>[
+          ConnectivityResult.wifi,
+        ],
+        internetCheck: (_, __) async => true,
+        serverCheck: (host, port, _) async {
+          expect(host, 'api.example.com');
+          expect(port, 443);
+          return true;
+        },
+        isWeb: false,
+      );
+
+      final connectivity = await client.checkConnectivity(force: true);
+      final server = await client.checkServerReachability(force: true);
+
+      expect(connectivity.origin, 'https://api.example.com:443');
+      expect(connectivity.reason, LikeConnectivityCheckReason.manual);
+      expect(server.origin, 'https://api.example.com:443');
+      expect(server.reason, LikeConnectivityCheckReason.manualServer);
+    });
+  });
+
   group('LikeClient - Execution Logic', () {
     test('get should return success when dio returns 200', () async {
       const path = '/test';
@@ -40,6 +69,7 @@ void main() {
           any(),
           data: any(named: 'data'),
           queryParameters: any(named: 'queryParameters'),
+          cancelToken: any(named: 'cancelToken'),
           options: any(named: 'options'),
         ),
       ).thenAnswer(
@@ -63,6 +93,7 @@ void main() {
           any(),
           data: any(named: 'data'),
           queryParameters: any(named: 'queryParameters'),
+          cancelToken: any(named: 'cancelToken'),
           options: any(named: 'options'),
         ),
       ).thenAnswer(
@@ -82,45 +113,123 @@ void main() {
       'get with Deduplication enabled should deduplicate identical in-flight requests',
       () async {
         const path = '/deduplicate-test';
-        final response = Response(
-          requestOptions: RequestOptions(path: path),
-          data: {'status': 'deduplicate'},
-          statusCode: 200,
-        );
+        final started = List.generate(2, (_) => Completer<void>());
+        final release = List.generate(2, (_) => Completer<void>());
+        var requestIndex = 0;
 
         when(
           () => mockDio.request<dynamic>(
             any(),
             data: any(named: 'data'),
             queryParameters: any(named: 'queryParameters'),
+            cancelToken: any(named: 'cancelToken'),
             options: any(named: 'options'),
           ),
-        ).thenAnswer((_) async {
-          await Future.delayed(const Duration(milliseconds: 100));
-          return response;
+        ).thenAnswer((invocation) async {
+          final index = requestIndex++;
+          final cancelToken =
+              invocation.namedArguments[#cancelToken] as CancelToken?;
+          started[index].complete();
+          await release[index].future;
+          if (cancelToken?.isCancelled ?? false) {
+            throw DioException.requestCancelled(
+              requestOptions: RequestOptions(path: path),
+              reason: cancelToken?.cancelError?.error,
+            );
+          }
+          return Response(
+            requestOptions: RequestOptions(path: path),
+            data: {'request': index + 1},
+            statusCode: 200,
+          );
         });
 
-        // Fire multiple identical requests, slightly staggered to avoid microtask race
-        final f1 = client.get(path, deduplicate: true);
-        await Future.delayed(const Duration(milliseconds: 1));
-        final f2 = client.get(path, deduplicate: true);
+        final first = client.get(path, deduplicate: true);
+        await started[0].future;
+        final second = client.get(path, deduplicate: true);
+        await started[1].future;
 
-        final results = await Future.wait([f1, f2]);
+        release[0].complete();
+        release[1].complete();
+        final results = await Future.wait([first, second]);
 
-        expect(results[0].isSuccess, isTrue);
+        expect(results[0].isSuccess, isFalse);
+        expect(results[0].error?.type, LikeApiErrorType.cancelled);
         expect(results[1].isSuccess, isTrue);
+        expect(results[1].data?.data, {'request': 2});
 
-        // Verification
         verify(
           () => mockDio.request(
             any(),
             data: any(named: 'data'),
             queryParameters: any(named: 'queryParameters'),
+            cancelToken: any(named: 'cancelToken'),
+            onSendProgress: any(named: 'onSendProgress'),
+            onReceiveProgress: any(named: 'onReceiveProgress'),
             options: any(named: 'options'),
           ),
-        ).called(1);
+        ).called(2);
       },
     );
+
+    test('mutations require explicit durable replay opt-in', () async {
+      final captured = <String, bool?>{};
+      when(
+        () => mockDio.request<dynamic>(
+          any(),
+          data: any(named: 'data'),
+          queryParameters: any(named: 'queryParameters'),
+          cancelToken: any(named: 'cancelToken'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer((invocation) async {
+        final options = invocation.namedArguments[#options] as Options;
+        captured[options.method!] = options.extra?['offlineSync'] as bool?;
+        return Response(
+          requestOptions: RequestOptions(
+            path: '/mutation',
+            method: options.method,
+          ),
+          data: const <String, Object>{'status': 'ok'},
+          statusCode: 200,
+        );
+      });
+
+      await client.post('/mutation');
+      await client.put('/mutation');
+      await client.delete('/mutation');
+
+      expect(captured, <String, bool?>{
+        'POST': false,
+        'PUT': false,
+        'DELETE': false,
+      });
+    });
+
+    test('post propagates an explicit durable replay opt-in', () async {
+      bool? capturedOfflineSync;
+      when(
+        () => mockDio.request<dynamic>(
+          any(),
+          data: any(named: 'data'),
+          queryParameters: any(named: 'queryParameters'),
+          cancelToken: any(named: 'cancelToken'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer((invocation) async {
+        final options = invocation.namedArguments[#options] as Options;
+        capturedOfflineSync = options.extra?['offlineSync'] as bool?;
+        return Response(
+          requestOptions: RequestOptions(path: '/mutation', method: 'POST'),
+          data: const <String, Object>{'status': 'ok'},
+          statusCode: 201,
+        );
+      });
+
+      await client.post('/mutation', offlineSync: true);
+
+      expect(capturedOfflineSync, isTrue);
+    });
 
     test('post should return success and notify refresh', () async {
       const path = '/post-test';
@@ -131,6 +240,7 @@ void main() {
           any(),
           data: any(named: 'data'),
           queryParameters: any(named: 'queryParameters'),
+          cancelToken: any(named: 'cancelToken'),
           options: any(named: 'options'),
         ),
       ).thenAnswer(
@@ -173,6 +283,7 @@ void main() {
           any(),
           data: any(named: 'data'),
           queryParameters: any(named: 'queryParameters'),
+          cancelToken: any(named: 'cancelToken'),
           options: any(named: 'options'),
         ),
       ).thenAnswer(
@@ -199,6 +310,7 @@ void main() {
           any(),
           data: any(named: 'data'),
           queryParameters: any(named: 'queryParameters'),
+          cancelToken: any(named: 'cancelToken'),
           options: any(named: 'options'),
         ),
       ).thenAnswer((_) async {

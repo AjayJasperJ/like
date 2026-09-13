@@ -9,3 +9,8 @@ pubspec.lock
 # Exclude local files
 .DS_Store
 *.log
+
+# User specified ignore paths
+.roomodes
+example/.agent/
+/coverage/

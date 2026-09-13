@@ -1,78 +1,111 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
-import 'package:synchronized/synchronized.dart';
-import 'package:like/src/interceptors/like_auth_interceptor.dart';
-import 'package:like/src/services/like_sync_manager.dart';
-import 'package:like/src/services/like_logger.dart';
 import 'package:like/src/client/like_client.dart';
+import 'package:like/src/interceptors/like_auth_interceptor.dart';
+import 'package:like/src/services/like_connectivity_manager.dart';
+import 'package:like/src/services/like_logger.dart';
 import 'package:like/src/services/like_utils.dart';
-import 'package:like/src/models/like_sync_task.dart';
+import 'package:synchronized/synchronized.dart';
 
-/// Interceptor that queues mutation requests (POST, PUT, DELETE, PATCH) when offline.
-/// Matches enterprise's OfflineSyncInterceptor parity.
+/// Queues explicitly eligible mutation requests after ambiguous network errors.
+///
+/// Durable work is application-owned and is never used for GET/UI refreshes.
 class LikeOfflineSyncInterceptor extends Interceptor {
+  static const int queueSchemaVersion = 2;
+  static const int _maximumReplayAttempts = 3;
+  static const List<Duration> _replayDelays = <Duration>[
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+    Duration(seconds: 4),
+  ];
+
   final Dio dio;
   final Box _queueBox;
-  static final Lock _lock = Lock();
+  final FutureOr<void> Function(String path) _notifyRefresh;
+  final Lock _lock = Lock();
+  final Lock _drainLock = Lock();
+  final Map<String, Future<void>> _originDrains = {};
+  final Map<String, CancelToken> _drainTokens = {};
 
-  LikeOfflineSyncInterceptor({required this.dio, required Box queueBox})
-      : _queueBox = queueBox;
+  LikeOfflineSyncInterceptor({
+    required this.dio,
+    required Box queueBox,
+    FutureOr<void> Function(String path)? notifyRefresh,
+  })  : _queueBox = queueBox,
+        _notifyRefresh =
+            notifyRefresh ?? ((path) => LikeClient().notifyRefresh(path));
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
-    final bool offlineSync = err.requestOptions.extra['offlineSync'] ?? true;
-    final bool isSyncRequest =
-        err.requestOptions.extra['isSyncRequest'] ?? false;
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final options = err.requestOptions;
+    final eligible = options.extra['offlineSync'] == true;
+    final isReplay = options.extra['isSyncRequest'] == true;
+    final isMutation = const <String>{'POST', 'PUT', 'DELETE', 'PATCH'}
+        .contains(options.method.toUpperCase());
 
-    if (!isSyncRequest &&
-        _isNetworkError(err) &&
-        [
-          'POST',
-          'PUT',
-          'DELETE',
-          'PATCH',
-        ].contains(err.requestOptions.method) &&
-        offlineSync) {
-      await _queueRequest(err.requestOptions);
-
-      return handler.reject(
+    if (!isReplay && eligible && isMutation && _isNetworkError(err)) {
+      await _queueRequest(options);
+      handler.reject(
         DioException(
-          requestOptions: err.requestOptions,
+          requestOptions: options,
           error: 'OFFLINE_QUEUED',
           type: DioExceptionType.unknown,
         ),
       );
+      return;
     }
     handler.next(err);
   }
 
   Future<void> _queueRequest(RequestOptions options) async {
-    final task = {
-      'path': options.path,
-      'method': options.method,
-      'data': options.data,
-      'query': options.queryParameters,
-      'headers': Map<String, dynamic>.from(options.headers)
-        ..remove('Authorization'),
-      'contentType': options.contentType,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    final origin =
+        LikeConnectivityManager.canonicalOrigin(options.uri.toString());
+    if (origin == null) return;
+    final stableId = _stableId(options, origin);
+    var added = false;
 
-    final exists = _queueBox.values.any((existing) {
-      if (existing is! Map) return false;
-      return existing['path'] == task['path'] &&
-          existing['method'] == task['method'] &&
-          existing['data'].toString() == task['data'].toString() &&
-          existing['query'].toString() == task['query'].toString();
+    await _lock.synchronized(() async {
+      final exists = _queueBox.values.any(
+        (value) => value is Map && value['id'] == stableId,
+      );
+      if (exists) return;
+
+      final now = DateTime.now();
+      await _queueBox.add(<String, dynamic>{
+        'version': queueSchemaVersion,
+        'id': stableId,
+        'origin': origin,
+        'eligible': true,
+        // Keep the legacy path for schema compatibility, but replay through the
+        // absolute, origin-bound URL so one client can safely drain work queued
+        // for multiple backends.
+        'path': options.path,
+        'url': '$origin${options.uri.path}',
+        'method': options.method.toUpperCase(),
+        'data': options.data,
+        'query': options.queryParameters,
+        'headers': Map<String, dynamic>.from(options.headers)
+          ..remove('Authorization'),
+        'contentType': options.contentType,
+        'createdAt': now.toIso8601String(),
+        // Legacy readers used this field.
+        'timestamp': now.toIso8601String(),
+        'attempts': 0,
+        'maxAttempts': _maximumReplayAttempts,
+        'nextAttemptAt': now.toIso8601String(),
+        'lastFailure': null,
+      });
+      added = true;
     });
 
-    if (!exists) {
-      await _lock.synchronized(() async {
-        await _queueBox.add(task);
-      });
-
-      // Show notification via LikeUtils toast (parity with enterprise NotificationService)
+    if (added) {
       LikeUtils.showToast(
         message: 'Action saved offline',
         submessage: 'Will sync when connection is restored.',
@@ -81,12 +114,45 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     }
   }
 
-  bool _isNetworkError(DioException err) {
-    return err.type == DioExceptionType.connectionError ||
-        err.type == DioExceptionType.connectionTimeout ||
-        err.type == DioExceptionType.sendTimeout ||
-        err.type == DioExceptionType.receiveTimeout ||
-        err.error.toString().toLowerCase().contains('socket');
+  static String _stableId(RequestOptions options, String origin) {
+    final source = jsonEncode(<String, Object?>{
+      'origin': origin,
+      'method': options.method.toUpperCase(),
+      'path': options.path,
+      'query': _canonicalValue(options.queryParameters),
+      'data': _canonicalValue(options.data),
+    });
+    return sha256.convert(utf8.encode(source)).toString();
+  }
+
+  static Object? _canonicalValue(Object? value) {
+    if (value is Map) {
+      final entries = value.entries.toList(growable: false)
+        ..sort((left, right) =>
+            left.key.toString().compareTo(right.key.toString()));
+      return <String, Object?>{
+        for (final entry in entries)
+          entry.key.toString(): _canonicalValue(entry.value),
+      };
+    }
+    if (value is Iterable) {
+      return value.map(_canonicalValue).toList(growable: false);
+    }
+    if (value == null || value is num || value is bool || value is String) {
+      return value;
+    }
+    return value.toString();
+  }
+
+  static bool _isNetworkError(DioException err) {
+    return const <DioExceptionType>{
+          DioExceptionType.connectionError,
+          DioExceptionType.connectionTimeout,
+          DioExceptionType.sendTimeout,
+          DioExceptionType.receiveTimeout,
+          DioExceptionType.unknown,
+        }.contains(err.type) &&
+        err.response == null;
   }
 
   dynamic _castToMapStringDynamic(dynamic data) {
@@ -95,139 +161,197 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         (key, value) =>
             MapEntry(key.toString(), _castToMapStringDynamic(value)),
       );
-    } else if (data is List) {
-      return data.map((e) => _castToMapStringDynamic(e)).toList();
+    }
+    if (data is List) {
+      return data.map(_castToMapStringDynamic).toList();
     }
     return data;
   }
 
-  List<dynamic> get queueKeys => _queueBox.keys.toList();
+  List<dynamic> get queueKeys => _queueBox.keys.toList(growable: false);
 
-  Future<void> syncSingle(dynamic key) async {
-    final task = _queueBox.get(key);
-    if (task == null) return;
+  /// Replays one queued entry. Failures remain observable to the drain caller.
+  Future<void> syncSingle(dynamic key, {CancelToken? cancelToken}) async {
+    final raw = _queueBox.get(key);
+    if (raw is! Map) return;
+    final task = Map<String, dynamic>.from(raw);
+    if (task['eligible'] == false) return;
 
-    // Re-build headers and inject a fresh auth token for the replay.
-    // The token may have expired while the device was offline (tokens typically
-    // expire in 15–60 min), so we must re-fetch it rather than using the
-    // stripped version that was stored at queue time.
-    final headers = Map<String, dynamic>.from(task['headers'] ?? {});
+    final headers = Map<String, dynamic>.from(task['headers'] ?? const {});
     if (LikeAuthInterceptor.getToken != null) {
       try {
-        final freshToken = await LikeAuthInterceptor.getToken!();
-        if (freshToken != null && freshToken.isNotEmpty) {
-          headers['Authorization'] = 'Bearer $freshToken';
+        final token = await LikeAuthInterceptor.getToken!();
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
         }
       } catch (_) {
-        // getToken threw — proceed without auth header and let the server
-        // reject it; the 401 handler in LikeAuthInterceptor will then
-        // attempt a refresh via refreshToken before giving up.
+        // The normal authentication interceptor remains responsible for auth.
       }
     }
 
+    final taskOrigin = task['origin'] as String?;
+    final persistedUrl = task['url'] as String?;
+    final requestTarget = persistedUrl ??
+        (taskOrigin == null
+            ? task['path'] as String
+            : '$taskOrigin${Uri.parse(task['path'] as String).path}');
+    final requestOrigin =
+        LikeConnectivityManager.canonicalOrigin(requestTarget);
+    if (taskOrigin != null && requestOrigin != taskOrigin) {
+      await _lock.synchronized(() => _queueBox.delete(key));
+      throw StateError('Offline queue origin does not match replay URL');
+    }
+
     try {
-      await dio.request(
-        task['path'],
+      await dio.request<dynamic>(
+        requestTarget,
         data: _castToMapStringDynamic(task['data']),
-        queryParameters: Map<String, dynamic>.from(task['query'] ?? {}),
+        queryParameters: Map<String, dynamic>.from(task['query'] ?? const {}),
+        cancelToken: cancelToken,
         options: Options(
-          method: task['method'],
+          method: task['method'] as String?,
           headers: headers,
-          contentType: task['contentType'],
-          extra: {'isSyncRequest': true, 'withAuth': true},
+          contentType: task['contentType'] as String?,
+          extra: <String, dynamic>{
+            'isSyncRequest': true,
+            'offlineSync': false,
+            'withAuth': true,
+          },
         ),
       );
-
-      await _lock.synchronized(() async {
-        await _queueBox.delete(key);
-      });
-
-      // Notify the pipeline that a mutation happened so builders can refresh
-      LikeClient().notifyRefresh(task['path']);
-
-      await LikeLogger.log(
-        level: LikeLogLevel.info,
-        category: 'offline_sync',
-        message: 'Synced successfully: ${task['method']} ${task['path']}',
-      );
-    } catch (e) {
-      await LikeLogger.log(
-        level: LikeLogLevel.error,
-        category: 'offline_sync',
-        message: 'Sync failed: ${task['method']} ${task['path']} - Error: $e',
-      );
-
-      if (e is DioException && e.response != null) {
-        final code = e.response!.statusCode ?? 0;
-        // Delete if it's a client error (4xx) except for timeout or rate limiting
-        if (code >= 400 && code < 500 && code != 408 && code != 429) {
-          await _lock.synchronized(() async {
-            await _queueBox.delete(key);
-          });
-        }
+    } catch (error) {
+      if (!(error is DioException && CancelToken.isCancel(error))) {
+        await _recordFailure(key, task, error);
       }
       rethrow;
     }
-  }
 
-  Future<void> syncQueue() async {
-    if (_queueBox.isEmpty) return;
-
-    // Delegate to SyncManager via local mutation task
-    LikeSyncManager().registerTask(_LikeOfflineMutationSyncTask(this));
-  }
-}
-
-/// Task for processing the entire offline mutation queue.
-class _LikeOfflineMutationSyncTask extends LikeSyncTask {
-  final LikeOfflineSyncInterceptor _interceptor;
-
-  _LikeOfflineMutationSyncTask(this._interceptor);
-
-  @override
-  String get id => 'offline_mutation_sync';
-
-  @override
-  LikeSyncPriority get priority => LikeSyncPriority.critical;
-
-  @override
-  bool get isRecovery => true;
-
-  @override
-  Future<void> run() async {
-    final keys = _interceptor.queueKeys;
-    if (keys.isEmpty) return;
-
-    for (final key in keys) {
-      LikeSyncManager().registerTask(
-        _LikeSingleOfflineMutationTask(_interceptor, key),
+    // Once the server acknowledges the mutation, remove its durable entry
+    // before notifying presentation code. A refresh-listener failure must never
+    // reclassify acknowledged work as a failed replay.
+    await _lock.synchronized(() => _queueBox.delete(key));
+    try {
+      await _notifyRefresh(task['path'] as String);
+    } catch (error) {
+      await LikeLogger.log(
+        level: LikeLogLevel.warning,
+        category: 'offline_sync',
+        message: 'Refresh notification failed after successful sync: $error',
       );
     }
+    await LikeLogger.log(
+      level: LikeLogLevel.info,
+      category: 'offline_sync',
+      message: 'Synced successfully: ${task['method']} ${task['path']}',
+    );
   }
-}
 
-/// Task for processing a single offline mutation from the queue.
-class _LikeSingleOfflineMutationTask extends LikeSyncTask {
-  final LikeOfflineSyncInterceptor _interceptor;
-  final dynamic key;
+  Future<void> _recordFailure(
+    dynamic key,
+    Map<String, dynamic> task,
+    Object error,
+  ) async {
+    final attempts = ((task['attempts'] as int?) ?? 0) + 1;
+    final maximum = (task['maxAttempts'] as int?) ?? _maximumReplayAttempts;
 
-  _LikeSingleOfflineMutationTask(this._interceptor, this.key);
-
-  @override
-  String get id => 'offline_mutation_$key';
-
-  @override
-  LikeSyncPriority get priority => LikeSyncPriority.critical;
-
-  @override
-  bool get isRecovery => true;
-
-  @override
-  Future<void> run() async {
-    try {
-      await _interceptor.syncSingle(key);
-    } catch (_) {
-      // Individual errors are handled within syncSingle
+    if (error is DioException && error.response != null) {
+      final code = error.response!.statusCode ?? 0;
+      if (code >= 400 && code < 500 && code != 408 && code != 429) {
+        await _lock.synchronized(() => _queueBox.delete(key));
+        return;
+      }
     }
+
+    final delay =
+        _replayDelays[(attempts - 1).clamp(0, _replayDelays.length - 1)];
+    task['attempts'] = attempts.clamp(0, maximum);
+    task['lastFailure'] = error.toString();
+    task['nextAttemptAt'] = DateTime.now().add(delay).toIso8601String();
+    await _lock.synchronized(() => _queueBox.put(key, task));
+    await LikeLogger.log(
+      level: LikeLogLevel.error,
+      category: 'offline_sync',
+      message: 'Sync failed: ${task['method']} ${task['path']} - $error',
+    );
+  }
+
+  /// Joins or starts a drain, optionally restricted to one canonical [origin].
+  Future<void> syncQueue({String? origin}) {
+    final canonical = origin == null
+        ? null
+        : LikeConnectivityManager.canonicalOrigin(origin) ?? origin;
+    final drainKey = canonical ?? '*';
+    final active = _originDrains[drainKey];
+    if (active != null) return active;
+
+    final token = CancelToken();
+    _drainTokens[drainKey] = token;
+    final future = _drainLock.synchronized(() => _drain(canonical, token));
+    _originDrains[drainKey] = future;
+    void cleanup() {
+      if (identical(_originDrains[drainKey], future)) {
+        _originDrains.remove(drainKey);
+        _drainTokens.remove(drainKey);
+      }
+    }
+
+    // Do not discard a `whenComplete` future: if the drain fails, that creates
+    // a second unobserved error. This cleanup branch consumes its own result
+    // while the original future still propagates to the caller.
+    future.then<void>((_) => cleanup(), onError: (Object _, StackTrace __) {
+      cleanup();
+    });
+    return future;
+  }
+
+  Future<void> _drain(String? origin, CancelToken token) async {
+    final keys = queueKeys;
+    Object? firstFailure;
+    StackTrace? firstStackTrace;
+
+    for (final key in keys) {
+      if (token.isCancelled) break;
+      final raw = _queueBox.get(key);
+      if (raw is! Map) continue;
+      final task = Map<String, dynamic>.from(raw);
+      final taskOrigin = task['origin'] as String?;
+      final eligible = task['eligible'] != false;
+      if (!eligible || (origin != null && taskOrigin != origin)) continue;
+      if (taskOrigin != null &&
+          !LikeConnectivityManager().isOriginAvailable(taskOrigin)) {
+        continue;
+      }
+      final attempts = (task['attempts'] as int?) ?? 0;
+      final maximum = (task['maxAttempts'] as int?) ?? _maximumReplayAttempts;
+      if (attempts >= maximum) continue;
+      final nextAttempt =
+          DateTime.tryParse(task['nextAttemptAt'] as String? ?? '');
+      if (nextAttempt != null && nextAttempt.isAfter(DateTime.now())) continue;
+
+      try {
+        await syncSingle(key, cancelToken: token);
+      } catch (error, stackTrace) {
+        if (error is DioException && CancelToken.isCancel(error)) break;
+        firstFailure ??= error;
+        firstStackTrace ??= stackTrace;
+      }
+    }
+
+    if (firstFailure != null) {
+      Error.throwWithStackTrace(firstFailure, firstStackTrace!);
+    }
+  }
+
+  /// Cancels active drains without deleting pending durable entries.
+  void cancelSync({String? origin, String reason = 'Offline sync cancelled'}) {
+    if (origin == null) {
+      for (final token in _drainTokens.values) {
+        if (!token.isCancelled) token.cancel(reason);
+      }
+      return;
+    }
+    final canonical = LikeConnectivityManager.canonicalOrigin(origin) ?? origin;
+    final token = _drainTokens[canonical];
+    if (token != null && !token.isCancelled) token.cancel(reason);
   }
 }

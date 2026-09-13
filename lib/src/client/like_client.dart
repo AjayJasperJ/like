@@ -8,6 +8,7 @@ import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/core/like_request_config.dart';
 import 'package:like/src/core/like_client_config.dart';
 import 'package:like/src/models/like_api_result.dart';
+import 'package:like/src/models/like_connectivity_check_result.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_event.dart';
 import 'package:like/src/models/like_sync_event.dart';
@@ -50,7 +51,7 @@ class LikeClient {
       StreamController<LikeSyncEvent>.broadcast();
 
   /// A stream of endpoint paths that have been successfully updated or refreshed.
-  /// Used by [LikeAutoReconnectMixin] to trigger UI updates.
+  /// Used by [LikeEngine] to trigger UI updates.
   Stream<String> get refreshStream => _refreshController.stream;
 
   /// A stream of query-aware sync events emitted after successful mutations.
@@ -175,6 +176,12 @@ class LikeClient {
   }) async {
     final extra = options?.extra ?? {};
     final bool isGet = method == 'GET';
+    final activeState = Zone.current[#likeActiveState];
+    CancelToken? zoneCancelToken;
+    if (activeState is LikeNotifierState) {
+      zoneCancelToken = activeState.ct;
+    }
+    final effectiveCancelToken = cancelToken ?? zoneCancelToken ?? CancelToken();
     final effectivePath =
         path.startsWith('http') || path.startsWith('/') ? path : '/$path';
     final requestKey = LikeHelpers.generateRequestKey(
@@ -240,8 +247,15 @@ class LikeClient {
     if (isGet) {
       final activeState = Zone.current[#likeActiveState];
       if (activeState is LikeNotifierState) {
+        final effectiveUri = RequestOptions(
+          baseUrl: effectiveBaseUrl,
+          path: effectivePath,
+          queryParameters: queryParameters,
+        ).uri;
         activeState.endpointPath = effectivePath;
         activeState.activeQuery = queryParameters ?? const {};
+        activeState.canonicalOrigin =
+            LikeConnectivityManager.canonicalOrigin(effectiveUri.toString());
       }
     }
 
@@ -323,24 +337,10 @@ class LikeClient {
       final inFlightAlive =
           inFlight != null && !(inFlight.$2?.isCancelled ?? false);
       if (inFlightAlive) {
-        try {
-          final response = await inFlight.$1;
-          return await _handleSuccess(response, requestKey);
-        } catch (e) {
-          if (e is DioException) {
-            // If the shared future was cancelled while we were waiting,
-            // fall through and make a fresh independent request.
-            if (CancelToken.isCancel(e)) {
-              // intentional fall-through to step 4 below
-            } else {
-              return LikeApiResult.error(await LikeErrorHandler.handle(e));
-            }
-          } else {
-            return LikeApiResult.error(
-              LikeError(message: e.toString(), type: LikeApiErrorType.unknown),
-            );
-          }
-        }
+        // Take-latest behavior: cancel the previous in-flight request so the new one takes precedence.
+        inFlight.$2
+            ?.cancel('Cancelled by a newer identical request (take-latest)');
+        // Fall through to step 4 to start the new network request.
       }
     }
 
@@ -372,7 +372,7 @@ class LikeClient {
         baseUrlOverridden ? '$effectiveBaseUrl$effectivePath' : effectivePath,
         data: data,
         queryParameters: queryParameters,
-        cancelToken: cancelToken,
+        cancelToken: effectiveCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         options: effectiveOptions,
@@ -383,7 +383,9 @@ class LikeClient {
       },
     );
 
-    if (isGet) _registry.addInFlight(requestKey, (future, cancelToken));
+    if (isGet) {
+      _registry.addInFlight(requestKey, (future, effectiveCancelToken));
+    }
 
     // 5. SWR Optimization: Return cache immediately while network refresh continues in background
     if (isGet &&
@@ -409,12 +411,13 @@ class LikeClient {
 
           // Let the background future handle its own completion and emission.
           // Use async callback and await _handleSuccess so its Future
-          // errors are not silently discarded.
+          // errors are not silently discarded. Cleanup is owner-checked because
+          // a newer take-latest request may already occupy the same key.
           future.then((resp) async {
             await _handleSuccess(resp, requestKey);
-            _registry.removeInFlight(requestKey);
+            _registry.removeInFlight(requestKey, future);
           }).catchError((e) {
-            _registry.removeInFlight(requestKey);
+            _registry.removeInFlight(requestKey, future);
           });
 
           return await _handleSuccess(cached, requestKey);
@@ -460,7 +463,7 @@ class LikeClient {
         ),
       );
     } finally {
-      if (isGet) _registry.removeInFlight(requestKey);
+      if (isGet) _registry.removeInFlight(requestKey, future);
     }
   }
 
@@ -470,7 +473,9 @@ class LikeClient {
   ) async {
     final bool isFromCache = response.extra['isFromCache'] ?? false;
     if (!isFromCache) {
-      LikeConnectivityManager().markServerAvailable();
+      LikeConnectivityManager().markServerAvailable(
+        serverUrl: response.requestOptions.uri.toString(),
+      );
     }
 
     // 1. Decode JSON string if needed
@@ -541,18 +546,19 @@ class LikeClient {
     bool withAuth = false,
     bool disableCache = false,
     bool staleWhileRevalidate = false,
-    bool sessionStale = true,
+    bool sessionStale = false,
     bool singleFetch = false,
     bool resetSessionStale = false,
     bool resetSingleFetch = false,
     bool deduplicate = true,
-    bool suppressErrors = true,
+    bool suppressErrors = false,
     Duration? timeout,
     CancelToken? cancelToken,
     ARS? ars,
     LikeRequestConfig? requestConfig,
   }) async {
-    final finalARS = ars ??
+    final zoneArs = Zone.current[#likeActiveArs] as ARS?;
+    final finalARS = ars ?? zoneArs ??
         ARS(
           staleWhileRevalidate: staleWhileRevalidate,
           disableCache: disableCache,
@@ -592,7 +598,8 @@ class LikeClient {
   /// Performs a POST request with optional offline synchronization.
   ///
   /// [body] is the data payload (e.g., Map, List, or String).
-  /// [offlineSync] if true, the request is queued if the network is unavailable.
+  /// [offlineSync] must be explicitly enabled to make this application-owned
+  /// mutation eligible for durable replay after an ambiguous network failure.
   /// [requestConfig] optionally overrides network settings for this single call.
   Future<LikeApiResult<Response>> post(
     String path, {
@@ -600,14 +607,15 @@ class LikeClient {
     Map<String, dynamic>? query,
     Map<String, String>? headers,
     bool withAuth = false,
-    bool offlineSync = true,
+    bool offlineSync = false,
     bool disableCache = false,
     CancelToken? cancelToken,
     ARS? ars,
     LikeRequestConfig? requestConfig,
   }) async {
+    final zoneArs = Zone.current[#likeActiveArs] as ARS?;
     final finalARS =
-        ars ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
 
     final result = await _execute(
       method: 'POST',
@@ -631,6 +639,8 @@ class LikeClient {
   }
 
   /// Performs a PUT request.
+  ///
+  /// Durable replay remains disabled unless [offlineSync] is explicitly true.
   /// [requestConfig] optionally overrides network settings for this single call.
   Future<LikeApiResult<Response>> put(
     String path, {
@@ -638,14 +648,15 @@ class LikeClient {
     Map<String, dynamic>? query,
     Map<String, String>? headers,
     bool withAuth = false,
-    bool offlineSync = true,
+    bool offlineSync = false,
     bool disableCache = false,
     CancelToken? cancelToken,
     ARS? ars,
     LikeRequestConfig? requestConfig,
   }) async {
+    final zoneArs = Zone.current[#likeActiveArs] as ARS?;
     final finalARS =
-        ars ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
 
     final result = await _execute(
       method: 'PUT',
@@ -668,7 +679,50 @@ class LikeClient {
     return result;
   }
 
+  /// Performs a PATCH request.
+  ///
+  /// Durable replay remains disabled unless [offlineSync] is explicitly true.
+  /// [requestConfig] optionally overrides network settings for this single call.
+  Future<LikeApiResult<Response>> patch(
+    String path, {
+    Object? body,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    bool withAuth = false,
+    bool offlineSync = false,
+    bool disableCache = false,
+    CancelToken? cancelToken,
+    ARS? ars,
+    LikeRequestConfig? requestConfig,
+  }) async {
+    final zoneArs = Zone.current[#likeActiveArs] as ARS?;
+    final finalARS =
+        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+
+    final result = await _execute(
+      method: 'PATCH',
+      path: path,
+      data: body,
+      queryParameters: query,
+      cancelToken: cancelToken,
+      requestConfig: requestConfig,
+      options: Options(
+        headers: headers,
+        extra: {
+          'withAuth': withAuth,
+          'disableCache': finalARS.disableCache,
+          'offlineSync': finalARS.offlineSync,
+          ...finalARS.toJson(),
+        },
+      ),
+    );
+    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
+    return result;
+  }
+
   /// Performs a DELETE request.
+  ///
+  /// Durable replay remains disabled unless [offlineSync] is explicitly true.
   /// [requestConfig] optionally overrides network settings for this single call.
   Future<LikeApiResult<Response>> delete(
     String path, {
@@ -676,14 +730,15 @@ class LikeClient {
     Map<String, dynamic>? query,
     Map<String, String>? headers,
     bool withAuth = false,
-    bool offlineSync = true,
+    bool offlineSync = false,
     bool disableCache = false,
     CancelToken? cancelToken,
     ARS? ars,
     LikeRequestConfig? requestConfig,
   }) async {
+    final zoneArs = Zone.current[#likeActiveArs] as ARS?;
     final finalARS =
-        ars ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
 
     final result = await _execute(
       method: 'DELETE',
@@ -728,7 +783,8 @@ class LikeClient {
     ARS? ars,
     LikeRequestConfig? requestConfig,
   }) async {
-    final finalARS = ars ?? ARS(offlineSync: offlineSync);
+    final zoneArs = Zone.current[#likeActiveArs] as ARS?;
+    final finalARS = ars ?? zoneArs ?? ARS(offlineSync: offlineSync);
     final formData = FormData();
 
     if (fields != null) {
@@ -807,6 +863,27 @@ class LikeClient {
 
   // --- Utilities ---
 
+  /// Checks interface, internet, and server reachability for this client's
+  /// active base origin.
+  Future<LikeConnectivityCheckResult> checkConnectivity({
+    bool force = false,
+  }) {
+    return LikeConnectivityManager().checkConnectivity(
+      serverUrl: _dio.options.baseUrl,
+      force: force,
+    );
+  }
+
+  /// Checks reachability for this client's active base origin.
+  Future<LikeConnectivityCheckResult> checkServerReachability({
+    bool force = false,
+  }) {
+    return LikeConnectivityManager().checkServerReachability(
+      _dio.options.baseUrl,
+      force: force,
+    );
+  }
+
   /// Updates the base URL for all future requests.
   void updateBaseUrl(String newUrl) =>
       _dio.options.baseUrl = LikeHelpers.normalizeBaseUrl(newUrl);
@@ -852,14 +929,23 @@ class LikeClient {
     _refreshController.add('reconnected');
   }
 
-  /// Manually triggers a synchronization of the offline mutation queue.
-  /// This will attempt to re-send all queued POST/PUT/DELETE requests.
-  Future<void> syncOfflineData() async {
+  /// Manually triggers and joins a durable offline mutation queue drain.
+  ///
+  /// When [origin] is supplied, only eligible work for that canonical origin is
+  /// considered. Concurrent callers for the same origin join one active drain.
+  Future<void> syncOfflineData({String? origin}) async {
     final interceptor =
         _dio.interceptors.whereType<LikeOfflineSyncInterceptor>().firstOrNull;
     if (interceptor != null) {
-      await interceptor.syncQueue();
+      await interceptor.syncQueue(origin: origin);
     }
+  }
+
+  /// Cancels active durable drains without deleting queued mutations.
+  void cancelOfflineSync({String? origin, String reason = 'Sync cancelled'}) {
+    final interceptor =
+        _dio.interceptors.whereType<LikeOfflineSyncInterceptor>().firstOrNull;
+    interceptor?.cancelSync(origin: origin, reason: reason);
   }
 
   /// Clears the in-memory session registry and L1 cache.

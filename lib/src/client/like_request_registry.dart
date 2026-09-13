@@ -82,8 +82,17 @@ class LikeRequestRegistry {
   (Future<Response>, CancelToken?)? getInFlight(String key) =>
       _inFlightRequests[key];
 
-  /// Removes a request from the in-flight map.
-  void removeInFlight(String key) => _inFlightRequests.remove(key);
+  /// Removes an in-flight request only while [owner] still owns [key].
+  ///
+  /// A newer take-latest request may replace the entry before an older
+  /// request's completion callback runs. Comparing the future by identity
+  /// prevents that older callback from deleting the newer active request.
+  bool removeInFlight(String key, Future<Response> owner) {
+    final current = _inFlightRequests[key];
+    if (current == null || !identical(current.$1, owner)) return false;
+    _inFlightRequests.remove(key);
+    return true;
+  }
 
   /// Cancels all in-flight requests and clears state.
   void clear() {

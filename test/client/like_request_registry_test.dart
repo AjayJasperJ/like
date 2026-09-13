@@ -32,13 +32,13 @@ void main() {
       expect(inFlight.$2, equals(cancelToken));
     });
 
-    test('removeInFlight should remove requests', () {
+    test('removeInFlight should remove requests owned by the future', () {
       final future = Future.value(
         Response(requestOptions: RequestOptions(path: '/test')),
       );
       registry.addInFlight('key1', (future, null));
-      registry.removeInFlight('key1');
 
+      expect(registry.removeInFlight('key1', future), isTrue);
       expect(registry.getInFlight('key1'), isNull);
     });
 

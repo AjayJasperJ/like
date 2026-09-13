@@ -208,9 +208,9 @@ const List<LikeSuggestion> _suggestions = [
   LikeSuggestion(
     name: 'LikeCacheImage',
     type: 'Widget',
-    useCase: 'Secure Offline Image Rendering',
+    useCase: 'Offline Image Rendering',
     description:
-        'Transparently handles secure local caching for remote images. Files are written using per-device 256-bit AES-CBC encryption with unique per-file IVs. Cleans tracking queries automatically.',
+        'Transparently caches remote images on disk and normalizes URLs to avoid duplicate entries caused by tracking query parameters.',
     code: '''LikeCacheImage(
   imageUrl: 'https://api.com/image.jpg?auth=xyz',
   width: 120,
@@ -290,7 +290,7 @@ LikeLogger.error('API responded with non-JSON format.');''',
     type: 'Class',
     useCase: 'Persistent Disk Storage Optimization',
     description:
-        'Manages disk space utilization. Automatically purges encrypted image files and stale JSON documents when device directories fill up.',
+        'Manages image-cache disk usage with access-time updates, LRU pruning, and explicit cache clearing.',
     code: '''// Wipes specific cached URL results
 await AppCacheManager.remove('/meals');
 // Cleans all image cache binaries
@@ -310,12 +310,13 @@ mocks.registerMock(
 );''',
   ),
   LikeSuggestion(
-    name: 'LikeAutoReconnectMixin',
+    name: 'LikeEngine',
     type: 'Mixin',
     useCase: 'Automatic Page Revalidation',
     description:
         'A convenient State mixin for pages that need to automatically trigger data re-validation or refresh fetches when internet goes back online.',
-    code: '''class _FeedState extends State<Feed> with LikeAutoReconnectMixin {
+    code: '''class _FeedState extends State<Feed> {
+  final LikeEngine engine = LikeEngine();
   @override
   void onReconnect() {
     mealProvider.fetchMeals(); // Fetches new meals!

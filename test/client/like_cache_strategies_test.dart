@@ -105,6 +105,9 @@ void main() {
             any(),
             data: any(named: 'data'),
             queryParameters: any(named: 'queryParameters'),
+            cancelToken: any(named: 'cancelToken'),
+            onSendProgress: any(named: 'onSendProgress'),
+            onReceiveProgress: any(named: 'onReceiveProgress'),
             options: any(named: 'options'),
           ),
         ).thenAnswer(
@@ -163,6 +166,9 @@ void main() {
             any(),
             data: any(named: 'data'),
             queryParameters: any(named: 'queryParameters'),
+            cancelToken: any(named: 'cancelToken'),
+            onSendProgress: any(named: 'onSendProgress'),
+            onReceiveProgress: any(named: 'onReceiveProgress'),
             options: any(named: 'options'),
           ),
         ).thenAnswer(
@@ -218,6 +224,9 @@ void main() {
             any(),
             data: any(named: 'data'),
             queryParameters: any(named: 'queryParameters'),
+            cancelToken: any(named: 'cancelToken'),
+            onSendProgress: any(named: 'onSendProgress'),
+            onReceiveProgress: any(named: 'onReceiveProgress'),
             options: any(named: 'options'),
           ),
         ).thenAnswer(
