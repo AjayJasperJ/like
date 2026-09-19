@@ -44,6 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Runtime databases
+server/*.db
+server/*.db-shm
+server/*.db-wal
+
 # User specified ignore paths
 .roomodes
 example/.agent/

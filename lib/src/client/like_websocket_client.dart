@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:like/src/core/like_auth_config.dart';
+import 'package:like/src/core/like_constants.dart';
+import 'package:like/src/interceptors/like_auth_interceptor.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:universal_io/io.dart';
 import 'package:like/src/services/like_pipeline.dart';
@@ -13,7 +16,8 @@ import 'package:like/src/services/like_pipeline.dart';
 /// State changes and connection handshakes are synchronized sequentially to prevent races.
 class LikeWebSocketClient {
   final String url;
-  final Future<String?> Function()? getToken;
+  final FutureOr<String?> Function()? getToken;
+  final LikeAuthConfig? authConfig;
   final Duration reconnectInterval;
   final Duration pingInterval;
   final String pingPayload;
@@ -31,6 +35,7 @@ class LikeWebSocketClient {
   LikeWebSocketClient({
     required this.url,
     this.getToken,
+    this.authConfig,
     this.reconnectInterval = const Duration(seconds: 5),
     this.pingInterval = const Duration(seconds: 30),
     this.pingPayload = '{"type":"ping"}',
@@ -51,8 +56,13 @@ class LikeWebSocketClient {
 
       try {
         var connectionUrl = url;
-        if (getToken != null) {
-          final token = await getToken!();
+        final tokenSupplier = authConfig?.getToken ??
+            getToken ??
+            LikeConstants.current.authConfig?.getToken ??
+            LikeAuthInterceptor.getToken;
+
+        if (tokenSupplier != null) {
+          final token = await tokenSupplier();
           if (token != null && token.isNotEmpty) {
             final uri = Uri.parse(url);
             final params = Map<String, dynamic>.from(uri.queryParameters);

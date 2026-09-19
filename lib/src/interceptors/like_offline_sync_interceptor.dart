@@ -5,6 +5,8 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
 import 'package:like/src/client/like_client.dart';
+import 'package:like/src/core/like_auth_config.dart';
+import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/interceptors/like_auth_interceptor.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_logger.dart';
@@ -25,6 +27,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
 
   final Dio dio;
   final Box _queueBox;
+  final LikeAuthConfig? authConfig;
   final FutureOr<void> Function(String path) _notifyRefresh;
   final Lock _lock = Lock();
   final Lock _drainLock = Lock();
@@ -34,6 +37,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
   LikeOfflineSyncInterceptor({
     required this.dio,
     required Box queueBox,
+    this.authConfig,
     FutureOr<void> Function(String path)? notifyRefresh,
   })  : _queueBox = queueBox,
         _notifyRefresh =
@@ -178,9 +182,12 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     if (task['eligible'] == false) return;
 
     final headers = Map<String, dynamic>.from(task['headers'] ?? const {});
-    if (LikeAuthInterceptor.getToken != null) {
+    final getTokenFn = authConfig?.getToken ??
+        LikeConstants.current.authConfig?.getToken ??
+        LikeAuthInterceptor.getToken;
+    if (getTokenFn != null) {
       try {
-        final token = await LikeAuthInterceptor.getToken!();
+        final token = await getTokenFn();
         if (token != null && token.isNotEmpty) {
           headers['Authorization'] = 'Bearer $token';
         }

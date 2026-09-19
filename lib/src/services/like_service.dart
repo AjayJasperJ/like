@@ -112,12 +112,19 @@ class LikeService {
   static Box get boxOfflineQueue => getBox(LikeConstants.boxOfflineQueue);
 
   static Future<void> putEtag(String key, String etag) async {
+    if (!Hive.isBoxOpen(LikeConstants.boxEtags)) return;
     await etagBox.put(key, etag);
   }
 
-  static String? getEtag(String key) => etagBox.get(key) as String?;
+  static String? getEtag(String key) {
+    if (!Hive.isBoxOpen(LikeConstants.boxEtags)) return null;
+    return etagBox.get(key) as String?;
+  }
 
-  static void deleteEtag(String key) => etagBox.delete(key);
+  static void deleteEtag(String key) {
+    if (!Hive.isBoxOpen(LikeConstants.boxEtags)) return;
+    etagBox.delete(key);
+  }
 
   /// Fetches a [Response] from the L2 Hive cache if it exists and hasn't expired.
   ///
@@ -125,6 +132,7 @@ class LikeService {
   static Future<Response?> fetchResponseFromCache(
     RequestOptions options,
   ) async {
+    if (!Hive.isBoxOpen(LikeConstants.boxApiCache)) return null;
     final key = options.uri.toString();
     final entry = cacheBox.get(key);
 
@@ -134,7 +142,9 @@ class LikeService {
       if (timestamp == null) return null;
 
       final storageDurationMs = (entry['storageDurationMs'] as int?) ??
-          (metadataBox.get(key) as int?);
+          (Hive.isBoxOpen(LikeConstants.boxCacheMetadata)
+              ? (metadataBox.get(key) as int?)
+              : null);
 
       final maxAge = storageDurationMs != null
           ? Duration(milliseconds: storageDurationMs)
@@ -171,6 +181,7 @@ class LikeService {
   ///
   /// Respects the `disableCache` flag in the request options.
   static Future<void> saveResponseToCache(Response response) async {
+    if (!Hive.isBoxOpen(LikeConstants.boxApiCache)) return;
     final options = response.requestOptions;
     if (options.extra['disableCache'] == true) return;
 

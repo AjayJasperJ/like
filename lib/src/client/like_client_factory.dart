@@ -4,6 +4,7 @@
 import 'like_ssl_stub.dart' if (dart.library.io) 'like_ssl_io.dart' as ssl;
 
 import 'package:dio/dio.dart';
+import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/client/like_request_registry.dart';
@@ -27,6 +28,9 @@ class LikeClientFactory {
     required String baseUrl,
     Duration? timeout,
     required LikeRequestRegistry registry,
+
+    /// Optional authentication configuration scoped to this Dio stack.
+    LikeAuthConfig? authConfig,
 
     /// Custom Dio interceptors injected **after** the built-in Like stack.
     ///
@@ -64,7 +68,7 @@ class LikeClientFactory {
       ),
     );
 
-    _setupInterceptors(dio, registry, customInterceptors);
+    _setupInterceptors(dio, registry, customInterceptors, authConfig: authConfig);
 
     // Delegate to the platform-correct SSL implementation:
     //   • Mobile/Desktop → like_ssl_io.dart  (IOHttpClientAdapter)
@@ -81,8 +85,9 @@ class LikeClientFactory {
   static void _setupInterceptors(
     Dio dio,
     LikeRequestRegistry registry,
-    List<Interceptor> customInterceptors,
-  ) {
+    List<Interceptor> customInterceptors, {
+    LikeAuthConfig? authConfig,
+  }) {
     dio.interceptors.addAll(
       [
         // 0. Logging (Catches all requests)
@@ -102,6 +107,7 @@ class LikeClientFactory {
           LikeOfflineSyncInterceptor(
             dio: dio,
             queueBox: LikeService.boxOfflineQueue,
+            authConfig: authConfig,
           ),
 
         // 3. Infrastructure
@@ -110,7 +116,7 @@ class LikeClientFactory {
         LikeThrottlingInterceptor(),
 
         // 4. Security & Session (Last to ensure headers are final)
-        LikeAuthInterceptor(dio: dio),
+        LikeAuthInterceptor(dio: dio, authConfig: authConfig),
 
         // 5. Developer-injected custom interceptors (outermost layer,
         //    closest to the actual network wire).

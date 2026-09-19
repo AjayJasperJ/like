@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:http_parser/http_parser.dart';
 import 'package:like/src/core/like_ars.dart';
+import 'package:like/src/core/like_auth_config.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_constants.dart';
@@ -40,6 +41,10 @@ class LikeClient {
   late final Dio _dio;
   late final LikeRequestRegistry _registry;
 
+  /// Exposes the underlying Dio instance. Primarily used for testing.
+  @visibleForTesting
+  Dio get dio => _dio;
+
   /// Exposes the request registry. Primarily used for testing.
   @visibleForTesting
   LikeRequestRegistry get registry => _registry;
@@ -65,11 +70,18 @@ class LikeClient {
   /// [baseUrl] sets the default host for all requests.
   /// [timeout] sets the connection and receive timeouts.
   /// [dio] allows providing a custom Dio instance for advanced configuration.
-  factory LikeClient({String? baseUrl, Duration? timeout, Dio? dio}) {
+  /// [authConfig] optionally sets authentication configuration for the client.
+  factory LikeClient({
+    String? baseUrl,
+    Duration? timeout,
+    Dio? dio,
+    LikeAuthConfig? authConfig,
+  }) {
     _instance ??= LikeClient._internal(
       baseUrl: baseUrl,
       timeout: timeout,
       dio: dio,
+      authConfig: authConfig,
     );
     return _instance!;
   }
@@ -96,6 +108,7 @@ class LikeClient {
   ///     defaultHeaders: {'X-Payment-Version': '2'},
   ///     unpacker: PaymentsResponseUnpacker(),
   ///     interceptors: [PaymentsHmacSigningInterceptor()],
+  ///     authConfig: LikeAuthConfig(getToken: () async => 'token'),
   ///   ),
   /// );
   /// ```
@@ -103,13 +116,19 @@ class LikeClient {
     return LikeClient._scoped(config);
   }
 
-  LikeClient._internal({String? baseUrl, Duration? timeout, Dio? dio}) {
+  LikeClient._internal({
+    String? baseUrl,
+    Duration? timeout,
+    Dio? dio,
+    LikeAuthConfig? authConfig,
+  }) {
     _registry = LikeRequestRegistry();
     _dio = dio ??
         LikeClientFactory.create(
           baseUrl: baseUrl ?? '',
           timeout: timeout,
           registry: _registry,
+          authConfig: authConfig ?? LikeConstants.current.authConfig,
           // Wire in developer-provided global interceptors from LikeConfig
           customInterceptors: LikeConstants.current.interceptors,
         );
@@ -120,6 +139,7 @@ class LikeClient {
     _dio = LikeClientFactory.create(
       baseUrl: config.baseUrl ?? LikeConstants.current.baseUrl,
       registry: _registry,
+      authConfig: config.authConfig,
       customInterceptors: [
         // Global interceptors come first
         ...LikeConstants.current.interceptors,

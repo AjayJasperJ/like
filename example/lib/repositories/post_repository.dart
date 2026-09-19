@@ -1,42 +1,52 @@
 import 'package:like/like.dart';
-import '../models/post.dart';
 
-// Top-level mappers — required for compute() isolate compatibility
-List<Post> _postsFromJson(dynamic json) => (json as List<dynamic>)
-    .map((e) => Post.fromJson(e as Map<String, dynamic>))
-    .toList();
+import '../models/api_models.dart';
+import '../services/post_api_service.dart';
 
-Post _postFromJson(dynamic json) => Post.fromJson(json as Map<String, dynamic>);
+final class PostRepository {
+  PostRepository(this._api);
 
-class PostRepository extends LikeBaseApiService {
-  Future<ApiResult<List<Post>>> getPosts({
+  final PostApiService _api;
+
+  Future<ApiResult<PaginatedPosts>> list({
     int page = 1,
-    int limit = 10,
-  }) async {
-    assert(page > 0, 'page must be greater than zero');
-    assert(limit > 0, 'limit must be greater than zero');
-    return await get('/posts', query: {'_page': page, '_limit': limit})
-        .mapAsync(_postsFromJson);
-  }
+    String? search,
+    bool? published,
+  }) =>
+      _api.list(page: page, search: search, published: published);
 
-  Future<ApiResult<Post>> getPost(int id) async =>
-      await get('/posts/$id').mapAsync(_postFromJson);
+  Future<ApiResult<ApiPost>> find(int id) => _api.find(id);
 
-  Future<ApiResult<List<Post>>> getPostComments(int id) async =>
-      await get('/posts/$id/comments').mapAsync(_postsFromJson);
+  Future<ApiResult<ApiPost>> create({
+    required String title,
+    required String body,
+    required bool published,
+    required int userId,
+  }) =>
+      _api.create(
+        title: title,
+        body: body,
+        published: published,
+        userId: userId,
+      );
 
-  Future<ApiResult<List<Post>>> getCommentsByPostId(int postId) async =>
-      await get('/comments', query: {'postId': postId}).mapAsync(_postsFromJson);
+  Future<ApiResult<ApiPost>> replace({
+    required int id,
+    required String title,
+    required String body,
+    required bool published,
+    required int userId,
+  }) =>
+      _api.replace(
+        id: id,
+        title: title,
+        body: body,
+        published: published,
+        userId: userId,
+      );
 
-  Future<ApiResult<Post>> createPost(Map<String, dynamic> data) async =>
-      await post('/posts', body: data).mapAsync(_postFromJson);
+  Future<ApiResult<ApiPost>> togglePublished(ApiPost post) =>
+      _api.update(post.id, {'published': !post.published});
 
-  Future<ApiResult<Post>> updatePost(int id, Map<String, dynamic> data) async =>
-      await put('/posts/$id', body: data).mapAsync(_postFromJson);
-
-  Future<ApiResult<Post>> patchPost(int id, Map<String, dynamic> data) async =>
-      await patch('/posts/$id', body: data).mapAsync(_postFromJson);
-
-  Future<ApiResult<Post>> deletePost(int id) async =>
-      await delete('/posts/$id').mapAsync(_postFromJson);
+  Future<ApiResult<void>> remove(int id) => _api.remove(id);
 }

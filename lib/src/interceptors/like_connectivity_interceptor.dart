@@ -9,7 +9,10 @@ class LikeConnectivityInterceptor extends Interceptor {
   static const String _preflightOfflineKey = 'like.syntheticPreflightOffline';
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     final customConnectTimeout = options.extra['connectTimeout'];
     if (customConnectTimeout is Duration) {
       options.connectTimeout = customConnectTimeout;
@@ -17,20 +20,30 @@ class LikeConnectivityInterceptor extends Interceptor {
 
     final bool offlineSync = options.extra['offlineSync'] ?? true;
     final bool isSyncRequest = options.extra['isSyncRequest'] ?? false;
+    final String serverUrl = options.uri.toString();
 
-    // We only fail-fast for non-sync requests that expect offline queuing.
-    // Sync requests (from the queue) must be allowed to try reaching the network.
+    // If the system is currently marked offline for non-sync requests:
+    // Run an instant probe to verify if the server/internet has recovered.
     if (!isSyncRequest &&
         offlineSync &&
         !LikeConnectivityManager().hasConnection) {
-      options.extra[_preflightOfflineKey] = true;
-      return handler.reject(
-        DioException(
-          requestOptions: options,
-          error: 'No internet connection',
-          type: DioExceptionType.connectionError,
-        ),
+      final check = await LikeConnectivityManager().checkServerReachability(
+        serverUrl,
+        force: true,
       );
+
+      // If probe confirms it is STILL offline, fail fast immediately (0ms delay).
+      // This skips wasting network retries and long timeouts!
+      if (!check.isOnline) {
+        options.extra[_preflightOfflineKey] = true;
+        return handler.reject(
+          DioException(
+            requestOptions: options,
+            error: 'No internet connection',
+            type: DioExceptionType.connectionError,
+          ),
+        );
+      }
     }
 
     return handler.next(options);
@@ -55,21 +68,17 @@ class LikeConnectivityInterceptor extends Interceptor {
         serverUrl: err.requestOptions.uri.toString(),
       );
     } else if (_shouldCheckAfter(err) && !LikeRetryInterceptor.willRetry(err)) {
-      // Diagnose only a terminal transport failure. Probing an intermediate
-      // failure can mark the origin unavailable before the retry interceptor
-      // evaluates it, incorrectly suppressing the remaining logical request.
-      // Deliberately do not await: delivery and identity of the terminal error
-      // are unaffected by connectivity diagnostics.
+      // Diagnose terminal transport failures immediately with force: true
       LikeConnectivityManager().checkAfterApiFailure(
         err.requestOptions.uri.toString(),
+        force: true,
       );
     }
     handler.next(err);
   }
 
   static bool _shouldCheckAfter(DioException error) {
-    if (error.requestOptions.extra[_preflightOfflineKey] == true ||
-        error.error == 'OFFLINE_QUEUED') {
+    if (error.error == 'OFFLINE_QUEUED') {
       return false;
     }
 
@@ -90,6 +99,7 @@ class LikeConnectivityInterceptor extends Interceptor {
   }
 
   static bool _isSocketFailure(Object? error) {
+    if (error == null) return true;
     if (error is SocketException || error is OSError) return true;
     if (error is DioException && !identical(error.error, error)) {
       return _isSocketFailure(error.error);

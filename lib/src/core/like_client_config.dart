@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_data_unpacker.dart';
 
 /// Configuration for creating an isolated, scoped [LikeClient] instance.
@@ -29,6 +30,7 @@ import 'package:like/src/core/like_data_unpacker.dart';
 ///     defaultHeaders: {'X-Payment-Version': '2'},
 ///     unpacker: PaymentsResponseUnpacker(),
 ///     interceptors: [PaymentsHmacSigningInterceptor()],
+///     authConfig: LikeAuthConfig(getToken: () async => 'custom-jwt'),
 ///   ),
 /// );
 ///
@@ -40,6 +42,9 @@ class LikeClientConfig {
   ///
   /// Falls back to [LikeConstants.current.baseUrl] if `null`.
   final String? baseUrl;
+
+  /// Optional authentication configuration scoped to this client.
+  final LikeAuthConfig? authConfig;
 
   /// Timeout for establishing a connection with the server.
   ///
@@ -88,6 +93,7 @@ class LikeClientConfig {
 
   const LikeClientConfig({
     this.baseUrl,
+    this.authConfig,
     this.connectTimeout,
     this.receiveTimeout,
     this.sendTimeout,
@@ -102,6 +108,7 @@ class LikeClientConfig {
   String toString() {
     return 'LikeClientConfig('
         'baseUrl: $baseUrl, '
+        'authConfig: $authConfig, '
         'connectTimeout: $connectTimeout, '
         'receiveTimeout: $receiveTimeout, '
         'sendTimeout: $sendTimeout, '
@@ -112,3 +119,4 @@ class LikeClientConfig {
         ')';
   }
 }
+

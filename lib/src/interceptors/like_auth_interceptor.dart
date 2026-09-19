@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
@@ -9,29 +10,93 @@ import 'package:like/src/services/like_connectivity_manager.dart';
 /// Matches enterprise's AuthInterceptor parity.
 class LikeAuthInterceptor extends Interceptor {
   final Dio dio;
+
+  /// Instance-specific authentication configuration.
+  final LikeAuthConfig? authConfig;
+
   static final Map<String, DateTime> _rateLimitedUntilByOrigin = {};
   static const Duration _maximumRateLimitDelay = Duration(seconds: 60);
   static const String _retryCountKey = 'x-retry-count';
 
-  /// Synchronization lock for concurrent token refreshes.
+  /// Global synchronization lock for legacy static token refreshes.
   static Completer<String?>? _refreshCompleter;
 
-  /// Global notifier indicating if a token refresh is currently in progress.
+  /// Global notifier indicating if a legacy token refresh is in progress.
   static final ValueNotifier<bool> isRefreshing = ValueNotifier<bool>(false);
 
-  /// Hook for the host app to provide the current access token.
-  static Future<String?> Function()? getToken;
+  /// Instance-level synchronization lock for concurrent token refreshes on this client.
+  Completer<String?>? _instanceRefreshCompleter;
 
-  /// Hook for the host app to perform token refresh.
-  static Future<String?> Function()? refreshToken;
+  /// Instance-level notifier indicating if a token refresh is in progress on this client.
+  final ValueNotifier<bool> instanceIsRefreshing = ValueNotifier<bool>(false);
 
-  /// Hook for the host app to handle logout on authentication error.
-  static Future<void> Function({int? statusCode, bool force})? onLogout;
+  /// Hook for the host app to provide the current access token (legacy static API).
+  static FutureOr<String?> Function()? getToken;
 
-  /// Hook for the host app to provide an API Key (x-api-key).
-  static Future<String?> Function()? getApiKey;
+  /// Hook for the host app to perform token refresh (legacy static API).
+  static FutureOr<String?> Function()? refreshToken;
 
-  LikeAuthInterceptor({required this.dio});
+  /// Hook for the host app to handle logout on authentication error (legacy static API).
+  static FutureOr<void> Function({int? statusCode, bool force})? onLogout;
+
+  /// Hook for the host app to provide an API Key (x-api-key) (legacy static API).
+  static FutureOr<String?> Function()? getApiKey;
+
+  LikeAuthInterceptor({required this.dio, this.authConfig});
+
+  FutureOr<String?> _resolveToken() {
+    if (authConfig?.getToken != null) {
+      return authConfig!.getToken!();
+    }
+    if (LikeConstants.current.authConfig?.getToken != null) {
+      return LikeConstants.current.authConfig!.getToken!();
+    }
+    if (getToken != null) {
+      return getToken!();
+    }
+    return null;
+  }
+
+  FutureOr<String?> _resolveRefreshToken() {
+    if (authConfig?.refreshToken != null) {
+      return authConfig!.refreshToken!();
+    }
+    if (LikeConstants.current.authConfig?.refreshToken != null) {
+      return LikeConstants.current.authConfig!.refreshToken!();
+    }
+    if (refreshToken != null) {
+      return refreshToken!();
+    }
+    return null;
+  }
+
+  FutureOr<void> _resolveLogout({int? statusCode, bool force = false}) {
+    if (authConfig?.onLogout != null) {
+      return authConfig!.onLogout!(statusCode: statusCode, force: force);
+    }
+    if (LikeConstants.current.authConfig?.onLogout != null) {
+      return LikeConstants.current.authConfig!.onLogout!(
+        statusCode: statusCode,
+        force: force,
+      );
+    }
+    if (onLogout != null) {
+      return onLogout!(statusCode: statusCode, force: force);
+    }
+  }
+
+  FutureOr<String?> _resolveApiKey() {
+    if (authConfig?.getApiKey != null) {
+      return authConfig!.getApiKey!();
+    }
+    if (LikeConstants.current.authConfig?.getApiKey != null) {
+      return LikeConstants.current.authConfig!.getApiKey!();
+    }
+    if (getApiKey != null) {
+      return getApiKey!();
+    }
+    return null;
+  }
 
   @override
   Future<void> onRequest(
@@ -55,24 +120,23 @@ class LikeAuthInterceptor extends Interceptor {
 
     final bool withAuth =
         options.extra['withAuth'] ?? LikeConstants.withAuthByDefault;
+    final bool isRetry = options.extra['isRetry'] ?? false;
 
-    if (withAuth && getToken != null) {
+    if (withAuth && !isRetry) {
       try {
-        final token = await getToken!();
+        final token = await _resolveToken();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
       } catch (_) {}
     }
 
-    if (getApiKey != null) {
-      try {
-        final apiKey = await getApiKey!();
-        if (apiKey != null && apiKey.isNotEmpty) {
-          options.headers['x-api-key'] = apiKey;
-        }
-      } catch (_) {}
-    }
+    try {
+      final apiKey = await _resolveApiKey();
+      if (apiKey != null && apiKey.isNotEmpty) {
+        options.headers['x-api-key'] = apiKey;
+      }
+    } catch (_) {}
 
     return handler.next(options);
   }
@@ -86,41 +150,81 @@ class LikeAuthInterceptor extends Interceptor {
     if (err.response?.statusCode == 401 && withAuth) {
       final bool isRetry = err.requestOptions.extra['isRetry'] ?? false;
       if (isRetry) {
-        if (onLogout != null) await onLogout!(statusCode: 401, force: true);
+        await _resolveLogout(statusCode: 401, force: true);
         return handler.next(err);
       }
 
-      if (refreshToken != null) {
-        // Handle concurrent refreshes using a Completer
-        if (_refreshCompleter != null) {
-          final newToken = await _refreshCompleter!.future;
-          if (newToken != null) {
-            return _retryRequest(err.requestOptions, newToken, handler);
-          } else {
-            return handler.next(err);
+      final hasRefresh = authConfig?.refreshToken != null ||
+          LikeConstants.current.authConfig?.refreshToken != null ||
+          refreshToken != null;
+
+      if (hasRefresh) {
+        final bool isScoped = authConfig?.refreshToken != null ||
+            LikeConstants.current.authConfig?.refreshToken != null;
+
+        if (isScoped) {
+          if (_instanceRefreshCompleter != null) {
+            final newToken = await _instanceRefreshCompleter!.future;
+            if (newToken != null) {
+              return _retryRequest(err.requestOptions, newToken, handler);
+            } else {
+              return handler.next(err);
+            }
           }
-        }
 
-        _refreshCompleter = Completer<String?>();
-        isRefreshing.value = true;
+          _instanceRefreshCompleter = Completer<String?>();
+          instanceIsRefreshing.value = true;
 
-        try {
-          final newToken = await refreshToken!();
-          _refreshCompleter?.complete(newToken);
+          try {
+            final newToken = await _resolveRefreshToken();
+            _instanceRefreshCompleter?.complete(newToken);
 
-          if (newToken != null) {
-            return await _retryRequest(err.requestOptions, newToken, handler);
-          } else {
-            if (onLogout != null) await onLogout!(statusCode: 401, force: true);
+            if (newToken != null) {
+              return await _retryRequest(err.requestOptions, newToken, handler);
+            } else {
+              await _resolveLogout(statusCode: 401, force: true);
+              return handler.next(err);
+            }
+          } catch (e) {
+            _instanceRefreshCompleter?.complete(null);
+            await _resolveLogout(statusCode: 401, force: true);
             return handler.next(err);
+          } finally {
+            _instanceRefreshCompleter = null;
+            instanceIsRefreshing.value = false;
           }
-        } catch (e) {
-          _refreshCompleter?.complete(null);
-          if (onLogout != null) await onLogout!(statusCode: 401, force: true);
-          return handler.next(err);
-        } finally {
-          _refreshCompleter = null;
-          isRefreshing.value = false;
+        } else {
+          // Legacy static completer path
+          if (_refreshCompleter != null) {
+            final newToken = await _refreshCompleter!.future;
+            if (newToken != null) {
+              return _retryRequest(err.requestOptions, newToken, handler);
+            } else {
+              return handler.next(err);
+            }
+          }
+
+          _refreshCompleter = Completer<String?>();
+          isRefreshing.value = true;
+
+          try {
+            final newToken = await _resolveRefreshToken();
+            _refreshCompleter?.complete(newToken);
+
+            if (newToken != null) {
+              return await _retryRequest(err.requestOptions, newToken, handler);
+            } else {
+              await _resolveLogout(statusCode: 401, force: true);
+              return handler.next(err);
+            }
+          } catch (e) {
+            _refreshCompleter?.complete(null);
+            await _resolveLogout(statusCode: 401, force: true);
+            return handler.next(err);
+          } finally {
+            _refreshCompleter = null;
+            isRefreshing.value = false;
+          }
         }
       }
     }
@@ -208,9 +312,9 @@ class LikeAuthInterceptor extends Interceptor {
   ) async {
     options.headers['Authorization'] = 'Bearer $token';
 
-    if (getApiKey != null) {
-      final apiKey = await getApiKey!();
-      if (apiKey != null) options.headers['x-api-key'] = apiKey;
+    final apiKey = await _resolveApiKey();
+    if (apiKey != null && apiKey.isNotEmpty) {
+      options.headers['x-api-key'] = apiKey;
     }
 
     options.extra['isRetry'] = true;

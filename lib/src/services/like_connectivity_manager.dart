@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/models/like_connectivity_check_result.dart';
 import 'package:like/src/models/like_connectivity_transition.dart';
+import 'package:like/src/services/like_logger.dart';
 import 'package:universal_io/io.dart';
 
 /// Injectable connectivity interface check used by tests and embedders.
@@ -159,14 +160,15 @@ class LikeConnectivityManager {
     await checkConnectivity(force: true);
   }
 
-  /// Starts a non-blocking, cooldown-aware check after an eligible API failure.
-  void checkAfterApiFailure(String serverUrl) {
+  /// Starts a non-blocking check after an eligible API failure.
+  void checkAfterApiFailure(String serverUrl, {bool force = false}) {
     if (!LikeConstants.automaticConnectivityChecksEnabled) return;
     final origin = canonicalOrigin(serverUrl);
     if (origin == null) return;
     final now = _clock();
     final last = _lastAutomaticChecks[origin];
-    if (last != null &&
+    if (!force &&
+        last != null &&
         now.difference(last) < LikeConstants.automaticFailureCheckCooldown) {
       return;
     }
@@ -175,6 +177,7 @@ class LikeConnectivityManager {
       _runBackgroundCheck(
         serverUrl: serverUrl,
         reason: LikeConnectivityCheckReason.apiFailure,
+        forceNewFlight: force,
       ),
     );
   }
@@ -198,12 +201,14 @@ class LikeConnectivityManager {
     required String? serverUrl,
     required LikeConnectivityCheckReason reason,
     List<ConnectivityResult>? knownResults,
+    bool forceNewFlight = false,
   }) async {
     try {
       await _checkConnectivity(
         serverUrl: serverUrl,
         reason: reason,
         knownResults: knownResults,
+        forceNewFlight: forceNewFlight,
       );
     } catch (_) {
       // Background diagnostics must never surface an unhandled asynchronous
@@ -219,10 +224,19 @@ class LikeConnectivityManager {
   }) async {
     final origin = canonicalOrigin(serverUrl);
     final epochAtStart = origin == null ? 0 : (_originEpochs[origin] ?? 0);
+    final stopwatch = Stopwatch()..start();
     
     // If the OS just told us the network changed (knownResults != null),
     // we MUST force a new flight to avoid piggybacking on a stale offline check.
     final bool requiresNewFlight = forceNewFlight || knownResults != null;
+    
+    if (!LikeConstants.silentSyncLogs) {
+      LikeLogger.log(
+        level: LikeLogLevel.info,
+        category: 'connectivity',
+        message: '[LIKE Connectivity] Check started ($reason) for $origin | force=$requiresNewFlight',
+      );
+    }
     
     final interface = await _interfaceAndInternet(
       knownResults: knownResults,
@@ -236,10 +250,19 @@ class LikeConnectivityManager {
       serverAvailable = await _serverReachability(origin, forceNewFlight: requiresNewFlight);
     }
 
+    stopwatch.stop();
     final timestamp = _clock();
     _applyInternetState(interface.internetReachable);
     if (origin != null && (_originEpochs[origin] ?? 0) == epochAtStart) {
       _applyOriginState(origin, serverAvailable);
+    }
+
+    if (!LikeConstants.silentSyncLogs) {
+      LikeLogger.log(
+        level: LikeLogLevel.info,
+        category: 'connectivity',
+        message: '[LIKE Connectivity] Check completed in ${stopwatch.elapsedMilliseconds}ms ($reason) -> interface=${interface.hasNetworkInterface}, internet=${interface.internetReachable}, server=$serverAvailable ($origin)',
+      );
     }
 
     return LikeConnectivityCheckResult(
@@ -317,16 +340,40 @@ class LikeConnectivityManager {
   Future<bool?> _runServerReachability(String origin) async {
     if (_isWeb) return null;
     final uri = Uri.parse(origin);
-    return _serverCheckOverride?.call(
-          uri.host,
-          uri.port,
-          Duration(seconds: LikeConstants.connTimeout),
-        ) ??
-        _connectSocket(
+    if (_serverCheckOverride != null) {
+      return _serverCheckOverride!(
+        uri.host,
+        uri.port,
+        Duration(seconds: LikeConstants.connTimeout),
+      );
+    }
+    
+    // HTTP/HTTPS origins should be probed with an HTTP HEAD request to avoid
+    // leaving raw TCP sockets open on HTTP servers (like Shelf).
+    if (uri.scheme == 'http' || uri.scheme == 'https') {
+      try {
+        final client = HttpClient()
+          ..connectionTimeout = Duration(seconds: LikeConstants.connTimeout);
+        final request = await client.openUrl('HEAD', uri);
+        request.followRedirects = false;
+        final response = await request.close();
+        client.close(force: true);
+        return response.statusCode < 500 || response.statusCode == 503;
+      } catch (_) {
+        // Fall back to TCP socket if HTTP HEAD fails unexpectedly
+        return _connectSocket(
           uri.host,
           uri.port,
           Duration(seconds: LikeConstants.connTimeout),
         );
+      }
+    }
+
+    return _connectSocket(
+      uri.host,
+      uri.port,
+      Duration(seconds: LikeConstants.connTimeout),
+    );
   }
 
   bool get _isWeb => _isWebOverride ?? kIsWeb;

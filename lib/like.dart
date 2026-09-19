@@ -3,6 +3,7 @@ library;
 
 // Core
 export 'src/core/like_config.dart';
+export 'src/core/like_auth_config.dart';
 export 'src/core/like_ars.dart';
 export 'src/core/like_constants.dart';
 export 'src/core/like_data_unpacker.dart';

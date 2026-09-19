@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:toastification/toastification.dart';
 import 'package:like/src/interceptors/like_auth_interceptor.dart';
@@ -116,6 +117,9 @@ class Like extends StatefulWidget {
   /// `devTool: (child) => LikeDevTool(child: child)`
   final Widget Function(Widget child)? devTool;
 
+  /// Optional authentication configuration (token getters, refresh, logout callbacks).
+  final LikeAuthConfig? authConfig;
+
   /// A global navigator key that can be linked to your [MaterialApp.navigatorKey].
   ///
   /// Enables the LIKE engine to trigger beautiful, premium toast notifications from any layer of your
@@ -141,6 +145,7 @@ class Like extends StatefulWidget {
     this.refreshToken,
     this.onLogout,
     this.getApiKey,
+    this.authConfig,
     this.syncProgressBuilder,
     this.toastConfig,
     this.toastDelegate,
@@ -199,7 +204,24 @@ class _LikeState extends State<Like> {
         );
       }
 
-      // Hook up OAuth Interceptors
+      // Hook up OAuth Interceptors & AuthConfig
+      final effectiveAuthConfig = widget.authConfig ??
+          LikeAuthConfig(
+            getToken: widget.getToken,
+            refreshToken: widget.refreshToken,
+            onLogout: widget.onLogout,
+            getApiKey: widget.getApiKey,
+          );
+
+      if (effectiveAuthConfig.hasTokenSupplier ||
+          effectiveAuthConfig.hasRefreshSupplier ||
+          effectiveAuthConfig.hasLogoutSupplier ||
+          effectiveAuthConfig.hasApiKeySupplier) {
+        LikeConstants.apply(
+          LikeConstants.current.copyWith(authConfig: effectiveAuthConfig),
+        );
+      }
+
       if (widget.getToken != null) {
         LikeAuthInterceptor.getToken = widget.getToken!;
       }

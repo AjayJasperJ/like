@@ -1,9 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_data_unpacker.dart';
 
 /// Global configuration for the LIKE engine's behavior and caching system.
 class LikeConfig {
+  /// Optional global authentication configuration (token getters, refresh, logout callbacks).
+  final LikeAuthConfig? authConfig;
+
   /// The name of the project. Used as a namespace prefix for storage, cache
   /// directories, and Hive boxes.
   final String projectName;
@@ -359,6 +363,7 @@ class LikeConfig {
 
   LikeConfig({
     required this.projectName,
+    this.authConfig,
     this.baseUrl = '',
     this.unpacker = const DefaultLikeUnpacker(),
     this.extraBaseUrls = const {},
@@ -437,6 +442,7 @@ class LikeConfig {
 
   LikeConfig copyWith({
     String? projectName,
+    LikeAuthConfig? authConfig,
     String? baseUrl,
     LikeDataUnpacker? unpacker,
     Map<String, String>? extraBaseUrls,
@@ -506,6 +512,7 @@ class LikeConfig {
   }) {
     return LikeConfig(
       projectName: projectName ?? this.projectName,
+      authConfig: authConfig ?? this.authConfig,
       baseUrl: baseUrl ?? this.baseUrl,
       unpacker: unpacker ?? this.unpacker,
       extraBaseUrls: extraBaseUrls ?? this.extraBaseUrls,

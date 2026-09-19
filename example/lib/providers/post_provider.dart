@@ -1,66 +1,115 @@
 import 'package:flutter/foundation.dart';
-import 'package:like/like.dart';
-import '../models/post.dart';
+
+import '../models/api_models.dart';
 import '../repositories/post_repository.dart';
 
-class PostProvider extends ChangeNotifier {
+final class PostProvider extends ChangeNotifier {
+  PostProvider(this._repository);
+
   final PostRepository _repository;
-  final LikeEngine engine = LikeEngine();
 
-  PostProvider(this._repository) {
-    paginatedPosts.addListener(notifyListeners);
-  }
+  List<ApiPost> _posts = const [];
+  Pagination? _pagination;
+  bool _busy = false;
+  String? _error;
+  String _search = '';
+  bool? _published;
 
-  late final paginatedPosts = PaginatedNotifierState<Post>(
-    pageSize: 10,
-    initialValue: StateResponse.loading(),
-    fetcher: (page, limit) => _repository.getPosts(
+  List<ApiPost> get posts => _posts;
+  Pagination? get pagination => _pagination;
+  bool get busy => _busy;
+  String? get error => _error;
+  String get search => _search;
+  bool? get published => _published;
+
+  Future<void> load({int page = 1}) async {
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    final result = await _repository.list(
       page: page,
-      limit: limit,
-    ),
-  );
-
-  final createPostState = NotifierState<Post>(
-    initialValue: StateResponse.idle(),
-  );
-
-  bool get hasMorePosts => paginatedPosts.hasMore;
-  
-  // We expose this so the UI can easily access the primary state without changing too much.
-  NotifierState<List<Post>> get postsState => paginatedPosts;
-  NotifierState<List<Post>> get postsPaginationState => paginatedPosts.paginationState;
-
-  Future<void> getPosts({bool loadMore = false, ARS? ars}) async {
-    if (loadMore) {
-      await paginatedPosts.fetchNextPage(engine: engine, ars: ars);
-    } else {
-      await paginatedPosts.fetchInitial(engine: engine, ars: ars);
-    }
-  }
-
-  Future<void> createPost(String title, String body) async {
-    if (title.isEmpty) {
-      createPostState.value = StateResponse.missingData('missing title');
-      return;
-    }
-    
-    final response = await engine.fetchResult<Post>(
-      state: createPostState,
-      action: () => _repository.createPost(
-        {'title': title, 'body': body, 'userId': 1},
-      ),
+      search: _search,
+      published: _published,
     );
-    
-    if (response.isSuccess) {
-      await getPosts();
+    if (result.isSuccess && result.data != null) {
+      _posts = result.data!.posts;
+      _pagination = result.data!.pagination;
+    } else {
+      _error = result.error?.message ?? 'Could not load posts';
     }
+    _busy = false;
+    notifyListeners();
   }
 
-  @override
-  void dispose() {
-    engine.dispose();
-    paginatedPosts.removeListener(notifyListeners);
-    paginatedPosts.dispose();
-    super.dispose();
+  Future<void> filter({String? search, bool? published, bool clear = false}) {
+    _search = search?.trim() ?? _search;
+    _published = clear ? null : published ?? _published;
+    return load();
+  }
+
+  Future<ApiPost?> find(int id) async {
+    final result = await _repository.find(id);
+    if (!result.isSuccess) {
+      _error = result.error?.message ?? 'Could not load post';
+      notifyListeners();
+      return null;
+    }
+    return result.data;
+  }
+
+  Future<ApiPost?> save({
+    ApiPost? post,
+    required String title,
+    required String body,
+    required bool published,
+    required int userId,
+  }) async {
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    final result = post == null
+        ? await _repository.create(
+            title: title,
+            body: body,
+            published: published,
+            userId: userId,
+          )
+        : await _repository.replace(
+            id: post.id,
+            title: title,
+            body: body,
+            published: published,
+            userId: userId,
+          );
+    _busy = false;
+    if (!result.isSuccess) {
+      _error = result.error?.message ?? 'Could not save post';
+      notifyListeners();
+      return null;
+    }
+    await load();
+    return result.data;
+  }
+
+  Future<bool> toggle(ApiPost post) async {
+    final result = await _repository.togglePublished(post);
+    if (!result.isSuccess) {
+      _error = result.error?.message ?? 'Could not update post';
+      notifyListeners();
+      return false;
+    }
+    await load(page: _pagination?.page ?? 1);
+    return true;
+  }
+
+  Future<bool> remove(int id) async {
+    final result = await _repository.remove(id);
+    if (!result.isSuccess) {
+      _error = result.error?.message ?? 'Could not delete post';
+      notifyListeners();
+      return false;
+    }
+    await load(page: _pagination?.page ?? 1);
+    return true;
   }
 }
