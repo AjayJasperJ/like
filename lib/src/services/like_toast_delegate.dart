@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:like/src/services/like_toast_manager.dart';
-import 'package:toastification/toastification.dart';
 import 'package:like/src/models/like_state_response.dart';
 
-/// Supported animation types for LIKE toasts.
+/// Supported animation types for custom LIKE toasts.
 enum LikeToastAnimation { slide, fade, scale }
 
+/// Standard toast message severity types for LIKE.
+enum LikeToastMessageType { success, info, warning, error }
+
 /// Delegate for handling Toast UI in the LIKE package.
-/// Allows users to provide custom designs for connectivity, success, and error toasts.
+/// Allows users to provide custom designs or custom toast libraries (e.g. Toastification, CherryToast).
 abstract class LikeToastDelegate {
   /// Shows a toast for connectivity changes.
   void showConnectivityToast(BuildContext context, bool isOnline);
@@ -23,7 +25,7 @@ abstract class LikeToastDelegate {
     BuildContext context, {
     required String message,
     String? submessage,
-    required ToastificationType type,
+    required LikeToastMessageType type,
     Duration? autoCloseDuration,
   });
 
@@ -64,7 +66,7 @@ abstract class LikeToastDelegate {
   void dismiss(BuildContext context, {bool showRemoveAnimation = false});
 }
 
-/// The default implementation of [LikeToastDelegate] using standard Material widgets.
+/// Anti-fragile default implementation of [LikeToastDelegate] using Flutter's zero-dependency [ScaffoldMessenger].
 class DefaultLikeToastDelegate implements LikeToastDelegate {
   /// A builder for custom synchronization progress toasts.
   final Widget Function(String title, String message, double progress)?
@@ -73,7 +75,13 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
   /// Creates a [DefaultLikeToastDelegate] with optional custom builders.
   DefaultLikeToastDelegate({this.syncProgressBuilder});
 
-  ToastificationItem? _current;
+  ScaffoldMessengerState? _findScaffoldMessenger(BuildContext context) {
+    try {
+      return ScaffoldMessenger.maybeOf(context);
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void showConnectivityToast(BuildContext context, bool isOnline) {
@@ -92,7 +100,7 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
       submessage: isOnline
           ? 'Internet connection restored.'
           : 'Please check your network.',
-      type: isOnline ? ToastificationType.success : ToastificationType.error,
+      type: isOnline ? LikeToastMessageType.success : LikeToastMessageType.error,
     );
   }
 
@@ -104,10 +112,10 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
     if (response.isIdle || response.isLoading || response.isRefreshing) return;
 
     final type = response.isSuccess
-        ? ToastificationType.success
+        ? LikeToastMessageType.success
         : (response.isError
-            ? ToastificationType.warning
-            : ToastificationType.error);
+            ? LikeToastMessageType.warning
+            : LikeToastMessageType.error);
 
     showToast(context, message: response.message, type: type);
   }
@@ -117,24 +125,59 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
     BuildContext context, {
     required String message,
     String? submessage,
-    required ToastificationType type,
+    required LikeToastMessageType type,
     Duration? autoCloseDuration,
   }) {
-    if (_current != null) {
-      toastification.dismiss(_current!, showRemoveAnimation: false);
-    }
+    final messenger = _findScaffoldMessenger(context);
+    if (messenger == null) return;
 
-    _current = toastification.show(
-      context: context,
-      type: type,
-      style: ToastificationStyle.flat,
-      title: Text(message),
-      description: (submessage != null && submessage.isNotEmpty)
-          ? Text(submessage)
-          : null,
-      autoCloseDuration: autoCloseDuration ?? const Duration(seconds: 4),
-      alignment: Alignment.topCenter,
+    final theme = Theme.of(context);
+    final colors = _resolveColors(type, theme);
+
+    messenger.hideCurrentSnackBar();
+
+    final snackBar = SnackBar(
+      content: Row(
+        children: [
+          Icon(colors.icon, color: colors.foreground, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: TextStyle(
+                    color: colors.foreground,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                if (submessage != null && submessage.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    submessage,
+                    style: TextStyle(
+                      color: colors.foreground.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: colors.background,
+      behavior: SnackBarBehavior.floating,
+      duration: autoCloseDuration ?? const Duration(seconds: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.all(16),
+      elevation: 4,
     );
+
+    messenger.showSnackBar(snackBar);
   }
 
   @override
@@ -154,92 +197,26 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
     Offset? slideInOffset,
     Offset? slideOutOffset,
   }) {
-    if (_current != null) {
-      toastification.dismiss(_current!, showRemoveAnimation: false);
-    }
+    final messenger = _findScaffoldMessenger(context);
+    if (messenger == null) return;
 
-    final effectiveExitDuration = exitDuration ?? entryDuration;
-    final maxDuration = entryDuration > effectiveExitDuration
-        ? entryDuration
-        : effectiveExitDuration;
+    messenger.hideCurrentSnackBar();
 
-    _current = toastification.showCustom(
-      context: context,
-      alignment: alignment,
-      autoCloseDuration: autoCloseDuration,
-      animationDuration: maxDuration,
-      callbacks: ToastificationCallbacks(onTap: (item) => onTap?.call()),
-      animationBuilder: (context, animation, alignment, toastChild) {
-        final isExiting = animation.status == AnimationStatus.reverse ||
-            animation.status == AnimationStatus.dismissed;
-
-        final currentDuration =
-            isExiting ? effectiveExitDuration : entryDuration;
-        final ratio =
-            currentDuration.inMilliseconds / maxDuration.inMilliseconds;
-
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Interval(0.0, ratio, curve: Curves.easeInOut),
-        );
-
-        final effectiveType = (isExiting && exitAnimationType != null)
-            ? exitAnimationType
-            : animationType;
-
-        switch (effectiveType) {
-          case LikeToastAnimation.fade:
-            return FadeTransition(opacity: curved, child: toastChild);
-          case LikeToastAnimation.scale:
-            return ScaleTransition(scale: curved, child: toastChild);
-          case LikeToastAnimation.slide:
-            final defaultOffsetVar = alignment.y > 0 ? 1.0 : -1.0;
-            final offset = isExiting
-                ? (slideOutOffset ??
-                    slideInOffset ??
-                    Offset(0, defaultOffsetVar))
-                : (slideInOffset ?? Offset(0, defaultOffsetVar));
-
-            return SlideTransition(
-              position: Tween<Offset>(
-                begin: offset,
-                end: Offset.zero,
-              ).animate(curved),
-              child: FadeTransition(opacity: curved, child: toastChild),
-            );
-        }
-      },
-      builder: (context, holder) {
-        Widget content = Padding(
-          padding: margin ?? EdgeInsets.zero,
-          child: Material(
-            color: Colors.transparent,
-            child: Center(child: child),
-          ),
-        );
-
-        if (dismissDirection == DismissDirection.none || !isDismissible) {
-          return content;
-        }
-
-        return MouseRegion(
-          onEnter: (_) => holder.pause(),
-          onExit: (_) => holder.start(),
-          child: GestureDetector(
-            onLongPressStart: (_) => holder.pause(),
-            onLongPressEnd: (_) => holder.start(),
-            child: Dismissible(
-              key: ValueKey('dismiss_${holder.id}'),
-              direction: dismissDirection,
-              onDismissed: (_) {
-                toastification.dismiss(holder, showRemoveAnimation: false);
-              },
-              child: content,
-            ),
-          ),
-        );
-      },
+    final snackBar = SnackBar(
+      content: GestureDetector(
+        onTap: onTap,
+        child: child,
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      behavior: SnackBarBehavior.floating,
+      duration: autoCloseDuration ?? const Duration(seconds: 3),
+      margin: margin ?? const EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
+      dismissDirection: isDismissible ? dismissDirection : DismissDirection.none,
     );
+
+    messenger.showSnackBar(snackBar);
   }
 
   @override
@@ -248,20 +225,58 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
     required String title,
     String? message,
   }) {
-    if (_current != null) {
-      toastification.dismiss(_current!, showRemoveAnimation: false);
-    }
+    final messenger = _findScaffoldMessenger(context);
+    if (messenger == null) return;
 
-    _current = toastification.show(
-      context: context,
-      type: ToastificationType.info,
-      style: ToastificationStyle.flat,
-      title: Text(title),
-      description: message != null ? Text(message) : null,
-      autoCloseDuration: null,
-      showProgressBar: true,
-      alignment: Alignment.topCenter,
+    messenger.hideCurrentSnackBar();
+
+    final snackBar = SnackBar(
+      content: Row(
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (message != null && message.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: Colors.black87,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(days: 1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.all(16),
     );
+
+    messenger.showSnackBar(snackBar);
   }
 
   @override
@@ -281,11 +296,10 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
       return;
     }
 
-    // Ported sync UI logic
     showCustomToast(
       context,
       alignment: Alignment.bottomCenter,
-      autoCloseDuration: null,
+      autoCloseDuration: const Duration(seconds: 4),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -306,7 +320,7 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
               height: 18,
               width: 18,
               child: CircularProgressIndicator(
-                value: progress,
+                value: progress.clamp(0.0, 1.0),
                 strokeWidth: 2.5,
                 backgroundColor: Colors.white.withValues(alpha: 0.1),
                 valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
@@ -342,14 +356,50 @@ class DefaultLikeToastDelegate implements LikeToastDelegate {
 
   @override
   void dismiss(BuildContext context, {bool showRemoveAnimation = false}) {
-    if (_current != null) {
-      toastification.dismiss(
-        _current!,
-        showRemoveAnimation: showRemoveAnimation,
-      );
-      _current = null;
-    } else {
-      toastification.dismissAll(delayForAnimation: showRemoveAnimation);
+    final messenger = _findScaffoldMessenger(context);
+    if (messenger != null) {
+      messenger.hideCurrentSnackBar();
     }
   }
+
+  _ToastColors _resolveColors(LikeToastMessageType type, ThemeData theme) {
+    switch (type) {
+      case LikeToastMessageType.success:
+        return const _ToastColors(
+          background: Color(0xFF1B5E20),
+          foreground: Colors.white,
+          icon: Icons.check_circle_outline,
+        );
+      case LikeToastMessageType.info:
+        return const _ToastColors(
+          background: Color(0xFF0D47A1),
+          foreground: Colors.white,
+          icon: Icons.info_outline,
+        );
+      case LikeToastMessageType.warning:
+        return const _ToastColors(
+          background: Color(0xFFE65100),
+          foreground: Colors.white,
+          icon: Icons.warning_amber_outlined,
+        );
+      case LikeToastMessageType.error:
+        return const _ToastColors(
+          background: Color(0xFFB71C1C),
+          foreground: Colors.white,
+          icon: Icons.error_outline,
+        );
+    }
+  }
+}
+
+class _ToastColors {
+  final Color background;
+  final Color foreground;
+  final IconData icon;
+
+  const _ToastColors({
+    required this.background,
+    required this.foreground,
+    required this.icon,
+  });
 }

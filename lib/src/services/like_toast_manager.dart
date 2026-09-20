@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:toastification/toastification.dart';
 import 'package:like/src/services/like_toast_delegate.dart';
 import 'package:like/src/models/like_state_response.dart';
 
@@ -54,7 +53,7 @@ class LikeToastManager {
     BuildContext? context,
     required String message,
     String? submessage,
-    required ToastificationType type,
+    required LikeToastMessageType type,
     Duration? autoCloseDuration,
   }) {
     final effectiveContext = context ?? navigatorKey.currentContext ?? _context;

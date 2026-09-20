@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:toastification/toastification.dart';
+import 'package:like/src/services/like_toast_delegate.dart';
+import 'package:like/src/services/like_toast_manager.dart';
 
 /// Enum for standardized LIKE toast styles.
 enum LikeToastStyle { success, info, warning, error }
@@ -27,31 +28,24 @@ class LikeUtils {
     required LikeToastStyle type,
     BuildContext? context,
   }) {
-    // If context is null, it will use global toastification if available,
-    // or simply log if not. Host app should ideally provide a context or use RootWrapper.
-    toastification.show(
+    LikeToastManager.showToast(
       context: context,
-      title: Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
-      description: (submessage != null && submessage.trim().isNotEmpty)
-          ? Text(submessage)
-          : null,
+      message: message,
+      submessage: submessage,
       type: _mapType(type),
-      style: ToastificationStyle.flat,
-      autoCloseDuration: const Duration(seconds: 4),
-      alignment: Alignment.topCenter,
     );
   }
 
-  static ToastificationType _mapType(LikeToastStyle type) {
+  static LikeToastMessageType _mapType(LikeToastStyle type) {
     switch (type) {
       case LikeToastStyle.success:
-        return ToastificationType.success;
+        return LikeToastMessageType.success;
       case LikeToastStyle.info:
-        return ToastificationType.info;
+        return LikeToastMessageType.info;
       case LikeToastStyle.warning:
-        return ToastificationType.warning;
+        return LikeToastMessageType.warning;
       case LikeToastStyle.error:
-        return ToastificationType.error;
+        return LikeToastMessageType.error;
     }
   }
 

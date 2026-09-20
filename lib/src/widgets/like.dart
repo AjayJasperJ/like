@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_constants.dart';
-import 'package:toastification/toastification.dart';
 import 'package:like/src/interceptors/like_auth_interceptor.dart';
 import 'package:like/src/services/like_service.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
@@ -303,10 +302,7 @@ class _LikeState extends State<Like> {
         );
 
         // Wrap with devTool overlay if provided (debug-only by convention)
-        final appTree =
-            widget.devTool != null ? widget.devTool!(coreStack) : coreStack;
-
-        return ToastificationWrapper(child: appTree);
+        return widget.devTool != null ? widget.devTool!(coreStack) : coreStack;
       },
     );
   }

@@ -76,4 +76,3 @@ export 'src/interceptors/like_pipeline_interceptor.dart';
 export 'src/interceptors/like_perf_interceptors.dart';
 // Third Party Exports
 export 'package:dio/dio.dart' show CancelToken, Response;
-export 'package:toastification/toastification.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:toastification/toastification.dart';
+import 'package:like/src/services/like_toast_delegate.dart';
 import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/services/like_toast_manager.dart';
@@ -112,7 +112,7 @@ Future<void> updateNotifier<T extends Object>({
         LikeToastManager.showToast(
           context: context,
           message: resolveMessage(response.resolvedMessage, LikeState.success),
-          type: ToastificationType.success,
+          type: LikeToastMessageType.success,
         );
       }
       break;
@@ -138,7 +138,7 @@ Future<void> updateNotifier<T extends Object>({
           LikeToastManager.showToast(
             context: context,
             message: resolveMessage(error.message, LikeState.error),
-            type: ToastificationType.warning,
+            type: LikeToastMessageType.warning,
           );
         }
       }
@@ -156,7 +156,7 @@ Future<void> updateNotifier<T extends Object>({
         LikeToastManager.showToast(
           context: context,
           message: resolveMessage(response.message, LikeState.exception),
-          type: ToastificationType.error,
+          type: LikeToastMessageType.error,
         );
       }
       break;
