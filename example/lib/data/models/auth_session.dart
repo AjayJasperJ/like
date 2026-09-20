@@ -1,5 +1,5 @@
+import 'package:like/like.dart';
 import 'api_user.dart';
-import 'json_parse.dart';
 
 final class AuthSession {
   const AuthSession({

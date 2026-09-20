@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Comprehensive utility class for safe JSON field parsing.
+
 abstract final class JsonParse {
   /// Converts dynamic value to `Map<String, dynamic>` safely.
   static Map<String, dynamic> map(Object? value) {
@@ -63,9 +64,9 @@ abstract final class JsonParse {
 
   /// Parses a `List<T>` safely with optional item parser. Defaults to an empty list.
   static List<T> list<T>(
-    Object? value, {
+    Object? value, [
     T Function(dynamic item)? itemParser,
-  }) {
+  ]) {
     if (value is! List) return const [];
     if (itemParser != null) {
       return value.map((item) => itemParser(item)).toList();
@@ -77,9 +78,7 @@ abstract final class JsonParse {
   }
 
   /// Parses a `List<String>` safely. Defaults to an empty list.
-  static List<String> stringList(Object? value) {
-    return list<String>(value, itemParser: (item) => item?.toString() ?? '');
-  }
+  static List<String> stringList(Object? value) => list<String>(value);
 
   /// Parses a Color safely from hex string (e.g. '#FF0000', '0xFFFF0000') or int.
   static Color? color(Object? value) {

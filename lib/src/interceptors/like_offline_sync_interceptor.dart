@@ -110,7 +110,8 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     });
 
     if (added) {
-      const msg = 'Action saved offline. Will sync when connection is restored.';
+      const msg =
+          'Action saved offline. Will sync when connection is restored.';
       final customCb = LikeConstants.current.toastConfig?.actionQueued;
       if (customCb != null) {
         customCb(msg);

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:like/like.dart';
-
-import 'app.dart';
 import 'core/constants/api_urls.dart';
 import 'core/constants/app_constants.dart';
 
@@ -18,7 +16,7 @@ Future<void> bootstrap() async {
       withAuthByDefault: false,
       cacheEnabled: false,
       enableLogging: true,
-      compactApiLogs: true,
+      compactApiLogs: false,
       receiveTimeout: AppConstants.requestTimeout,
       toastConfig: LikeToastConfig(
         connected: (message) {
@@ -33,6 +31,4 @@ Future<void> bootstrap() async {
       ),
     ),
   );
-
-  runApp(const LikeServerApp());
 }

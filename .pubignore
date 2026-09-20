@@ -14,3 +14,5 @@ pubspec.lock
 .roomodes
 example/.agent/
 /coverage/
+usage/
+documents/

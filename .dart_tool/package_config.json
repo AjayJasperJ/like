@@ -182,12 +182,6 @@
       "languageVersion": "3.3"
     },
     {
-      "name": "equatable",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/equatable-2.1.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
       "name": "fake_async",
       "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/fake_async-1.3.3",
       "packageUri": "lib/",
@@ -470,12 +464,6 @@
       "languageVersion": "3.2"
     },
     {
-      "name": "pausable_timer",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/pausable_timer-3.1.0+3",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
       "name": "petitparser",
       "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/petitparser-7.0.2",
       "packageUri": "lib/",
@@ -642,12 +630,6 @@
       "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/timing-1.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.4"
-    },
-    {
-      "name": "toastification",
-      "rootUri": "file:///home/ja5p3r/.pub-cache/hosted/pub.dev/toastification-3.2.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
     },
     {
       "name": "typed_data",

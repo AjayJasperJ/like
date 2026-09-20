@@ -33,7 +33,9 @@ class LikeUtils {
 
     final config = LikeConstants.current.toastConfig;
     if (config != null) {
-      if (type == LikeToastStyle.info && message.contains('offline') && config.cacheUse != null) {
+      if (type == LikeToastStyle.info &&
+          message.contains('offline') &&
+          config.cacheUse != null) {
         config.cacheUse!(fullMessage);
         return;
       }

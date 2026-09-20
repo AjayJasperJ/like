@@ -6,7 +6,8 @@ import 'package:like/src/services/like_service.dart';
 /// Matches enterprise's CacheInterceptor parity.
 class LikeCacheInterceptor extends Interceptor {
   @override
-  Future<void> onResponse(Response response, ResponseInterceptorHandler handler) async {
+  Future<void> onResponse(
+      Response response, ResponseInterceptorHandler handler) async {
     if (LikeConstants.cacheEnabled &&
         response.requestOptions.method == 'GET' &&
         response.statusCode == 200 &&

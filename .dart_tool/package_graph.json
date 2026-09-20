@@ -21,7 +21,6 @@
         "path_provider",
         "provider",
         "synchronized",
-        "toastification",
         "universal_io",
         "uuid"
       ],
@@ -225,17 +224,6 @@
         "collection",
         "meta",
         "typed_data"
-      ]
-    },
-    {
-      "name": "toastification",
-      "version": "3.2.0",
-      "dependencies": [
-        "collection",
-        "equatable",
-        "flutter",
-        "pausable_timer",
-        "uuid"
       ]
     },
     {
@@ -824,21 +812,6 @@
         "jni",
         "jni_flutter",
         "path_provider_platform_interface"
-      ]
-    },
-    {
-      "name": "pausable_timer",
-      "version": "3.1.0+3",
-      "dependencies": [
-        "clock"
-      ]
-    },
-    {
-      "name": "equatable",
-      "version": "2.1.0",
-      "dependencies": [
-        "collection",
-        "meta"
       ]
     },
     {

@@ -43,7 +43,8 @@ class PaginationTool<T> {
 
   /// Whether there is a previous page available.
   bool get hasPrevious =>
-      hasPreviousOverride ?? (resolvedPage > 1 || (cursor != null && cursor!.isNotEmpty));
+      hasPreviousOverride ??
+      (resolvedPage > 1 || (cursor != null && cursor!.isNotEmpty));
 
   /// Uses total item count when the API provides it.
   bool get hasMoreByTotal =>
@@ -87,64 +88,6 @@ class PaginationTool<T> {
   double get progress => totalContent == null || totalContent == 0
       ? 0
       : (loadedContent / totalContent!).clamp(0, 1);
-
-  /// Constructs a [PaginationTool] instance from a generic JSON/Map response payload.
-  factory PaginationTool.fromMap(
-    Map<String, dynamic> json, {
-    T Function(dynamic item)? itemParser,
-  }) {
-    final rawPage = json['page'] ?? json['currentPage'] ?? json['current_page'];
-    final pageVal = rawPage is num ? rawPage.toInt() : int.tryParse(rawPage?.toString() ?? '');
-
-    final rawLimit = json['limit'] ?? json['contentLimit'] ?? json['content_limit'] ?? json['per_page'] ?? json['pageSize'] ?? json['page_size'];
-    final limitVal = rawLimit is num ? rawLimit.toInt() : int.tryParse(rawLimit?.toString() ?? '');
-
-    final rawTotalPages = json['totalPages'] ?? json['total_pages'] ?? json['page_count'] ?? json['pageCount'];
-    final totalPagesVal = rawTotalPages is num ? rawTotalPages.toInt() : int.tryParse(rawTotalPages?.toString() ?? '');
-
-    final rawTotal = json['total'] ?? json['totalContent'] ?? json['total_content'] ?? json['totalItems'] ?? json['total_items'] ?? json['count'];
-    final totalVal = rawTotal is num ? rawTotal.toInt() : int.tryParse(rawTotal?.toString() ?? '');
-
-    final rawHasNext = json['hasNext'] ?? json['has_next'] ?? json['hasNextPage'] ?? json['has_next_page'];
-    final hasNextVal = rawHasNext is bool ? rawHasNext : (rawHasNext != null ? rawHasNext.toString().toLowerCase() == 'true' : null);
-
-    final rawHasPrevious = json['hasPrevious'] ?? json['has_previous'] ?? json['hasPreviousPage'] ?? json['has_previous_page'] ?? json['hasPrev'] ?? json['has_prev'];
-    final hasPrevVal = rawHasPrevious is bool ? rawHasPrevious : (rawHasPrevious != null ? rawHasPrevious.toString().toLowerCase() == 'true' : null);
-
-    final cursorVal = json['cursor']?.toString() ?? json['currentCursor']?.toString() ?? json['current_cursor']?.toString();
-    final nextCursorVal = json['nextCursor']?.toString() ?? json['next_cursor']?.toString() ?? json['after']?.toString();
-
-    List<T>? parsedList;
-    final rawItems = json['items'] ?? json['data'] ?? json['results'] ?? json['posts'] ?? json['listData'] ?? json['list_data'];
-    if (rawItems is List) {
-      if (itemParser != null) {
-        parsedList = rawItems.map((e) => itemParser(e)).toList();
-      } else if (T != dynamic) {
-        parsedList = rawItems.whereType<T>().toList();
-      }
-    }
-
-    return PaginationTool<T>(
-      page: pageVal,
-      currentPage: pageVal,
-      contentLimit: limitVal,
-      totalPages: totalPagesVal,
-      totalContent: totalVal,
-      currentContent: parsedList?.length,
-      hasNextOverride: hasNextVal,
-      hasPreviousOverride: hasPrevVal,
-      cursor: cursorVal,
-      nextCursor: nextCursorVal,
-      listData: parsedList,
-    );
-  }
-
-  /// Alias factory for [fromMap].
-  factory PaginationTool.fromJson(
-    Map<String, dynamic> json, {
-    T Function(dynamic item)? itemParser,
-  }) =>
-      PaginationTool.fromMap(json, itemParser: itemParser);
 
   /// Converts pagination state into a standard Map payload.
   Map<String, dynamic> toMap() => {

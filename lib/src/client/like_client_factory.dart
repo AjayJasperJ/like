@@ -68,7 +68,8 @@ class LikeClientFactory {
       ),
     );
 
-    _setupInterceptors(dio, registry, customInterceptors, authConfig: authConfig);
+    _setupInterceptors(dio, registry, customInterceptors,
+        authConfig: authConfig);
 
     // Delegate to the platform-correct SSL implementation:
     //   • Mobile/Desktop → like_ssl_io.dart  (IOHttpClientAdapter)

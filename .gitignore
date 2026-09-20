@@ -52,3 +52,5 @@ server/*.db-wal
 # User specified ignore paths
 .roomodes
 example/.agent/
+usage/
+documents/

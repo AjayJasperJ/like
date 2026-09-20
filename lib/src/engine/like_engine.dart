@@ -115,7 +115,6 @@ class LikeEngine {
         return;
       }
 
-
       // 2. Automated syncWith support
       for (final task in _granularTasks) {
         if (task.endpoint != null) {
@@ -746,7 +745,7 @@ class LikeEngine {
   }
 
   /// A streamlined version of [fetch] that automatically unwraps [ApiResult]s
-  /// and maps them to [StateResponse]s using `toStateResponse()`. 
+  /// and maps them to [StateResponse]s using `toStateResponse()`.
   /// This significantly reduces boilerplate in Provider classes.
   Future<StateResponse<T>> fetchResult<T>({
     required NotifierState<T> state,

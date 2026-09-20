@@ -15,13 +15,14 @@ final class PostProvider extends ChangeNotifier with LikeStateMixin {
   bool? _published;
 
   PaginationTool<ApiPost> get pagination => postsState.pagination;
+
   String get search => _search;
+
   bool? get published => _published;
+
   bool get busy =>
       postsState.value.state == LikeState.loading ||
       postsState.value.state == LikeState.refreshing;
-  bool get hasMore => postsState.hasMore;
-  bool get isLoadingMore => postsState.isLoadingMore;
 
   Future<void> load({
     int page = 1,

@@ -1,4 +1,4 @@
-import 'json_parse.dart';
+import 'package:like/like.dart';
 
 final class ApiUser {
   const ApiUser({

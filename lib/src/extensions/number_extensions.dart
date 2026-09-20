@@ -28,5 +28,6 @@ extension LikeNumExtension on num? {
   String padLeft(int width) => intOrZero.toString().padLeft(width, '0');
 
   /// Formats currency with currency symbol.
-  String toCurrency({String symbol = '\$'}) => '$symbol${doubleOrZero.toStringAsFixed(2)}';
+  String toCurrency({String symbol = '\$'}) =>
+      '$symbol${doubleOrZero.toStringAsFixed(2)}';
 }

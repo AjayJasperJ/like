@@ -8,6 +8,7 @@ import 'package:like/src/models/like_api_result.dart';
 import 'package:like/src/helpers/like_pagination.dart';
 import 'package:like/src/engine/like_engine.dart';
 import 'package:like/src/core/like_ars.dart';
+
 /// A class that encapsulates a [LikeStateResponse] and its associated [CancelToken].
 ///
 /// This eliminates the boilerplate of declaring separate private backing fields,
@@ -146,7 +147,8 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
   Pagination<T> get pagination => _pagination;
 
   /// A secondary state used exclusively for load-more (2nd page onwards) requests.
-  final loadMoreState = NotifierState<List<T>>(initialValue: LikeStateResponse.idle());
+  final loadMoreState =
+      NotifierState<List<T>>(initialValue: LikeStateResponse.idle());
 
   /// Deprecated backward-compatibility getter for loadMoreState.
   NotifierState<List<T>> get paginationState => loadMoreState;
@@ -173,7 +175,8 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
   bool get hasMore => _pagination.hasMore;
 
   /// Whether a load-more operation is currently in progress.
-  bool get isLoadingMore => loadMoreState.isLoading || loadMoreState.isRefreshing;
+  bool get isLoadingMore =>
+      loadMoreState.isLoading || loadMoreState.isRefreshing;
 
   /// Retrieves any load-more error payload if the load-more request failed.
   LikeError? get loadMoreError => loadMoreState.error;
@@ -263,16 +266,6 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
     value = LikeStateResponse.success(mergedList);
   }
 
-  /// Extracts pagination metadata and items from a generic JSON map payload and updates state.
-  void applyPaginationMap(
-    Map<String, dynamic> json, {
-    T Function(dynamic item)? itemParser,
-    bool append = false,
-  }) {
-    final parsed = Pagination<T>.fromMap(json, itemParser: itemParser);
-    applyPagination(parsed, append: append);
-  }
-
   /// All-in-one paginated data loader.
   ///
   /// Handles initial loading (page 1), load-more (page > 1), refreshing (clearing data),
@@ -293,7 +286,8 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
       if (!hasMore || isLoadingMore) return;
     }
 
-    NotifierState<List<T>> targetStateForPage(int page) => page == 1 ? this : loadMoreState;
+    NotifierState<List<T>> targetStateForPage(int page) =>
+        page == 1 ? this : loadMoreState;
     final targetState = targetStateForPage(page);
     final activeEngine = engine ?? LikeEngine();
 
@@ -400,8 +394,6 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
       } else {
         applyPageData(page: page, data: payload, isFirstPage: isFirstPage);
       }
-    } else if (payload is Map<String, dynamic>) {
-      applyPaginationMap(payload, append: !isFirstPage);
     } else if (itemExtractor != null) {
       final extracted = itemExtractor(payload);
       if (overwrite) {
@@ -420,7 +412,8 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
     LikeSyncPriority priority = LikeSyncPriority.normal,
     bool disableRequestCancellation = false,
   }) async {
-    assert(fetcher != null, 'Fetcher must be provided to fetchInitial directly');
+    assert(
+        fetcher != null, 'Fetcher must be provided to fetchInitial directly');
     if (fetcher == null) return;
 
     await engine.fetchResult<List<T>>(
@@ -448,8 +441,13 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
     required LikeEngine engine,
     LikeARS? ars,
   }) async {
-    assert(fetcher != null, 'Fetcher must be provided to fetchNextPage directly');
-    if (fetcher == null || !hasMore || isLoadingMore || isLoading || isRefreshing) {
+    assert(
+        fetcher != null, 'Fetcher must be provided to fetchNextPage directly');
+    if (fetcher == null ||
+        !hasMore ||
+        isLoadingMore ||
+        isLoading ||
+        isRefreshing) {
       return;
     }
 
@@ -472,5 +470,3 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
     );
   }
 }
-
-

@@ -65,9 +65,6 @@ class _LikeState extends State<Like> {
 
     logDebug('DEBUG: _initialize starting');
     try {
-      final engineConfig = LikeConstants.current;
-      await LikeService.init(config: engineConfig);
-
       if (widget.toastConfig != null) {
         LikeConstants.apply(
           LikeConstants.current.copyWith(toastConfig: widget.toastConfig),
@@ -91,6 +88,11 @@ class _LikeState extends State<Like> {
           LikeAuthInterceptor.getApiKey = widget.authConfig!.getApiKey!;
         }
       }
+
+      // Apply widget-level configuration before asynchronous engine startup so
+      // descendants can read it during their first frame.
+      final engineConfig = LikeConstants.current;
+      await LikeService.init(config: engineConfig);
 
       if (widget.showConnectivityToasts) {
         _subscription = LikeConnectivityManager().connectionChange.listen((
@@ -138,6 +140,8 @@ class _LikeState extends State<Like> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.devTool != null ? widget.devTool!(widget.child) : widget.child;
+    return widget.devTool != null
+        ? widget.devTool!(widget.child)
+        : widget.child;
   }
 }

@@ -37,7 +37,9 @@ extension LikeStringExtension on String? {
   bool get isUrl {
     if (isNullOrEmpty) return false;
     final uri = Uri.tryParse(this!.trim());
-    return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+    return uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
   }
 
   /// Returns the capitalized string or [fallback] if null/empty.

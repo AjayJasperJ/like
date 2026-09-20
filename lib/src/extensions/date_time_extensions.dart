@@ -36,7 +36,8 @@ extension LikeDateTimeExtension on DateTime {
     final newYear = month == 12 ? year + 1 : year;
     final lastDayOfNewMonth = DateTime(newYear, newMonth + 1, 0).day;
     final newDay = day > lastDayOfNewMonth ? lastDayOfNewMonth : day;
-    return DateTime(newYear, newMonth, newDay, hour, minute, second, millisecond, microsecond);
+    return DateTime(newYear, newMonth, newDay, hour, minute, second,
+        millisecond, microsecond);
   }
 
   /// Returns the same day in the previous month.
@@ -45,14 +46,17 @@ extension LikeDateTimeExtension on DateTime {
     final newYear = month == 1 ? year - 1 : year;
     final lastDayOfNewMonth = DateTime(newYear, newMonth + 1, 0).day;
     final newDay = day > lastDayOfNewMonth ? lastDayOfNewMonth : day;
-    return DateTime(newYear, newMonth, newDay, hour, minute, second, millisecond, microsecond);
+    return DateTime(newYear, newMonth, newDay, hour, minute, second,
+        millisecond, microsecond);
   }
 
   /// Returns the same day in the next year.
-  DateTime get nextYear => DateTime(year + 1, month, day, hour, minute, second, millisecond, microsecond);
+  DateTime get nextYear => DateTime(
+      year + 1, month, day, hour, minute, second, millisecond, microsecond);
 
   /// Returns the same day in the previous year.
-  DateTime get previousYear => DateTime(year - 1, month, day, hour, minute, second, millisecond, microsecond);
+  DateTime get previousYear => DateTime(
+      year - 1, month, day, hour, minute, second, millisecond, microsecond);
 
   /// Returns start of the day (00:00:00.000).
   DateTime get startOfDay => DateTime(year, month, day);
@@ -102,4 +106,3 @@ extension LikeDateTimeExtension on DateTime {
     return toDateString;
   }
 }
-

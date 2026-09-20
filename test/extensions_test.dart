@@ -107,8 +107,10 @@ void main() {
       expect(date.startOfDay, equals(DateTime(2026, 9, 20, 0, 0, 0)));
       expect(date.endOfDay, equals(DateTime(2026, 9, 20, 23, 59, 59, 999)));
 
-      expect(date.startOfWeek, equals(DateTime(2026, 9, 14, 0, 0, 0))); // Monday
-      expect(date.endOfWeek, equals(DateTime(2026, 9, 20, 23, 59, 59, 999))); // Sunday
+      expect(
+          date.startOfWeek, equals(DateTime(2026, 9, 14, 0, 0, 0))); // Monday
+      expect(date.endOfWeek,
+          equals(DateTime(2026, 9, 20, 23, 59, 59, 999))); // Sunday
 
       expect(date.startOfMonth, equals(DateTime(2026, 9, 1, 0, 0, 0)));
       expect(date.endOfMonth, equals(DateTime(2026, 9, 30, 23, 59, 59, 999)));
@@ -137,5 +139,3 @@ void main() {
     });
   });
 }
-
-

@@ -201,7 +201,8 @@ class LikeClient {
     if (activeState is LikeNotifierState) {
       zoneCancelToken = activeState.ct;
     }
-    final effectiveCancelToken = cancelToken ?? zoneCancelToken ?? CancelToken();
+    final effectiveCancelToken =
+        cancelToken ?? zoneCancelToken ?? CancelToken();
     final effectivePath =
         path.startsWith('http') || path.startsWith('/') ? path : '/$path';
     final requestKey = LikeHelpers.generateRequestKey(
@@ -356,7 +357,8 @@ class LikeClient {
         // If both calls provide explicit CancelTokens (from different notifier states),
         // don't cancel across distinct states. Otherwise (same token or raw client calls),
         // enforce take-latest cancellation.
-        final bool isExplicitUserToken = cancelToken != null || zoneCancelToken != null;
+        final bool isExplicitUserToken =
+            cancelToken != null || zoneCancelToken != null;
         final bool isDifferentToken = isExplicitUserToken &&
             !identical(effectiveCancelToken, inFlight.$2);
 
@@ -581,7 +583,8 @@ class LikeClient {
     LikeRequestConfig? requestConfig,
   }) async {
     final zoneArs = Zone.current[#likeActiveArs] as ARS?;
-    final finalARS = ars ?? zoneArs ??
+    final finalARS = ars ??
+        zoneArs ??
         ARS(
           staleWhileRevalidate: staleWhileRevalidate,
           disableCache: disableCache,
@@ -637,8 +640,9 @@ class LikeClient {
     LikeRequestConfig? requestConfig,
   }) async {
     final zoneArs = Zone.current[#likeActiveArs] as ARS?;
-    final finalARS =
-        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+    final finalARS = ars ??
+        zoneArs ??
+        ARS(disableCache: disableCache, offlineSync: offlineSync);
 
     final result = await _execute(
       method: 'POST',
@@ -678,8 +682,9 @@ class LikeClient {
     LikeRequestConfig? requestConfig,
   }) async {
     final zoneArs = Zone.current[#likeActiveArs] as ARS?;
-    final finalARS =
-        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+    final finalARS = ars ??
+        zoneArs ??
+        ARS(disableCache: disableCache, offlineSync: offlineSync);
 
     final result = await _execute(
       method: 'PUT',
@@ -719,8 +724,9 @@ class LikeClient {
     LikeRequestConfig? requestConfig,
   }) async {
     final zoneArs = Zone.current[#likeActiveArs] as ARS?;
-    final finalARS =
-        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+    final finalARS = ars ??
+        zoneArs ??
+        ARS(disableCache: disableCache, offlineSync: offlineSync);
 
     final result = await _execute(
       method: 'PATCH',
@@ -760,8 +766,9 @@ class LikeClient {
     LikeRequestConfig? requestConfig,
   }) async {
     final zoneArs = Zone.current[#likeActiveArs] as ARS?;
-    final finalARS =
-        ars ?? zoneArs ?? ARS(disableCache: disableCache, offlineSync: offlineSync);
+    final finalARS = ars ??
+        zoneArs ??
+        ARS(disableCache: disableCache, offlineSync: offlineSync);
 
     final result = await _execute(
       method: 'DELETE',

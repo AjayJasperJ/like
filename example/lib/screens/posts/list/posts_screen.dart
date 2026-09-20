@@ -49,7 +49,6 @@ class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PostProvider>();
-    final pagination = provider.pagination;
 
     return Scaffold(
       appBar: AppBar(
@@ -90,25 +89,6 @@ class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
             ),
           ),
           Expanded(child: _content(provider)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: pagination.hasPrevious
-                    ? () => provider.load(page: (pagination.page ?? 1) - 1)
-                    : null,
-                icon: const Icon(Icons.chevron_left),
-              ),
-              Text(
-                  'Page ${pagination.page ?? 1} of ${pagination.totalPages ?? 1}'),
-              IconButton(
-                onPressed: pagination.hasNext
-                    ? () => provider.load(page: (pagination.page ?? 1) + 1)
-                    : null,
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
-          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -172,7 +152,7 @@ class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
   }
 
   Widget _bottomLoaderView(PostProvider provider) {
-    if (provider.isLoadingMore) {
+    if (provider.postsState.isLoadingMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
@@ -217,7 +197,7 @@ class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
       );
     }
 
-    if (!provider.hasMore &&
+    if (!provider.postsState.hasMore &&
         (provider.postsState.value.data?.isNotEmpty ?? false)) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),

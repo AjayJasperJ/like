@@ -217,7 +217,8 @@ class _LikeSliverBuilderState<T extends Object>
             return widget.onError?.call(response.error!) ?? [];
 
           case LikeState.exception:
-            return widget.onException?.call(response.message, response.error) ?? [];
+            return widget.onException?.call(response.message, response.error) ??
+                [];
         }
       }(),
     );

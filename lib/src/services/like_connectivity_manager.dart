@@ -222,11 +222,11 @@ class LikeConnectivityManager {
   }) async {
     final origin = canonicalOrigin(serverUrl);
     final epochAtStart = origin == null ? 0 : (_originEpochs[origin] ?? 0);
-    
+
     // If the OS just told us the network changed (knownResults != null),
     // we MUST force a new flight to avoid piggybacking on a stale offline check.
     final bool requiresNewFlight = forceNewFlight || knownResults != null;
-    
+
     final interface = await _interfaceAndInternet(
       knownResults: knownResults,
       forceNewFlight: requiresNewFlight,
@@ -236,7 +236,8 @@ class LikeConnectivityManager {
     if (!interface.hasNetworkInterface) {
       serverAvailable = origin == null ? null : false;
     } else if (origin != null) {
-      serverAvailable = await _serverReachability(origin, forceNewFlight: requiresNewFlight);
+      serverAvailable =
+          await _serverReachability(origin, forceNewFlight: requiresNewFlight);
     }
 
     final timestamp = _clock();
@@ -297,7 +298,8 @@ class LikeConnectivityManager {
     return _InterfaceResult(true, reachable);
   }
 
-  Future<bool?> _serverReachability(String origin, {bool forceNewFlight = false}) {
+  Future<bool?> _serverReachability(String origin,
+      {bool forceNewFlight = false}) {
     final active = _serverFlights[origin];
     if (active != null && !forceNewFlight) return active;
     final future = _runServerReachability(origin);
@@ -327,7 +329,7 @@ class LikeConnectivityManager {
         Duration(seconds: LikeConstants.connTimeout),
       );
     }
-    
+
     // HTTP/HTTPS origins should be probed with an HTTP HEAD request to avoid
     // leaving raw TCP sockets open on HTTP servers (like Shelf).
     if (uri.scheme == 'http' || uri.scheme == 'https') {

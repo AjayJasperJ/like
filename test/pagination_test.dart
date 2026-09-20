@@ -83,36 +83,9 @@ void main() {
   });
 
   group('PaginationTool Model Extraction & Response Model Extension', () {
-    test('PaginationTool.fromMap extracts fields cleanly', () {
-      final json = {
-        'page': 2,
-        'limit': 15,
-        'total': 100,
-        'totalPages': 7,
-        'hasNext': true,
-        'hasPrevious': true,
-        'items': [
-          {'id': 1, 'name': 'Item 1'},
-          {'id': 2, 'name': 'Item 2'},
-        ],
-      };
-
-      final pagination = PaginationTool<SampleItem>.fromMap(
-        json,
-        itemParser: (item) => SampleItem.fromJson(item as Map<String, dynamic>),
-      );
-
-      expect(pagination.page, equals(2));
-      expect(pagination.limit, equals(15));
-      expect(pagination.total, equals(100));
-      expect(pagination.totalPages, equals(7));
-      expect(pagination.hasNext, isTrue);
-      expect(pagination.hasPrevious, isTrue);
-      expect(pagination.items?.length, equals(2));
-      expect(pagination.items?.first.name, equals('Item 1'));
-    });
-
-    test('Response model extending PaginationTool automatically provides pagination metadata and items', () {
+    test(
+        'Response model extending PaginationTool automatically provides pagination metadata and items',
+        () {
       final json = {
         'page': 1,
         'limit': 10,
@@ -200,7 +173,9 @@ void main() {
       expect(state.hasMore, isFalse);
     });
 
-    test('postsState.load with overwrite: true replaces specified page slice in-place', () async {
+    test(
+        'postsState.load with overwrite: true replaces specified page slice in-place',
+        () async {
       final state = PaginatedNotifierState<SampleItem>(pageSize: 1);
 
       await state.load(
@@ -227,7 +202,8 @@ void main() {
         },
       );
 
-      expect(state.items.map((e) => e.name), equals(['Item 1 Updated', 'Item 2']));
+      expect(
+          state.items.map((e) => e.name), equals(['Item 1 Updated', 'Item 2']));
     });
   });
 }

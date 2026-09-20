@@ -213,7 +213,8 @@ class AppCacheUtils {
         'se',
         'sr',
         'sp',
-        if (preserveParams != null) ...preserveParams.map((e) => e.toLowerCase()),
+        if (preserveParams != null)
+          ...preserveParams.map((e) => e.toLowerCase()),
       };
 
       final filteredQuery = uri.queryParameters.isEmpty
@@ -233,7 +234,8 @@ class AppCacheUtils {
       if (result.contains('#')) {
         result = result.split('#').first;
       }
-      if ((filteredQuery == null || filteredQuery.isEmpty) && result.contains('?')) {
+      if ((filteredQuery == null || filteredQuery.isEmpty) &&
+          result.contains('?')) {
         result = result.split('?').first;
       }
       return result;

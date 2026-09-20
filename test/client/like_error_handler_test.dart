@@ -278,7 +278,8 @@ void main() {
       expect(result.type, LikeApiErrorType.network);
     });
 
-    test('5. unknown with SocketException maps to LikeApiErrorType.network', () async {
+    test('5. unknown with SocketException maps to LikeApiErrorType.network',
+        () async {
       final input = DioException(
         requestOptions: dummyRequest,
         type: DioExceptionType.unknown,
@@ -289,21 +290,24 @@ void main() {
       expect(result.type, LikeApiErrorType.network);
     });
 
-    test('6. Native SocketException maps to LikeApiErrorType.network', () async {
+    test('6. Native SocketException maps to LikeApiErrorType.network',
+        () async {
       const input = SocketException('Failed host lookup');
       final result = await LikeErrorHandler.handle(input);
       printDebugResult('Native SocketException', input, result);
       expect(result.type, LikeApiErrorType.network);
     });
 
-    test('7. Native TimeoutException maps to LikeApiErrorType.timeout', () async {
+    test('7. Native TimeoutException maps to LikeApiErrorType.timeout',
+        () async {
       final input = TimeoutException('Operation timed out');
       final result = await LikeErrorHandler.handle(input);
       printDebugResult('Native TimeoutException', input, result);
       expect(result.type, LikeApiErrorType.timeout);
     });
 
-    test('8. badResponse (401) maps to LikeApiErrorType.unauthorized', () async {
+    test('8. badResponse (401) maps to LikeApiErrorType.unauthorized',
+        () async {
       final input = DioException(
         requestOptions: dummyRequest,
         type: DioExceptionType.badResponse,
@@ -332,7 +336,7 @@ void main() {
       printDebugResult('Bad Response (404)', input, result);
       expect(result.type, LikeApiErrorType.notFound);
     });
-    
+
     test('10. OFFLINE_QUEUED maps to LikeApiErrorType.offlineQueued', () async {
       final input = DioException(
         requestOptions: dummyRequest,
