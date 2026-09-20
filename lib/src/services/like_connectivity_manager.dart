@@ -1,11 +1,9 @@
 import 'dart:async';
-
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/models/like_connectivity_check_result.dart';
 import 'package:like/src/models/like_connectivity_transition.dart';
-import 'package:like/src/services/like_logger.dart';
 import 'package:universal_io/io.dart';
 
 /// Injectable connectivity interface check used by tests and embedders.
@@ -224,19 +222,10 @@ class LikeConnectivityManager {
   }) async {
     final origin = canonicalOrigin(serverUrl);
     final epochAtStart = origin == null ? 0 : (_originEpochs[origin] ?? 0);
-    final stopwatch = Stopwatch()..start();
     
     // If the OS just told us the network changed (knownResults != null),
     // we MUST force a new flight to avoid piggybacking on a stale offline check.
     final bool requiresNewFlight = forceNewFlight || knownResults != null;
-    
-    if (!LikeConstants.silentSyncLogs) {
-      LikeLogger.log(
-        level: LikeLogLevel.info,
-        category: 'connectivity',
-        message: '[LIKE Connectivity] Check started ($reason) for $origin | force=$requiresNewFlight',
-      );
-    }
     
     final interface = await _interfaceAndInternet(
       knownResults: knownResults,
@@ -250,19 +239,10 @@ class LikeConnectivityManager {
       serverAvailable = await _serverReachability(origin, forceNewFlight: requiresNewFlight);
     }
 
-    stopwatch.stop();
     final timestamp = _clock();
     _applyInternetState(interface.internetReachable);
     if (origin != null && (_originEpochs[origin] ?? 0) == epochAtStart) {
       _applyOriginState(origin, serverAvailable);
-    }
-
-    if (!LikeConstants.silentSyncLogs) {
-      LikeLogger.log(
-        level: LikeLogLevel.info,
-        category: 'connectivity',
-        message: '[LIKE Connectivity] Check completed in ${stopwatch.elapsedMilliseconds}ms ($reason) -> interface=${interface.hasNetworkInterface}, internet=${interface.internetReachable}, server=$serverAvailable ($origin)',
-      );
     }
 
     return LikeConnectivityCheckResult(
