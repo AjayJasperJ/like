@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.2.5] - 2026-09-13
+## [2.2.6] - 2026-09-20
+
+### Added
+- **Multi-SDK & Multi-Platform Compatibility**: Ensured broad compatibility with Dart SDK `>=3.0.0 <4.0.0` and Flutter `>=3.16.0`.
+- **Safe JSON Parsing Extensions & Utilities**: Standardized `JsonParse` static methods (`JsonParse.string`, `JsonParse.integer`, `JsonParse.decimal`, `JsonParse.boolean`, `JsonParse.dateTime`, `JsonParse.map`, `JsonParse.list`) for crash-proof model deserialization.
+- **Pagination & Load-More Framework**: Comprehensive support for page-based and cursor-based pagination with `PaginationTool<T>` and `PaginatedNotifierState<T>`.
+
+### Changed
+- **Model Layer Standardization**: Standardized `PaginatedPosts`, `ApiPost`, `ApiUser`, and `AuthSession` model factories with robust null-safety defaults.
+- **Ignore Rules**: Updated `.gitignore` and `.pubignore` to exclude internal `usage/` and `documents/` directories.
+
+### Fixed
+- **UI & Widget Test Suite**: Expanded full test coverage for `LikeBuilder`, `LikeWhen`, `LikeSliverBuilder`, `LikeCacheImage`, and `Like` root configuration widget.
 
 ### Fixed
 - **Pana Static Analysis**: Added missing `await` on internal request retry inside the `try` block in `LikeAuthInterceptor` (`like_auth_interceptor.dart`).
