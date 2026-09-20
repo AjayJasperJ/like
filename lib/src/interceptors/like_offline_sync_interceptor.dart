@@ -110,11 +110,17 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     });
 
     if (added) {
-      LikeUtils.showToast(
-        message: 'Action saved offline',
-        submessage: 'Will sync when connection is restored.',
-        type: LikeToastStyle.info,
-      );
+      const msg = 'Action saved offline. Will sync when connection is restored.';
+      final customCb = LikeConstants.current.toastConfig?.actionQueued;
+      if (customCb != null) {
+        customCb(msg);
+      } else {
+        LikeUtils.showToast(
+          message: 'Action saved offline',
+          submessage: 'Will sync when connection is restored.',
+          type: LikeToastStyle.info,
+        );
+      }
     }
   }
 

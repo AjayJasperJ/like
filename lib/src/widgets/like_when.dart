@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:like/src/services/like_toast_delegate.dart';
 import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/models/like_error.dart';
-import 'package:like/src/services/like_toast_manager.dart';
+import 'package:like/src/services/like_utils.dart';
 
 /// # `updateNotifier<T>`
 ///
@@ -85,10 +84,10 @@ Future<void> updateNotifier<T extends Object>({
     case LikeState.loading:
       if (!disableLoadingToast) {
         if (context != null && !context.mounted) return;
-        LikeToastManager.showLoadingToast(
+        LikeUtils.showToast(
           context: context,
-          title: 'Loading',
           message: resolveMessage(response.message, LikeState.loading),
+          type: LikeToastStyle.info,
         );
       }
       break;
@@ -109,10 +108,10 @@ Future<void> updateNotifier<T extends Object>({
         if (enableHaptics) {
           HapticFeedback.lightImpact(); // Light vibration on success
         }
-        LikeToastManager.showToast(
+        LikeUtils.showToast(
           context: context,
           message: resolveMessage(response.resolvedMessage, LikeState.success),
-          type: LikeToastMessageType.success,
+          type: LikeToastStyle.success,
         );
       }
       break;
@@ -135,10 +134,10 @@ Future<void> updateNotifier<T extends Object>({
         }
         if (error.type != LikeApiErrorType.cancelled ||
             !disableCancelledToast) {
-          LikeToastManager.showToast(
+          LikeUtils.showToast(
             context: context,
             message: resolveMessage(error.message, LikeState.error),
-            type: LikeToastMessageType.warning,
+            type: LikeToastStyle.warning,
           );
         }
       }
@@ -153,10 +152,10 @@ Future<void> updateNotifier<T extends Object>({
         if (enableHaptics) {
           HapticFeedback.heavyImpact(); // Strong warning vibration for crashes
         }
-        LikeToastManager.showToast(
+        LikeUtils.showToast(
           context: context,
           message: resolveMessage(response.message, LikeState.exception),
-          type: LikeToastMessageType.error,
+          type: LikeToastStyle.error,
         );
       }
       break;

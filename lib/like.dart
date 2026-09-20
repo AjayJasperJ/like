@@ -40,9 +40,8 @@ export 'src/services/like_connectivity_manager.dart';
 export 'src/services/like_sync_manager.dart';
 export 'src/services/like_offline_sync_manager.dart';
 export 'src/services/like_service.dart';
-export 'src/services/like_toast_delegate.dart';
 export 'src/services/like_base_api_service.dart';
-export 'src/services/like_toast_manager.dart';
+export 'src/services/like_utils.dart';
 export 'src/services/app_cache_manager.dart';
 
 // Mixins

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:like/src/services/like_toast_delegate.dart';
-import 'package:like/src/services/like_toast_manager.dart';
+import 'package:like/src/core/like_constants.dart';
 
 /// Enum for standardized LIKE toast styles.
 enum LikeToastStyle { success, info, warning, error }
 
 /// Internal utilities for the LIKE networking engine.
-/// Matches enterprise's NetworkUtils parity.
 class LikeUtils {
   /// Deeply casts a dynamic map/list into a type-safe `Map<String, dynamic>` structure.
   /// Required for consistent Hive and JSON handling.
@@ -21,38 +19,59 @@ class LikeUtils {
     return data;
   }
 
-  /// Displays a standardized toast notification.
+  /// Displays a notification message. If a custom toastConfig callback is set for the event,
+  /// it is invoked instead of showing the default ScaffoldMessenger message.
   static void showToast({
     required String message,
     String? submessage,
     required LikeToastStyle type,
     BuildContext? context,
   }) {
-    LikeToastManager.showToast(
-      context: context,
-      message: message,
-      submessage: submessage,
-      type: _mapType(type),
-    );
+    final fullMessage = submessage != null && submessage.isNotEmpty
+        ? '$message: $submessage'
+        : message;
+
+    final config = LikeConstants.current.toastConfig;
+    if (config != null) {
+      if (type == LikeToastStyle.info && message.contains('offline') && config.cacheUse != null) {
+        config.cacheUse!(fullMessage);
+        return;
+      }
+    }
+
+    if (context != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(fullMessage),
+          backgroundColor: _getColor(type),
+        ),
+      );
+    }
   }
 
-  static LikeToastMessageType _mapType(LikeToastStyle type) {
+  static Color _getColor(LikeToastStyle type) {
     switch (type) {
       case LikeToastStyle.success:
-        return LikeToastMessageType.success;
+        return Colors.green;
       case LikeToastStyle.info:
-        return LikeToastMessageType.info;
+        return Colors.blue;
       case LikeToastStyle.warning:
-        return LikeToastMessageType.warning;
+        return Colors.orange;
       case LikeToastStyle.error:
-        return LikeToastMessageType.error;
+        return Colors.red;
     }
   }
 
   /// Displays a toast notification when data is served from L2/L3 cache while offline.
   static void notifyCacheUse(BuildContext context) {
+    const msg = 'You are viewing offline data';
+    final customCb = LikeConstants.current.toastConfig?.cacheUse;
+    if (customCb != null) {
+      customCb(msg);
+      return;
+    }
     showToast(
-      message: 'You are viewing offline data',
+      message: msg,
       type: LikeToastStyle.info,
       context: context,
     );
@@ -60,8 +79,14 @@ class LikeUtils {
 
   /// Displays a toast notification during SWR (Stale-While-Revalidate) background refreshes.
   static void notifySwrUse(BuildContext context) {
+    const msg = 'Loading fresh data in background...';
+    final customCb = LikeConstants.current.toastConfig?.swrUse;
+    if (customCb != null) {
+      customCb(msg);
+      return;
+    }
     showToast(
-      message: 'Loading fresh data in background...',
+      message: msg,
       type: LikeToastStyle.info,
       context: context,
     );

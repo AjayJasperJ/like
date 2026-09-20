@@ -3,10 +3,46 @@ import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_data_unpacker.dart';
 
+/// Configuration for user toast/notification callbacks in the LIKE network engine.
+///
+/// Setting any custom callback handler completely overrides/bypasses the engine's default
+/// ScaffoldMessenger message for that event, executing only the provided custom function.
+class LikeToastConfig {
+  /// Callback triggered when internet connection is established/restored.
+  final void Function(String message)? connected;
+
+  /// Callback triggered when internet connection is lost.
+  final void Function(String message)? disconnected;
+
+  /// Callback triggered during background queue synchronization.
+  final void Function(String message, double progress)? resync;
+
+  /// Callback triggered when an offline action is queued.
+  final void Function(String message)? actionQueued;
+
+  /// Callback triggered when local offline cache data is served.
+  final void Function(String message)? cacheUse;
+
+  /// Callback triggered during Stale-While-Revalidate background fetch.
+  final void Function(String message)? swrUse;
+
+  const LikeToastConfig({
+    this.connected,
+    this.disconnected,
+    this.resync,
+    this.actionQueued,
+    this.cacheUse,
+    this.swrUse,
+  });
+}
+
 /// Global configuration for the LIKE engine's behavior and caching system.
 class LikeConfig {
   /// Optional global authentication configuration (token getters, refresh, logout callbacks).
   final LikeAuthConfig? authConfig;
+
+  /// Optional notification/toast callback hooks configuration.
+  final LikeToastConfig? toastConfig;
 
   /// The name of the project. Used as a namespace prefix for storage, cache
   /// directories, and Hive boxes.
@@ -364,6 +400,7 @@ class LikeConfig {
   LikeConfig({
     required this.projectName,
     this.authConfig,
+    this.toastConfig,
     this.baseUrl = '',
     this.unpacker = const DefaultLikeUnpacker(),
     this.extraBaseUrls = const {},
@@ -443,6 +480,7 @@ class LikeConfig {
   LikeConfig copyWith({
     String? projectName,
     LikeAuthConfig? authConfig,
+    LikeToastConfig? toastConfig,
     String? baseUrl,
     LikeDataUnpacker? unpacker,
     Map<String, String>? extraBaseUrls,
@@ -513,6 +551,7 @@ class LikeConfig {
     return LikeConfig(
       projectName: projectName ?? this.projectName,
       authConfig: authConfig ?? this.authConfig,
+      toastConfig: toastConfig ?? this.toastConfig,
       baseUrl: baseUrl ?? this.baseUrl,
       unpacker: unpacker ?? this.unpacker,
       extraBaseUrls: extraBaseUrls ?? this.extraBaseUrls,

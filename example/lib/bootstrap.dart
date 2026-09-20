@@ -20,6 +20,17 @@ Future<void> bootstrap() async {
       enableLogging: true,
       compactApiLogs: true,
       receiveTimeout: const Duration(seconds: 10),
+      toastConfig: LikeToastConfig(
+        connected: (message) {
+          debugPrint('CUSTOM CONNECTED HANDLER: $message');
+        },
+        disconnected: (message) {
+          debugPrint('CUSTOM DISCONNECTED HANDLER: $message');
+        },
+        resync: (message, progress) {
+          debugPrint('CUSTOM RESYNC HANDLER: $message ($progress)');
+        },
+      ),
     ),
   );
 
