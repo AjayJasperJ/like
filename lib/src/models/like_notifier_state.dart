@@ -138,44 +138,281 @@ class LikeNotifierState<T> extends ChangeNotifier {
 /// A convenience alias for [LikeNotifierState].
 typedef NotifierState<T> = LikeNotifierState<T>;
 
-/// A specialized [NotifierState] that manages paginated data, completely
-/// hiding pagination math, list merging, and pagination state from the Provider.
+/// A specialized [NotifierState] that manages paginated data, cleanly
+/// separating the 1st page / initial state from the load-more (pagination) state.
 class PaginatedNotifierState<T> extends NotifierState<List<T>> {
-  /// Internal pagination state tracker
+  /// Internal pagination state tracker.
   Pagination<T> _pagination;
   Pagination<T> get pagination => _pagination;
-  
-  /// A secondary state used exclusively for the bottom loader (loading more).
-  final paginationState = NotifierState<List<T>>(initialValue: LikeStateResponse.idle());
+
+  /// A secondary state used exclusively for load-more (2nd page onwards) requests.
+  final loadMoreState = NotifierState<List<T>>(initialValue: LikeStateResponse.idle());
+
+  /// Deprecated backward-compatibility getter for loadMoreState.
+  NotifierState<List<T>> get paginationState => loadMoreState;
 
   final int pageSize;
-  final Future<ApiResult<List<T>>> Function(int page, int limit) fetcher;
+  final Future<ApiResult<List<T>>> Function(int page, int limit)? fetcher;
 
   PaginatedNotifierState({
     this.pageSize = 10,
-    required this.fetcher,
+    this.fetcher,
     super.initialValue,
-  })  : _pagination = Pagination<T>() {
-    paginationState.addListener(notifyListeners);
+  }) : _pagination = Pagination<T>() {
+    loadMoreState.addListener(notifyListeners);
   }
-  
+
   @override
   void dispose() {
-    paginationState.removeListener(notifyListeners);
-    paginationState.dispose();
+    loadMoreState.removeListener(notifyListeners);
+    loadMoreState.dispose();
     super.dispose();
   }
 
-  /// Exposes whether we have more data to fetch.
+  /// Whether there are more items available according to pagination metadata or data count.
   bool get hasMore => _pagination.hasMore;
-  
-  /// Check if pagination is currently loading
-  bool get isLoadingMore => paginationState.isLoading || paginationState.isRefreshing;
-  
-  /// Check if pagination failed
-  LikeError? get paginationError => paginationState.error;
 
-  /// Fetch the first page. Uses the primary [value] state.
+  /// Whether a load-more operation is currently in progress.
+  bool get isLoadingMore => loadMoreState.isLoading || loadMoreState.isRefreshing;
+
+  /// Retrieves any load-more error payload if the load-more request failed.
+  LikeError? get loadMoreError => loadMoreState.error;
+
+  /// Deprecated alias for loadMoreError.
+  LikeError? get paginationError => loadMoreError;
+
+  /// Returns the merged paginated list of items.
+  List<T> get items => value.data ?? _pagination.listData ?? const [];
+
+  /// Resets pagination state and data list back to initial state.
+  @override
+  void clear({String? message}) {
+    _pagination = Pagination<T>();
+    loadMoreState.clear(message: message);
+    super.clear(message: message);
+  }
+
+  /// Manually updates pagination state with a new page payload.
+  void applyPageData({
+    required int page,
+    required List<T> data,
+    required bool isFirstPage,
+    int? totalPages,
+    int? totalContent,
+    String? cursor,
+    String? nextCursor,
+    bool? hasNext,
+    bool? hasPrevious,
+  }) {
+    _pagination = _pagination.updatePage(
+      page: page,
+      limit: pageSize,
+      pageData: data,
+      append: !isFirstPage,
+      totalPages: totalPages,
+      totalContent: totalContent,
+      cursor: cursor,
+      nextCursor: nextCursor,
+      hasNext: hasNext,
+      hasPrevious: hasPrevious,
+    );
+    final mergedList = List<T>.unmodifiable(_pagination.listData ?? []);
+    value = LikeStateResponse.success(mergedList);
+  }
+
+  /// Overwrites/replaces the items belonging to a specific page index [page] with fresh [data],
+  /// preserving items from all other previously loaded pages.
+  void overwritePageData({
+    required int page,
+    required List<T> data,
+    int? totalPages,
+    int? totalContent,
+    String? cursor,
+    String? nextCursor,
+    bool? hasNext,
+    bool? hasPrevious,
+  }) {
+    _pagination = _pagination.overwritePage(
+      pageNumber: page,
+      limit: pageSize,
+      pageData: data,
+      totalPages: totalPages,
+      totalContent: totalContent,
+      cursor: cursor,
+      nextCursor: nextCursor,
+      hasNext: hasNext,
+      hasPrevious: hasPrevious,
+    );
+    final mergedList = List<T>.unmodifiable(_pagination.listData ?? []);
+    value = LikeStateResponse.success(mergedList);
+  }
+
+  /// Applies a [Pagination] instance directly to update state.
+  void applyPagination(Pagination<T> newPagination, {bool append = false}) {
+    final list = newPagination.listData ?? const [];
+    if (append && _pagination.listData != null) {
+      final combined = [..._pagination.listData!, ...list];
+      _pagination = newPagination.copyWith(
+        listData: combined,
+        currentContent: combined.length,
+      );
+    } else {
+      _pagination = newPagination;
+    }
+    final mergedList = List<T>.unmodifiable(_pagination.listData ?? []);
+    value = LikeStateResponse.success(mergedList);
+  }
+
+  /// Extracts pagination metadata and items from a generic JSON map payload and updates state.
+  void applyPaginationMap(
+    Map<String, dynamic> json, {
+    T Function(dynamic item)? itemParser,
+    bool append = false,
+  }) {
+    final parsed = Pagination<T>.fromMap(json, itemParser: itemParser);
+    applyPagination(parsed, append: append);
+  }
+
+  /// All-in-one paginated data loader.
+  ///
+  /// Handles initial loading (page 1), load-more (page > 1), refreshing (clearing data),
+  /// overwriting specific pages in-place, state management across primary and secondary states,
+  /// and automatic extraction from [PaginationTool] or list payloads.
+  Future<void> load({
+    required Future<dynamic> Function(int page, int limit) action,
+    int page = 1,
+    bool refresh = false,
+    bool overwrite = false,
+    LikeEngine? engine,
+    LikeARS? ars,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) async {
+    final isFirstPage = page == 1;
+
+    if (!isFirstPage && !overwrite) {
+      if (!hasMore || isLoadingMore) return;
+    }
+
+    NotifierState<List<T>> targetStateForPage(int page) => page == 1 ? this : loadMoreState;
+    final targetState = targetStateForPage(page);
+    final activeEngine = engine ?? LikeEngine();
+
+    final effectiveARS = ars ??
+        LikeARS(
+          refresh: isFirstPage && (refresh || value.data != null),
+          checkAvailability: !isFirstPage,
+          visibility: true,
+        );
+
+    await activeEngine.fetchResult<List<T>>(
+      state: targetState,
+      autoResync: isFirstPage,
+      ars: effectiveARS,
+      action: () async {
+        final result = await action(page, pageSize);
+
+        if (result is ApiResult) {
+          if (result.isSuccess) {
+            final payload = result.data;
+            _applyResultPayload(
+              payload: payload,
+              page: page,
+              isFirstPage: isFirstPage,
+              overwrite: overwrite,
+              itemExtractor: itemExtractor,
+            );
+            return ApiResult.success(items);
+          } else {
+            return ApiResult.error(
+              result.error ??
+                  LikeError(
+                    message: 'Could not load page $page',
+                    type: LikeApiErrorType.unknown,
+                  ),
+            );
+          }
+        }
+
+        _applyResultPayload(
+          payload: result,
+          page: page,
+          isFirstPage: isFirstPage,
+          overwrite: overwrite,
+          itemExtractor: itemExtractor,
+        );
+        return ApiResult.success(items);
+      },
+    );
+  }
+
+  /// All-in-one trigger to load the next page.
+  Future<void> loadNext({
+    required Future<dynamic> Function(int page, int limit) action,
+    LikeEngine? engine,
+    LikeARS? ars,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) async {
+    if (!hasMore || isLoadingMore) return;
+    await load(
+      action: action,
+      page: _pagination.nextPage,
+      engine: engine,
+      ars: ars,
+      itemExtractor: itemExtractor,
+    );
+  }
+
+  void _applyResultPayload({
+    required dynamic payload,
+    required int page,
+    required bool isFirstPage,
+    required bool overwrite,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) {
+    if (payload is PaginationTool<T>) {
+      if (overwrite) {
+        overwritePageData(
+          page: page,
+          data: payload.items ?? const [],
+          totalPages: payload.totalPages,
+          totalContent: payload.totalContent,
+          cursor: payload.cursor,
+          nextCursor: payload.nextCursor,
+          hasNext: payload.hasNextOverride,
+          hasPrevious: payload.hasPreviousOverride,
+        );
+      } else {
+        applyPageData(
+          page: page,
+          data: payload.items ?? const [],
+          isFirstPage: isFirstPage,
+          totalPages: payload.totalPages,
+          totalContent: payload.totalContent,
+          cursor: payload.cursor,
+          nextCursor: payload.nextCursor,
+          hasNext: payload.hasNextOverride,
+          hasPrevious: payload.hasPreviousOverride,
+        );
+      }
+    } else if (payload is List<T>) {
+      if (overwrite) {
+        overwritePageData(page: page, data: payload);
+      } else {
+        applyPageData(page: page, data: payload, isFirstPage: isFirstPage);
+      }
+    } else if (payload is Map<String, dynamic>) {
+      applyPaginationMap(payload, append: !isFirstPage);
+    } else if (itemExtractor != null) {
+      final extracted = itemExtractor(payload);
+      if (overwrite) {
+        overwritePageData(page: page, data: extracted);
+      } else {
+        applyPageData(page: page, data: extracted, isFirstPage: isFirstPage);
+      }
+    }
+  }
+
+  /// Fetches the first page using the primary [value] state.
   Future<void> fetchInitial({
     required LikeEngine engine,
     LikeARS? ars,
@@ -183,6 +420,9 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
     LikeSyncPriority priority = LikeSyncPriority.normal,
     bool disableRequestCancellation = false,
   }) async {
+    assert(fetcher != null, 'Fetcher must be provided to fetchInitial directly');
+    if (fetcher == null) return;
+
     await engine.fetchResult<List<T>>(
       state: this,
       ars: ars ?? const LikeARS(refresh: true),
@@ -190,52 +430,47 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
       priority: priority,
       disableRequestCancellation: disableRequestCancellation,
       action: () async {
-        final result = await fetcher(1, pageSize);
-        
+        final result = await fetcher!(1, pageSize);
         return result.mapSuccess((data) {
-          _pagination = _pagination.updatePage(
+          applyPageData(
             page: 1,
-            limit: pageSize,
-            pageData: data,
-            append: false,
+            data: data,
+            isFirstPage: true,
           );
-          return _pagination.listData ?? [];
+          return value.data ?? [];
         });
       },
     );
   }
 
-  /// Fetch the next page. Uses the secondary [paginationState].
+  /// Fetches the next page using the secondary [loadMoreState].
   Future<void> fetchNextPage({
     required LikeEngine engine,
     LikeARS? ars,
   }) async {
-    if (!hasMore || isLoadingMore || isLoading || isRefreshing) {
+    assert(fetcher != null, 'Fetcher must be provided to fetchNextPage directly');
+    if (fetcher == null || !hasMore || isLoadingMore || isLoading || isRefreshing) {
       return;
     }
-    
+
     final nextPage = _pagination.nextPage;
-    
+
     await engine.fetchResult<List<T>>(
-      state: paginationState,
+      state: loadMoreState,
       ars: ars ?? const LikeARS(checkAvailability: true, visibility: true),
       action: () async {
-        final result = await fetcher(nextPage, pageSize);
-        
+        final result = await fetcher!(nextPage, pageSize);
         return result.mapSuccess((data) {
-          _pagination = _pagination.updatePage(
+          applyPageData(
             page: nextPage,
-            limit: pageSize,
-            pageData: data,
-            append: true,
+            data: data,
+            isFirstPage: false,
           );
-          
-          // Note: we update the primary state's value silently here so UI updates
-          value = LikeStateResponse.success(_pagination.listData ?? []);
-          
-          return _pagination.listData ?? [];
+          return data;
         });
       },
     );
   }
 }
+
+

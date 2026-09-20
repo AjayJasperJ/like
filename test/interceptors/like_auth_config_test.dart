@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:like/like.dart';
+import 'package:like/src/services/like_connectivity_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

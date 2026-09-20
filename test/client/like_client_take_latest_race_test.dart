@@ -5,6 +5,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:like/like.dart';
+import 'package:like/src/interceptors/like_connectivity_interceptor.dart';
+import 'package:like/src/services/like_connectivity_manager.dart';
 
 class _ControlledAdapter implements HttpClientAdapter {
   final List<RequestOptions> requests = <RequestOptions>[];

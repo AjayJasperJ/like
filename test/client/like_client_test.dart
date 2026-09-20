@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:hive/hive.dart';
 import 'package:like/like.dart';
+import 'package:like/src/models/like_connectivity_check_result.dart';
+import 'package:like/src/services/like_connectivity_manager.dart';
 import '../mocks/mocks.dart';
 
 void main() {

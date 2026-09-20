@@ -2,6 +2,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:like/like.dart';
+import 'package:like/src/services/like_connectivity_manager.dart';
+import 'package:like/src/services/like_offline_sync_manager.dart';
 import '../mocks/mocks.dart';
 
 void main() {

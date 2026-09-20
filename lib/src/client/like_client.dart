@@ -350,17 +350,20 @@ class LikeClient {
         extra['deduplicate'] ?? LikeConstants.deduplicateByDefault;
     if (isGet && deduplicate) {
       final inFlight = _registry.getInFlight(requestKey);
-      // Only deduplicate if the in-flight token is still live.
-      // If it is already cancelled (rotated by a newCT call), skip dedup
-      // so this caller makes its own fresh request instead of inheriting
-      // the cancel exception from the dead in-flight entry.
       final inFlightAlive =
           inFlight != null && !(inFlight.$2?.isCancelled ?? false);
       if (inFlightAlive) {
-        // Take-latest behavior: cancel the previous in-flight request so the new one takes precedence.
-        inFlight.$2
-            ?.cancel('Cancelled by a newer identical request (take-latest)');
-        // Fall through to step 4 to start the new network request.
+        // If both calls provide explicit CancelTokens (from different notifier states),
+        // don't cancel across distinct states. Otherwise (same token or raw client calls),
+        // enforce take-latest cancellation.
+        final bool isExplicitUserToken = cancelToken != null || zoneCancelToken != null;
+        final bool isDifferentToken = isExplicitUserToken &&
+            !identical(effectiveCancelToken, inFlight.$2);
+
+        if (!isDifferentToken) {
+          inFlight.$2
+              ?.cancel('Cancelled by a newer identical request (take-latest)');
+        }
       }
     }
 

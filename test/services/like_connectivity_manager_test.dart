@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:like/like.dart';
+import 'package:like/src/models/like_connectivity_check_result.dart';
+import 'package:like/src/models/like_connectivity_transition.dart';
+import 'package:like/src/services/like_connectivity_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

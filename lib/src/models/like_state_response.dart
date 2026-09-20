@@ -162,30 +162,35 @@ class LikeStateResponse<T> {
   }
 
   factory LikeStateResponse.exception(
-    String message, {
+    String? message, {
     T? data,
     dynamic error,
     bool isFromCache = false,
     bool isFromStaleWhileRevalidate = false,
     bool isResiliencyFallback = false,
     bool isFrom304 = false,
-  }) =>
-      LikeStateResponse(
-        state: LikeState.exception,
-        message: message,
-        data: data,
-        error: error is LikeError
-            ? error
-            : LikeError(
-                message: message,
-                type: LikeApiErrorType.unknown,
-                rawResponse: error,
-              ),
-        isFromCache: isFromCache,
-        isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
-        isResiliencyFallback: isResiliencyFallback,
-        isFrom304: isFrom304,
-      );
+  }) {
+    final finalMessage = (message != null && message.trim().isNotEmpty)
+        ? message
+        : 'Something went wrong. Please try again later.';
+
+    return LikeStateResponse(
+      state: LikeState.exception,
+      message: finalMessage,
+      data: data,
+      error: error is LikeError
+          ? error
+          : LikeError(
+              message: error?.toString() ?? finalMessage,
+              type: LikeApiErrorType.unknown,
+              rawResponse: error,
+            ),
+      isFromCache: isFromCache,
+      isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
+      isResiliencyFallback: isResiliencyFallback,
+      isFrom304: isFrom304,
+    );
+  }
 
   // --- Common Error Helpers ---
 

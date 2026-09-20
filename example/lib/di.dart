@@ -2,31 +2,26 @@ import 'package:like/like.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
-import 'providers/auth_provider.dart';
-import 'providers/post_provider.dart';
-import 'providers/system_provider.dart';
-import 'repositories/auth_repository.dart';
-import 'repositories/post_repository.dart';
-import 'repositories/system_repository.dart';
-import 'services/auth_api_service.dart';
-import 'services/post_api_service.dart';
-import 'services/system_api_service.dart';
-import 'services/token_storage_service.dart';
+import 'data/providers/auth_provider.dart';
+import 'data/providers/post_provider.dart';
+import 'data/providers/system_provider.dart';
+import 'data/repositories/auth_repository.dart';
+import 'data/repositories/post_repository.dart';
+import 'data/repositories/system_repository.dart';
+import 'data/services/auth_api_service.dart';
+import 'data/services/post_api_service.dart';
+import 'data/services/system_api_service.dart';
+import 'data/storage/token_storage.dart';
 
-class DependencyInjection {
+abstract final class DependencyInjection {
   static List<SingleChildWidget> get value => [
-        // ==========================================
-        // 1. Services Layer (Stateless / Singletons)
-        // ==========================================
+        // Data sources and API services.
         Provider(create: (_) => TokenStorageService()),
         Provider(create: (_) => AuthApiService()),
         Provider(create: (_) => PostApiService()),
-        // SystemApiService automatically encapsulates its scoped secondary client
         Provider(create: (_) => SystemApiService()),
 
-        // ==========================================
-        // 2. Repositories Layer
-        // ==========================================
+        // Repositories expose application-focused operations.
         Provider<AuthRepository>(
           create: (context) => AuthRepository(
             context.read<AuthApiService>(),
@@ -44,9 +39,7 @@ class DependencyInjection {
           ),
         ),
 
-        // ==========================================
-        // 3. Providers / ViewModels Layer
-        // ==========================================
+        // Providers own presentation state.
         ChangeNotifierProvider<AuthProvider>(
           create: (context) {
             final authProvider = AuthProvider(
@@ -54,14 +47,12 @@ class DependencyInjection {
               context.read<TokenStorageService>(),
             );
 
-            // Attach dynamic authConfig to LikeConstants for the primary client
             LikeConstants.apply(
               LikeConstants.current.copyWith(
                 authConfig: authProvider.createAuthConfig(),
               ),
             );
 
-            // Restore active session asynchronously
             authProvider.restoreSession();
 
             return authProvider;
