@@ -22,7 +22,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: IndexedStack(index: _index, children: _pages),
+        body: IndexedStack(
+          index: _index,
+          children: [
+            for (var i = 0; i < _pages.length; i++)
+              TickerMode(
+                enabled: i == _index,
+                child: _pages[i],
+              ),
+          ],
+        ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
           onDestinationSelected: (value) => setState(() => _index = value),

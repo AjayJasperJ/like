@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:like/like.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/post_provider.dart';
@@ -14,7 +15,7 @@ class PostsScreen extends StatefulWidget {
   State<PostsScreen> createState() => _PostsScreenState();
 }
 
-class _PostsScreenState extends State<PostsScreen> {
+class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
   final _search = TextEditingController();
 
   @override
@@ -23,6 +24,16 @@ class _PostsScreenState extends State<PostsScreen> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => context.read<PostProvider>().load(),
     );
+  }
+
+  @override
+  Future<void> onRecover() async {
+    if (!mounted) return;
+    final provider = context.read<PostProvider>();
+    if (provider.error != null) {
+      final currentPage = provider.pagination?.page ?? 1;
+      await provider.load(page: currentPage);
+    }
   }
 
   @override

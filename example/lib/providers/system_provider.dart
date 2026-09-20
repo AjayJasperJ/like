@@ -17,6 +17,8 @@ final class SystemProvider extends ChangeNotifier {
   String? get output => _output;
   String? get error => _error;
 
+  Future<dynamic> Function()? _lastAction;
+
   Future<void> metadata() => _run(_repository.metadata);
   Future<void> health() => _run(_repository.health);
   Future<void> reset() => _run(_repository.reset);
@@ -24,7 +26,14 @@ final class SystemProvider extends ChangeNotifier {
   Future<void> delay(int milliseconds) =>
       _run(() => _repository.delay(milliseconds));
 
+  Future<void> retryLastAction() async {
+    if (_lastAction != null) {
+      await _run(_lastAction!);
+    }
+  }
+
   Future<void> _run(Future<dynamic> Function() action) async {
+    _lastAction = action;
     _busy = true;
     _error = null;
     _output = null;

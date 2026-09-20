@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:like/like.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> with LikeVisibilityMixin {
+  @override
+  Future<void> onRecover() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    if (auth.error != null) {
+      await auth.restoreSession();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

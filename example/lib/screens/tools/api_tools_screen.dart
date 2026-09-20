@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:like/like.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/system_provider.dart';
@@ -10,9 +11,18 @@ class ApiToolsScreen extends StatefulWidget {
   State<ApiToolsScreen> createState() => _ApiToolsScreenState();
 }
 
-class _ApiToolsScreenState extends State<ApiToolsScreen> {
+class _ApiToolsScreenState extends State<ApiToolsScreen> with LikeVisibilityMixin {
   final _status = TextEditingController(text: '200');
   final _delay = TextEditingController(text: '500');
+
+  @override
+  Future<void> onRecover() async {
+    if (!mounted) return;
+    final tools = context.read<SystemProvider>();
+    if (tools.error != null) {
+      await tools.retryLastAction();
+    }
+  }
 
   @override
   void dispose() {
