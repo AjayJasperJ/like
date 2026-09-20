@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:like/src/core/like_constants.dart';
+import 'package:like/src/services/like_logger.dart';
 
 /// Interceptor to track request performance.
 /// Matches enterprise's PerformanceInterceptor parity.
@@ -30,7 +32,19 @@ class LikePerformanceInterceptor extends Interceptor {
     RequestOptions options,
     int? statusCode,
   ) {
-    // Metrics can be emitted to a monitoring service here
+    final startTime = options.extra['startTime'] as int?;
+    if (startTime != null) {
+      final durationMs = DateTime.now().millisecondsSinceEpoch - startTime;
+      options.extra['durationMs'] = durationMs;
+      if (LikeConstants.debugMode || LikeConstants.verboseLogging) {
+        LikeLogger.log(
+          level: LikeLogLevel.debug,
+          category: 'perf',
+          message:
+              '${options.method} ${options.path} completed in ${durationMs}ms (Status: ${statusCode ?? 'N/A'})',
+        );
+      }
+    }
   }
 }
 
