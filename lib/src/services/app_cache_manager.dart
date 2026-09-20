@@ -184,27 +184,59 @@ class AppCacheManager extends CacheManager {
 }
 
 class AppCacheUtils {
-  /// Normalizes a URL for caching by removing query parameters such as tokens
-  /// and tracking IDs that would otherwise cause cache misses.
-  static String normalizeUrl(String rawUrl) {
+  /// Normalizes a URL for caching by removing dynamic parameters (like timestamps or cache-busters)
+  /// while preserving access tokens, API keys, and auth signatures required for image access.
+  static String normalizeUrl(String rawUrl, {List<String>? preserveParams}) {
     if (rawUrl.isEmpty) return '';
     try {
-      final uri = Uri.parse(rawUrl.trim());
-      final normalized = uri
-          .replace(
-            scheme: uri.scheme.toLowerCase(),
-            host: uri.host.toLowerCase(),
-          )
-          .toString();
-      final queryIndex = normalized.indexOf('?');
-      final fragmentIndex = normalized.indexOf('#');
-      final suffixIndexes = <int>[
-        if (queryIndex >= 0) queryIndex,
-        if (fragmentIndex >= 0) fragmentIndex,
-      ];
-      if (suffixIndexes.isEmpty) return normalized;
-      suffixIndexes.sort();
-      return normalized.substring(0, suffixIndexes.first);
+      var trimmed = rawUrl.trim();
+      final schemeMatch = RegExp(r'^([a-zA-Z0-9+\-.]+):').firstMatch(trimmed);
+      if (schemeMatch != null) {
+        final scheme = schemeMatch.group(1)!;
+        trimmed = '${scheme.toLowerCase()}${trimmed.substring(scheme.length)}';
+      }
+
+      final uri = Uri.parse(trimmed);
+      final normalizedHost = uri.hasAuthority ? uri.host.toLowerCase() : null;
+
+      // Common auth / access keys that should always be preserved
+      final keysToKeep = <String>{
+        'apikey',
+        'api_key',
+        'key',
+        'token',
+        'access_token',
+        'auth',
+        'sig',
+        'signature',
+        'sv',
+        'se',
+        'sr',
+        'sp',
+        if (preserveParams != null) ...preserveParams.map((e) => e.toLowerCase()),
+      };
+
+      final filteredQuery = uri.queryParameters.isEmpty
+          ? null
+          : (Map<String, String>.from(uri.queryParameters)
+            ..removeWhere((key, _) => !keysToKeep.contains(key.toLowerCase())));
+
+      final resultUri = uri.replace(
+        host: normalizedHost,
+        queryParameters: (filteredQuery != null && filteredQuery.isNotEmpty)
+            ? filteredQuery
+            : null,
+        fragment: '',
+      );
+
+      var result = resultUri.toString();
+      if (result.contains('#')) {
+        result = result.split('#').first;
+      }
+      if ((filteredQuery == null || filteredQuery.isEmpty) && result.contains('?')) {
+        result = result.split('?').first;
+      }
+      return result;
     } catch (_) {
       return rawUrl.trim();
     }

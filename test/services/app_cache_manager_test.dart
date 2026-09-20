@@ -77,9 +77,15 @@ void main() {
         () {
       expect(
         AppCacheUtils.normalizeUrl(
-          ' HTTPS://Example.COM/avatar.png?token=secret#profile ',
+          ' HTTPS://Example.COM/avatar.png?v=123#profile ',
         ),
         'https://example.com/avatar.png',
+      );
+      expect(
+        AppCacheUtils.normalizeUrl(
+          ' HTTPS://Example.COM/avatar.png?token=secret#profile ',
+        ),
+        'https://example.com/avatar.png?token=secret',
       );
       expect(AppCacheUtils.normalizeUrl(''), '');
     });

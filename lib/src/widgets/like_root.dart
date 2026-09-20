@@ -16,15 +16,6 @@ class Like extends StatefulWidget {
   /// The main application widget tree (typically your [MaterialApp]).
   final Widget child;
 
-  /// A custom [ValueNotifier] used to programmatically trigger or listen to the global syncing overlay.
-  final ValueNotifier<bool>? isSyncing;
-
-  /// The custom widget overlay shown when the app is performing background data synchronization (`isSyncing` is true).
-  final Widget? syncOverlay;
-
-  /// A custom loading screen displayed while the LIKE engine initializes.
-  final Widget? loadingWidget;
-
   /// Whether to automatically trigger connectivity notifications when connection status changes.
   final bool showConnectivityToasts;
 
@@ -46,9 +37,6 @@ class Like extends StatefulWidget {
   const Like({
     super.key,
     required this.child,
-    this.isSyncing,
-    this.syncOverlay,
-    this.loadingWidget,
     this.showConnectivityToasts = true,
     this.authConfig,
     this.toastConfig,
@@ -61,12 +49,11 @@ class Like extends StatefulWidget {
 
 class _LikeState extends State<Like> {
   StreamSubscription<bool>? _subscription;
-  Future<void>? _initFuture;
 
   @override
   void initState() {
     super.initState();
-    _initFuture = _initialize();
+    _initialize();
   }
 
   Future<void> _initialize() async {
@@ -151,80 +138,6 @@ class _LikeState extends State<Like> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _initFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return widget.loadingWidget ?? const _DefaultLoadingScreen();
-        }
-
-        final coreStack = Stack(
-          alignment: Alignment.topLeft,
-          children: [
-            widget.child,
-            ValueListenableBuilder<bool>(
-              valueListenable: widget.isSyncing ?? LikeService.isSyncing,
-              builder: (context, syncing, _) {
-                if (!syncing) return const SizedBox.shrink();
-                return widget.syncOverlay ?? _DefaultSyncOverlay();
-              },
-            ),
-          ],
-        );
-
-        return widget.devTool != null ? widget.devTool!(coreStack) : coreStack;
-      },
-    );
-  }
-}
-
-class _DefaultSyncOverlay extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Directionality(
-      textDirection: TextDirection.ltr,
-      child: Material(
-        type: MaterialType.transparency,
-        child: ColoredBox(
-          color: Colors.black45,
-          child: Center(
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Synchronizing Data...',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Please do not close the app.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DefaultLoadingScreen extends StatelessWidget {
-  const _DefaultLoadingScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Directionality(
-      textDirection: TextDirection.ltr,
-      child: Material(
-        child: Scaffold(body: Center(child: CircularProgressIndicator())),
-      ),
-    );
+    return widget.devTool != null ? widget.devTool!(widget.child) : widget.child;
   }
 }

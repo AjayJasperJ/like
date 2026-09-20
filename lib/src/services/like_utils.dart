@@ -43,22 +43,8 @@ class LikeUtils {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(fullMessage),
-          backgroundColor: _getColor(type),
         ),
       );
-    }
-  }
-
-  static Color _getColor(LikeToastStyle type) {
-    switch (type) {
-      case LikeToastStyle.success:
-        return Colors.green;
-      case LikeToastStyle.info:
-        return Colors.blue;
-      case LikeToastStyle.warning:
-        return Colors.orange;
-      case LikeToastStyle.error:
-        return Colors.red;
     }
   }
 

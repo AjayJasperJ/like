@@ -7,6 +7,7 @@ import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_offline_sync_manager.dart';
+import 'package:like/src/services/like_logger.dart';
 import 'package:like/src/services/like_utils.dart';
 import 'package:like/src/services/app_cache_manager.dart';
 import 'package:like/src/debug/like_suggestions.dart';
@@ -46,8 +47,10 @@ class LikeService {
     }
 
     logDebug('DEBUG: LikeService.init config: ${config.baseUrl}');
-    // 0. Apply config settings to LikeConstants
+    // 0. Apply config settings to LikeConstants and init logger/error handling
     LikeConstants.apply(config);
+    await LikeLogger.init();
+    LikeLogger.initGlobalErrorHandling();
 
     // 1. Core Storage
     logDebug('DEBUG: Hive.initFlutter starting');

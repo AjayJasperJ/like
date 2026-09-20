@@ -5,6 +5,9 @@ import 'package:like/src/models/like_api_result.dart';
 /// A shorter, cleaner alias for [LikeStateResponse].
 typedef StateResponse<T> = LikeStateResponse<T>;
 
+/// A shorter, cleaner alias for [LikeState].
+typedef States = LikeState;
+
 /// Function signature for creating models from JSON.
 typedef LikeModelFactory<T> = T Function(dynamic json);
 
@@ -161,6 +164,7 @@ class LikeStateResponse<T> {
   factory LikeStateResponse.exception(
     String message, {
     T? data,
+    dynamic error,
     bool isFromCache = false,
     bool isFromStaleWhileRevalidate = false,
     bool isResiliencyFallback = false,
@@ -170,7 +174,13 @@ class LikeStateResponse<T> {
         state: LikeState.exception,
         message: message,
         data: data,
-        error: LikeError(message: message, type: LikeApiErrorType.unknown),
+        error: error is LikeError
+            ? error
+            : LikeError(
+                message: message,
+                type: LikeApiErrorType.unknown,
+                rawResponse: error,
+              ),
         isFromCache: isFromCache,
         isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
         isResiliencyFallback: isResiliencyFallback,

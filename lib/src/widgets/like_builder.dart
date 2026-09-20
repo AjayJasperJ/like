@@ -83,8 +83,8 @@ class LikeBuilder<T> extends StatefulWidget {
   ///
   /// Optional builder active when a client-side or system-level exception (e.g. SocketException,
   /// JSON parsing error, or hardware failure) occurs.
-  /// Receives the exception error message.
-  final Widget Function(String message)? onException;
+  /// Receives the exception error message and optional [LikeError] or exception object.
+  final Widget Function(String message, LikeError? error)? onException;
 
   /// **listener**
   ///
@@ -231,7 +231,7 @@ class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
         return widget.onError?.call(response.error!) ?? const SizedBox.shrink();
 
       case LikeState.exception:
-        return widget.onException?.call(response.message) ??
+        return widget.onException?.call(response.message, response.error) ??
             const SizedBox.shrink();
     }
   }
@@ -263,7 +263,7 @@ class LikeStateResponseBuilder<T> extends StatelessWidget {
   final Widget Function(LikeError error)? onError;
 
   /// Optional builder called when an unexpected exception or system error occurs.
-  final Widget Function(String message)? onException;
+  final Widget Function(String message, LikeError? error)? onException;
 
   const LikeStateResponseBuilder({
     super.key,

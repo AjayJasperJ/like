@@ -76,8 +76,8 @@ class LikeSliverBuilder<T extends Object> extends StatefulWidget {
 
   /// **onException**
   ///
-  /// Optional client-side exception builder. Receives an error message. Must return a list of slivers.
-  final List<Widget> Function(String message)? onException;
+  /// Optional client-side exception builder. Receives an error message and optional [LikeError] or exception object. Must return a list of slivers.
+  final List<Widget> Function(String message, LikeError? error)? onException;
 
   /// **listener**
   ///
@@ -155,18 +155,12 @@ class _LikeSliverBuilderState<T extends Object>
     }
   }
 
-  /// Safely casts dynamic data to generic type T.
   T? _castData(dynamic data) {
     if (data == null) return null;
     if (data is T) return data;
     try {
       return data as T;
-    } catch (e) {
-      assert(
-        false,
-        'LikeSliverBuilder: Type cast failed. Expected $T, got ${data.runtimeType}. '
-        'Check the generic type argument on LikeSliverBuilder<T>.',
-      );
+    } catch (_) {
       return null;
     }
   }
@@ -223,7 +217,7 @@ class _LikeSliverBuilderState<T extends Object>
             return widget.onError?.call(response.error!) ?? [];
 
           case LikeState.exception:
-            return widget.onException?.call(response.message) ?? [];
+            return widget.onException?.call(response.message, response.error) ?? [];
         }
       }(),
     );
@@ -257,7 +251,7 @@ class LikeStateResponseBuilderSliver<T extends Object> extends StatelessWidget {
   final List<Widget> Function(LikeError error)? onError;
 
   /// Optional builder called when an unexpected exception or system error occurs.
-  final List<Widget> Function(String message)? onException;
+  final List<Widget> Function(String message, LikeError? error)? onException;
 
   const LikeStateResponseBuilderSliver({
     super.key,

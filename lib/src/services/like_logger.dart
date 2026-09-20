@@ -214,8 +214,13 @@ class LikeLogger {
 
   /// Sets up global Flutter and platform error tracking.
   static void initGlobalErrorHandling() {
+    final originalOnError = FlutterError.onError;
     FlutterError.onError = (FlutterErrorDetails details) {
-      if (kDebugMode) FlutterError.dumpErrorToConsole(details);
+      if (originalOnError != null) {
+        originalOnError(details);
+      } else {
+        FlutterError.presentError(details);
+      }
       log(
         level: LikeLogLevel.error,
         category: 'flutter_error',
@@ -228,6 +233,7 @@ class LikeLogger {
       );
     };
 
+    final originalPlatformOnError = PlatformDispatcher.instance.onError;
     PlatformDispatcher.instance.onError = (error, stack) {
       log(
         level: LikeLogLevel.error,
@@ -235,6 +241,9 @@ class LikeLogger {
         message: error.toString(),
         details: {'stack': stack.toString()},
       );
+      if (originalPlatformOnError != null) {
+        return originalPlatformOnError(error, stack);
+      }
       return true;
     };
   }

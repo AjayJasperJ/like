@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:like/like.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/api_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/auth_form.dart';
 import 'register_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> with LikeVisibilityMixin {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -45,9 +52,15 @@ class LoginScreen extends StatelessWidget {
                       child: AuthForm(
                         submitLabel: auth.busy ? 'Signing in…' : 'Sign in',
                         onSubmit: (_, email, password) async {
-                          await context
-                              .read<AuthProvider>()
-                              .login(email, password);
+                          final provider = context.read<AuthProvider>();
+                          await provider.login(email, password);
+                          if (!context.mounted) return;
+                          await updateNotifier<ApiUser>(
+                            response: provider.authState.value,
+                            context: context,
+                            enableHaptics: true,
+                            disableSuccessToast: false,
+                          );
                         },
                       ),
                     ),

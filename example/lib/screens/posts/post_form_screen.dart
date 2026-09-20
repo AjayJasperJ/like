@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:like/like.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/api_models.dart';
@@ -14,7 +15,7 @@ class PostFormScreen extends StatefulWidget {
   State<PostFormScreen> createState() => _PostFormScreenState();
 }
 
-class _PostFormScreenState extends State<PostFormScreen> {
+class _PostFormScreenState extends State<PostFormScreen> with LikeVisibilityMixin {
   final _key = GlobalKey<FormState>();
   late final TextEditingController _title;
   late final TextEditingController _body;
@@ -90,13 +91,23 @@ class _PostFormScreenState extends State<PostFormScreen> {
   Future<void> _save() async {
     if (_key.currentState?.validate() != true) return;
     final user = context.read<AuthProvider>().user!;
-    final saved = await context.read<PostProvider>().save(
+    final result = await context.read<PostProvider>().save(
           post: widget.post,
           title: _title.text.trim(),
           body: _body.text.trim(),
           published: _published,
           userId: user.id,
         );
-    if (saved != null && mounted) Navigator.of(context).pop(saved);
+
+    if (!mounted) return;
+    await updateNotifier<ApiPost>(
+      response: result.toStateResponse(),
+      context: context,
+      onSuccess: (saved) async {
+        Navigator.of(context).pop(saved);
+      },
+      enableHaptics: true,
+      disableSuccessToast: false,
+    );
   }
 }

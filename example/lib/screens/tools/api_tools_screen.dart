@@ -94,17 +94,25 @@ class _ApiToolsScreenState extends State<ApiToolsScreen> with LikeVisibilityMixi
             ],
           ),
           const SizedBox(height: 24),
-          if (tools.busy) const LinearProgressIndicator(),
-          if (tools.error != null)
-            Text(tools.error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          if (tools.output != null)
-            Card(
+          LikeBuilder<String>(
+            observe: () => tools.systemState,
+            onIdle: () => const SizedBox.shrink(),
+            onLoading: () => const LinearProgressIndicator(),
+            onError: (error) => Text(
+              error.message,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            onException: (message, error) => Text(
+              'Exception: $message',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            onSuccess: (output, _, __) => Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: SelectableText(tools.output!),
+                child: SelectableText(output),
               ),
             ),
+          ),
         ],
       ),
     );

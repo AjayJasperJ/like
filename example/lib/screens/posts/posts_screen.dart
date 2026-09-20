@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:like/like.dart';
+import 'package:like/like.dart' hide Pagination;
 import 'package:provider/provider.dart';
 
+import '../../models/api_models.dart';
 import '../../providers/post_provider.dart';
 import '../../widgets/app_states.dart';
 import '../../widgets/post_card.dart';
@@ -30,7 +31,7 @@ class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
   Future<void> onRecover() async {
     if (!mounted) return;
     final provider = context.read<PostProvider>();
-    if (provider.error != null) {
+    if (provider.postsState.value.state == LikeState.error) {
       final currentPage = provider.pagination?.page ?? 1;
       await provider.load(page: currentPage);
     }
@@ -116,30 +117,40 @@ class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
   }
 
   Widget _content(PostProvider provider) {
-    if (provider.busy && provider.posts.isEmpty) return const AppLoading();
-    if (provider.error != null && provider.posts.isEmpty) {
-      return AppError(message: provider.error!, onRetry: provider.load);
-    }
-    if (provider.posts.isEmpty) {
-      return const EmptyState(message: 'No posts match your filters.');
-    }
-    return RefreshIndicator(
-      onRefresh: provider.load,
-      child: ListView.builder(
-        itemCount: provider.posts.length,
-        itemBuilder: (context, index) {
-          final post = provider.posts[index];
-          return PostCard(
-            post: post,
-            onToggle: () => provider.toggle(post),
-            onOpen: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => PostDetailScreen(post: post),
-              ),
-            ),
-          );
-        },
+    return LikeBuilder<List<ApiPost>>(
+      observe: () => provider.postsState,
+      onLoading: () => const AppLoading(),
+      onError: (error) => AppError(
+        message: error.message,
+        onRetry: provider.load,
       ),
+      onException: (message, error) => AppError(
+        message: 'Exception ($message)\nDetails: ${error?.rawResponse ?? ''}',
+        onRetry: provider.load,
+      ),
+      onSuccess: (posts, isRefreshing, isSWR) {
+        if (posts.isEmpty) {
+          return const EmptyState(message: 'No posts match your filters.');
+        }
+        return RefreshIndicator(
+          onRefresh: provider.load,
+          child: ListView.builder(
+            itemCount: posts.length,
+            itemBuilder: (context, index) {
+              final post = posts[index];
+              return PostCard(
+                post: post,
+                onToggle: () => provider.toggle(post),
+                onOpen: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PostDetailScreen(post: post),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

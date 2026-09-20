@@ -5,25 +5,23 @@ import '../models/api_models.dart';
 import '../repositories/auth_repository.dart';
 import '../services/token_storage_service.dart';
 
-final class AuthProvider extends ChangeNotifier {
+final class AuthProvider extends ChangeNotifier with LikeAutoReconnectMixin {
   AuthProvider(this._repository, this._storage);
 
   final AuthRepository _repository;
   final TokenStorageService _storage;
-  
 
-  
+  final authState = LikeNotifierState<ApiUser?>(
+    initialValue: LikeStateResponse.idle(),
+  );
 
-  ApiUser? _user;
   bool _initializing = true;
-  bool _busy = false;
-  String? _error;
 
-  ApiUser? get user => _user;
+  ApiUser? get user => authState.value.data;
   bool get initializing => _initializing;
-  bool get busy => _busy;
-  bool get isAuthenticated => _user != null;
-  String? get error => _error;
+  bool get busy => authState.value.state == LikeState.loading;
+  bool get isAuthenticated => user != null;
+  String? get error => authState.value.error?.message;
 
   LikeAuthConfig createAuthConfig() {
     return LikeAuthConfig(
@@ -31,7 +29,7 @@ final class AuthProvider extends ChangeNotifier {
       refreshToken: () async {
         final result = await _repository.refresh();
         if (result.isSuccess && result.data != null) {
-          _user = result.data!.user;
+          authState.value = LikeStateResponse.success(result.data!.user);
           notifyListeners();
           return result.data!.accessToken;
         }
@@ -46,12 +44,26 @@ final class AuthProvider extends ChangeNotifier {
     _initializing = true;
     notifyListeners();
     if (await _repository.hasSession()) {
-      final result = await _repository.currentUser();
-      if (result.isSuccess && result.data != null) {
-        _user = result.data;
-      } else {
-        await _storage.clear();
-      }
+      await fetch<ApiUser?>(
+        state: authState,
+        autoResync: true,
+        action: (ct, ars) async {
+          final result = await _repository.currentUser();
+          if (result.isSuccess && result.data != null) {
+            return LikeStateResponse.success(result.data!);
+          }
+          await _storage.clear();
+          return LikeStateResponse.error(
+            result.error ??
+                LikeError(
+                  message: 'Session expired',
+                  type: LikeApiErrorType.unauthorized,
+                ),
+          );
+        },
+      );
+    } else {
+      authState.value = LikeStateResponse.idle();
     }
     _initializing = false;
     notifyListeners();
@@ -66,40 +78,45 @@ final class AuthProvider extends ChangeNotifier {
       );
 
   Future<void> logout() async {
-    _busy = true;
+    authState.value = LikeStateResponse.loading();
     notifyListeners();
     await _repository.logout();
-    _user = null;
-    _busy = false;
+    authState.value = LikeStateResponse.idle();
     notifyListeners();
   }
 
   void clearError() {
-    _error = null;
+    if (user != null) {
+      authState.value = LikeStateResponse.success(user!);
+    } else {
+      authState.value = LikeStateResponse.idle();
+    }
     notifyListeners();
   }
 
   Future<bool> _authenticate(
     Future<ApiResult<AuthSession>> Function() action,
   ) async {
-    _busy = true;
-    _error = null;
+    authState.value = LikeStateResponse.loading();
     notifyListeners();
     final result = await action();
     if (result.isSuccess && result.data != null) {
-      _user = result.data!.user;
+      authState.value = LikeStateResponse.success(result.data!.user);
     } else {
-      _error = result.error?.message ?? 'Authentication failed';
+      final err = result.error ??
+          LikeError(
+            message: 'Authentication failed',
+            type: LikeApiErrorType.unauthorized,
+          );
+      authState.value = LikeStateResponse.error(err);
     }
-    _busy = false;
     notifyListeners();
     return result.isSuccess;
   }
 
   Future<void> _expireSession() async {
     await _repository.clearSession();
-    _user = null;
-    _busy = false;
+    authState.value = LikeStateResponse.idle();
     notifyListeners();
   }
 }

@@ -47,6 +47,7 @@ export 'src/services/app_cache_manager.dart';
 // Mixins
 export 'src/engine/like_engine.dart';
 export 'src/mixins/like_visibility_mixin.dart';
+export 'src/mixins/like_auto_reconnect_mixin.dart';
 
 
 // Mocking
@@ -54,12 +55,8 @@ export 'src/services/like_mock_controller.dart';
 
 // Widgets
 export 'src/widgets/like_builder.dart';
-export 'src/widgets/like.dart';
+export 'src/widgets/like_root.dart';
 export 'src/widgets/like_sliver_builder.dart';
-export 'src/widgets/like_multi_builder.dart';
-export 'src/widgets/like_multi_sliver_builder.dart';
-export 'src/widgets/like_selector.dart';
-export 'src/widgets/like_selector_sliver.dart';
 export 'src/widgets/like_when.dart';
 export 'src/widgets/like_cache_image.dart';
 // Interceptors

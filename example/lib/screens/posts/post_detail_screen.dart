@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:like/like.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/api_models.dart';
@@ -15,7 +16,7 @@ class PostDetailScreen extends StatefulWidget {
   State<PostDetailScreen> createState() => _PostDetailScreenState();
 }
 
-class _PostDetailScreenState extends State<PostDetailScreen> {
+class _PostDetailScreenState extends State<PostDetailScreen> with LikeVisibilityMixin {
   late ApiPost _post;
 
   @override
@@ -25,9 +26,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
   }
 
+  @override
+  Future<void> onRecover() async {
+    if (!mounted) return;
+    await _reload();
+  }
+
   Future<void> _reload() async {
-    final post = await context.read<PostProvider>().find(_post.id);
-    if (post != null && mounted) setState(() => _post = post);
+    final result = await context.read<PostProvider>().find(_post.id);
+    if (result.isSuccess && result.data != null && mounted) {
+      setState(() => _post = result.data!);
+    }
   }
 
   @override
@@ -96,7 +105,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final removed = await context.read<PostProvider>().remove(_post.id);
-    if (removed && mounted) Navigator.of(context).pop();
+    final result = await context.read<PostProvider>().remove(_post.id);
+
+    if (!mounted) return;
+    await updateNotifier<Object>(
+      response: result.toStateResponse(),
+      context: context,
+      onSuccess: (_) async {
+        Navigator.of(context).pop();
+      },
+      enableHaptics: true,
+      disableSuccessToast: false,
+    );
   }
 }

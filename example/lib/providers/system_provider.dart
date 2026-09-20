@@ -1,21 +1,21 @@
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
+import 'package:like/like.dart';
 
 import '../repositories/system_repository.dart';
 
-final class SystemProvider extends ChangeNotifier {
+final class SystemProvider extends ChangeNotifier with LikeAutoReconnectMixin {
   SystemProvider(this._repository);
 
   final SystemRepository _repository;
 
-  bool _busy = false;
-  String? _output;
-  String? _error;
+  final systemState = LikeNotifierState<String>(
+    initialValue: LikeStateResponse.idle(),
+  );
 
-  bool get busy => _busy;
-  String? get output => _output;
-  String? get error => _error;
+  bool get busy => systemState.value.state == LikeState.loading;
+  String? get output => systemState.value.data;
+  String? get error => systemState.value.error?.message;
 
   Future<dynamic> Function()? _lastAction;
 
@@ -34,17 +34,22 @@ final class SystemProvider extends ChangeNotifier {
 
   Future<void> _run(Future<dynamic> Function() action) async {
     _lastAction = action;
-    _busy = true;
-    _error = null;
-    _output = null;
-    notifyListeners();
-    final result = await action();
-    if (result.isSuccess) {
-      _output = const JsonEncoder.withIndent('  ').convert(result.data);
-    } else {
-      _error = result.error?.message ?? 'Request failed';
-    }
-    _busy = false;
-    notifyListeners();
+    await fetch<String>(
+      state: systemState,
+      action: (ct, ars) async {
+        final result = await action();
+        if (result.isSuccess) {
+          final jsonOutput =
+              const JsonEncoder.withIndent('  ').convert(result.data);
+          return LikeStateResponse.success(jsonOutput);
+        }
+        final err = result.error ??
+            LikeError(
+              message: 'Request failed',
+              type: LikeApiErrorType.unknown,
+            );
+        return LikeStateResponse.error(err);
+      },
+    );
   }
 }
