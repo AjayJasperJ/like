@@ -28,18 +28,6 @@ class Like extends StatefulWidget {
   /// Whether to automatically trigger connectivity notifications when connection status changes.
   final bool showConnectivityToasts;
 
-  /// A secure callback function that retrieves the current user's JWT/session token.
-  final Future<String?> Function()? getToken;
-
-  /// A secure callback function that performs token refreshing when 401 Unauthorized occurs.
-  final Future<String?> Function()? refreshToken;
-
-  /// A callback triggered when a session is unrecoverable (e.g. token refresh fails).
-  final Future<void> Function({int? statusCode, bool force})? onLogout;
-
-  /// A secure callback that retrieves the server API key.
-  final Future<String?> Function()? getApiKey;
-
   /// Optional notification/toast callback hooks configuration.
   final LikeToastConfig? toastConfig;
 
@@ -62,10 +50,6 @@ class Like extends StatefulWidget {
     this.syncOverlay,
     this.loadingWidget,
     this.showConnectivityToasts = true,
-    this.getToken,
-    this.refreshToken,
-    this.onLogout,
-    this.getApiKey,
     this.authConfig,
     this.toastConfig,
     this.devTool,
@@ -103,34 +87,22 @@ class _LikeState extends State<Like> {
         );
       }
 
-      final effectiveAuthConfig = widget.authConfig ??
-          LikeAuthConfig(
-            getToken: widget.getToken,
-            refreshToken: widget.refreshToken,
-            onLogout: widget.onLogout,
-            getApiKey: widget.getApiKey,
-          );
-
-      if (effectiveAuthConfig.hasTokenSupplier ||
-          effectiveAuthConfig.hasRefreshSupplier ||
-          effectiveAuthConfig.hasLogoutSupplier ||
-          effectiveAuthConfig.hasApiKeySupplier) {
+      if (widget.authConfig != null) {
         LikeConstants.apply(
-          LikeConstants.current.copyWith(authConfig: effectiveAuthConfig),
+          LikeConstants.current.copyWith(authConfig: widget.authConfig),
         );
-      }
-
-      if (widget.getToken != null) {
-        LikeAuthInterceptor.getToken = widget.getToken!;
-      }
-      if (widget.refreshToken != null) {
-        LikeAuthInterceptor.refreshToken = widget.refreshToken!;
-      }
-      if (widget.onLogout != null) {
-        LikeAuthInterceptor.onLogout = widget.onLogout!;
-      }
-      if (widget.getApiKey != null) {
-        LikeAuthInterceptor.getApiKey = widget.getApiKey!;
+        if (widget.authConfig!.getToken != null) {
+          LikeAuthInterceptor.getToken = widget.authConfig!.getToken!;
+        }
+        if (widget.authConfig!.refreshToken != null) {
+          LikeAuthInterceptor.refreshToken = widget.authConfig!.refreshToken!;
+        }
+        if (widget.authConfig!.onLogout != null) {
+          LikeAuthInterceptor.onLogout = widget.authConfig!.onLogout!;
+        }
+        if (widget.authConfig!.getApiKey != null) {
+          LikeAuthInterceptor.getApiKey = widget.authConfig!.getApiKey!;
+        }
       }
 
       if (widget.showConnectivityToasts) {
