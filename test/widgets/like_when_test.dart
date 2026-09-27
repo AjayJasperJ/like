@@ -269,9 +269,6 @@ void main() {
       for (final response in responses) {
         await updateNotifier<String>(
           response: response,
-          disableSuccessToast: true,
-          disableErrorToast: true,
-          disableExceptionToast: true,
           enableHaptics: false,
           onInit: (state) async => events.add('init:${state.name}'),
           onSuccess: (data) async => events.add('success:$data'),
@@ -307,13 +304,11 @@ void main() {
           code: 400,
           errorType: LikeApiErrorType.badRequest,
         ),
-        disableErrorToast: true,
         enableHaptics: false,
         onError: (error) async => captured = error,
       );
       await updateNotifier<String>(
         response: LikeStateResponse<int>.success(1),
-        disableSuccessToast: true,
         enableHaptics: false,
         onSuccess: (_) async => successCalls++,
       );

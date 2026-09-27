@@ -107,7 +107,6 @@ class _PostFormScreenState extends State<PostFormScreen>
         Navigator.of(context).pop(saved);
       },
       enableHaptics: true,
-      disableSuccessToast: false,
     );
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/models/like_error.dart';
-import 'package:like/src/services/like_utils.dart';
 
 /// # `updateNotifier<T>`
 ///
@@ -10,14 +9,13 @@ import 'package:like/src/services/like_utils.dart';
 /// automatically when an API action changes state.
 ///
 /// ### Built-in Automated Actions:
-/// 1. **Toasting:** Automatically pops up styled toast messages for success, error, or loading.
-/// 2. **Haptic Feedback:** Vibrates the device using custom weights (Light impact on success,
+/// 1. **Haptic Feedback:** Vibrates the device using custom weights (Light impact on success,
 ///    Medium on warnings/errors, Heavy on severe network exceptions) to provide professional physical feedback.
-/// 3. **Callback Mapping:** Automatically routes to [onSuccess], [onError], [onException], and [onInit]
+/// 2. **Callback Mapping:** Automatically routes to [onSuccess], [onError], [onException], and [onInit]
 ///    async functions.
-/// 4. **Context Safety Guards:** Since API requests resolve asynchronously, the user might navigate
+/// 3. **Context Safety Guards:** Since API requests resolve asynchronously, the user might navigate
 ///    away from the active page before the request completes. This helper strictly checks
-///    `context.mounted` to prevent popping toasts or calling widgets on discarded/unmounted contexts!
+///    `context.mounted` to prevent calling widgets on discarded/unmounted contexts!
 ///
 /// ### Example Usage:
 /// ```dart
@@ -43,14 +41,7 @@ Future<void> updateNotifier<T extends Object>({
   Future<void> Function(LikeError error)? onError,
   Future<void> Function(String message)? onException,
 
-  // Toast Control Flags (Disable toasts for specific states if desired)
-  bool disableLoadingToast = true,
-  bool disableSuccessToast = false,
-  bool disableErrorToast = false,
-  bool disableExceptionToast = false,
-  bool disableCancelledToast = true,
   bool enableHaptics = true,
-  Map<LikeState, String>? messageOverrides,
 }) async {
   // 1. Fire initialization callback
   if (onInit != null) {
@@ -69,27 +60,10 @@ Future<void> updateNotifier<T extends Object>({
     }
   }
 
-  // 3. Resolve user message overrides
-  String resolveMessage(String defaultMsg, LikeState state) {
-    return messageOverrides != null && messageOverrides.containsKey(state)
-        ? messageOverrides[state]!
-        : defaultMsg;
-  }
-
-  // 4. Map and execute state-specific automated actions
+  // 3. Map and execute state-specific automated actions
   switch (response.state) {
     case LikeState.idle:
-      break;
-
     case LikeState.loading:
-      if (!disableLoadingToast) {
-        if (context != null && !context.mounted) return;
-        LikeUtils.showToast(
-          context: context,
-          message: resolveMessage(response.message, LikeState.loading),
-          type: LikeToastStyle.info,
-        );
-      }
       break;
 
     case LikeState.success:
@@ -103,16 +77,11 @@ Future<void> updateNotifier<T extends Object>({
         }
       }
 
-      if (response.state == LikeState.success && !disableSuccessToast) {
+      if (response.state == LikeState.success) {
         if (context != null && !context.mounted) return;
         if (enableHaptics) {
           HapticFeedback.lightImpact(); // Light vibration on success
         }
-        LikeUtils.showToast(
-          context: context,
-          message: resolveMessage(response.resolvedMessage, LikeState.success),
-          type: LikeToastStyle.success,
-        );
       }
       break;
 
@@ -127,19 +96,8 @@ Future<void> updateNotifier<T extends Object>({
       if (context != null && !context.mounted) return;
       await onError?.call(error);
 
-      if (!disableErrorToast) {
-        if (context != null && !context.mounted) return;
-        if (enableHaptics) {
-          HapticFeedback.mediumImpact(); // Medium warning vibration
-        }
-        if (error.type != LikeApiErrorType.cancelled ||
-            !disableCancelledToast) {
-          LikeUtils.showToast(
-            context: context,
-            message: resolveMessage(error.message, LikeState.error),
-            type: LikeToastStyle.warning,
-          );
-        }
+      if (enableHaptics) {
+        HapticFeedback.mediumImpact(); // Medium warning vibration
       }
       break;
 
@@ -147,16 +105,8 @@ Future<void> updateNotifier<T extends Object>({
       if (context != null && !context.mounted) return;
       await onException?.call(response.message);
 
-      if (!disableExceptionToast) {
-        if (context != null && !context.mounted) return;
-        if (enableHaptics) {
-          HapticFeedback.heavyImpact(); // Strong warning vibration for crashes
-        }
-        LikeUtils.showToast(
-          context: context,
-          message: resolveMessage(response.message, LikeState.exception),
-          type: LikeToastStyle.error,
-        );
+      if (enableHaptics) {
+        HapticFeedback.heavyImpact(); // Strong warning vibration for crashes
       }
       break;
   }

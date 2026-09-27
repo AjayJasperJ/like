@@ -63,6 +63,11 @@
     │ L1 RAM │  │L2 Hive │  │  SWR   │  │ ETag/304 │
     │ Cache  │  │  Cache │  │Revalid.│  │Validation│
     └────────┘  └────────┘  └────────┘  └──────────┘
+
+> 🎨 **Interactive Archify Diagrams**:
+> - [System Architecture Diagram](file:///home/ja5p3r/Projects/packages/like/docs/architecture/like_package_architecture.html)
+> - [Network & Resync Sequence Diagram](file:///home/ja5p3r/Projects/packages/like/docs/architecture/like_package_sequence.html)
+> - [Execution & Resilience Workflow Diagram](file:///home/ja5p3r/Projects/packages/like/docs/architecture/like_package_workflow.html)
 ```
 
 ### Cache Flow — L1 · L2 · SWR · ETag

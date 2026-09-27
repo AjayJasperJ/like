@@ -58,7 +58,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                               Navigator.of(context).pop();
                             },
                             enableHaptics: true,
-                            disableSuccessToast: false,
                           );
                         },
                       ),

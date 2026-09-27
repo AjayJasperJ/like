@@ -59,7 +59,6 @@ class _LoginScreenState extends State<LoginScreen> with LikeVisibilityMixin {
                             response: provider.authState.value,
                             context: context,
                             enableHaptics: true,
-                            disableSuccessToast: false,
                           );
                         },
                       ),

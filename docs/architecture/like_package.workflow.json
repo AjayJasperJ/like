@@ -1,0 +1,68 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "LIKE Network & State Execution Workflow",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "fetch-flow",
+        "label": "State Fetch & Execution Flow",
+        "focus": ["caller", "notifier", "like_engine", "cache_read", "net_req", "cache_write", "ui_update"],
+        "note": "Complete request lifecycle from state initialization to UI emission."
+      },
+      {
+        "id": "offline-handling",
+        "label": "Offline & Failure Recovery",
+        "focus": ["net_req", "offline_queue", "retry_backoff"],
+        "note": "How failures and offline transitions are gracefully enqueued and retried."
+      }
+    ],
+    "output": "like_package_workflow.html"
+  },
+  "lanes": [
+    { "id": "presentation", "label": "Flutter UI & Notifiers" },
+    { "id": "kernel", "label": "LIKE Engine & Core" },
+    { "id": "resilience", "label": "Offline & Retry Policy", "variant": "exception" },
+    { "id": "storage_net", "label": "4-Tier Storage & Network" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "Request & Hydration", "fromCol": 0, "toCol": 1 },
+    { "id": "execution", "label": "Network & Interceptors", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "resolution", "label": "Cache Write & UI Sync", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "engine_group", "label": "LIKE Orchestrator", "lane": "kernel", "fromCol": 1, "toCol": 3, "variant": "emphasis" },
+    { "id": "offline_group", "label": "Resilience & Retry", "lane": "resilience", "fromCol": 2, "toCol": 4, "variant": "security" }
+  ],
+  "mainPath": ["caller", "notifier", "like_engine", "net_req", "cache_write", "ui_update"],
+  "nodes": [
+    { "id": "caller", "lane": "presentation", "col": 0, "type": "external", "label": "Flutter Widget", "sublabel": "dispatches request", "width": 132 },
+    { "id": "notifier", "lane": "presentation", "col": 1, "type": "frontend", "label": "LikeNotifierState", "sublabel": "tracks state & token", "width": 132 },
+    { "id": "like_engine", "lane": "kernel", "col": 1, "type": "backend", "label": "LikeEngine", "sublabel": "evaluates ARS config", "tag": "Kernel", "width": 132 },
+    { "id": "cache_read", "lane": "storage_net", "col": 1, "type": "database", "label": "4-Tier Cache Read", "sublabel": "Mem -> Hive -> SQLite", "width": 132 },
+    { "id": "net_req", "lane": "kernel", "col": 2, "type": "backend", "label": "Dio HTTP / WS", "sublabel": "executes network IO", "width": 132 },
+    { "id": "offline_queue", "lane": "resilience", "col": 3, "type": "messagebus", "label": "Offline Queue", "sublabel": "holds pending tasks", "tag": "Offline", "width": 132 },
+    { "id": "retry_backoff", "lane": "resilience", "col": 4, "type": "security", "label": "Exponential Retry", "sublabel": "1s -> 2s -> 4s delays", "width": 132 },
+    { "id": "cache_write", "lane": "storage_net", "col": 4, "type": "database", "label": "4-Tier Cache Write", "sublabel": "persists fresh data", "width": 132 },
+    { "id": "ui_update", "lane": "presentation", "col": 5, "type": "frontend", "label": "State Update", "sublabel": "notifies LikeBuilder", "width": 132 }
+  ],
+  "edges": [
+    { "id": "e1", "from": "caller", "to": "notifier", "variant": "default" },
+    { "id": "e2", "from": "notifier", "to": "like_engine", "label": "fetchResult()", "variant": "emphasis" },
+    { "id": "e3", "from": "like_engine", "to": "cache_read", "label": "check cache", "variant": "default" },
+    { "id": "e4", "from": "cache_read", "to": "like_engine", "label": "cached response", "variant": "dashed" },
+    { "id": "e5", "from": "like_engine", "to": "net_req", "label": "network fetch", "variant": "emphasis" },
+    { "id": "e6", "from": "net_req", "to": "offline_queue", "label": "no connection", "variant": "security", "role": "error" },
+    { "id": "e7", "from": "offline_queue", "to": "retry_backoff", "label": "on reconnect", "variant": "dashed" },
+    { "id": "e8", "from": "retry_backoff", "to": "like_engine", "label": "retry request", "variant": "emphasis" },
+    { "id": "e9", "from": "net_req", "to": "cache_write", "label": "on 200 OK", "variant": "emphasis" },
+    { "id": "e10", "from": "cache_write", "to": "ui_update", "label": "emit fresh state", "variant": "emphasis" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Hydration First", "items": ["Cached data is immediately rendered before the HTTP request is initiated."] },
+    { "dot": "rose", "title": "Zero Data Loss", "items": ["Mutations made offline are captured in the Offline Queue and synced when back online."] }
+  ]
+}

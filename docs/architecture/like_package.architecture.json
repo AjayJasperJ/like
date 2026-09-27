@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Link Intelligent Kernel Engine (LIKE) - System Architecture",
+    "output": "like_package_architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-stack",
+        "label": "Full Engine Stack",
+        "focus": ["flutter_ui", "like_widgets", "like_notifier", "like_engine", "like_client", "dio_client", "l1_mem", "l2_hive", "l3_sqlite", "l4_http_cache", "backend_api"],
+        "note": "Complete overview from Flutter presentation layer through 4-tier cache down to network."
+      },
+      {
+        "id": "caching-tiers",
+        "label": "4-Tier Hybrid Cache Engine",
+        "focus": ["like_engine", "cache_manager", "l1_mem", "l2_hive", "l3_sqlite", "l4_http_cache", "etag_interceptor"],
+        "note": "Shows the memory, Hive fast storage, SQLite database, and HTTP ETag/stale-while-revalidate caching layers."
+      },
+      {
+        "id": "resilience-sync",
+        "label": "Resilience & Offline Sync",
+        "focus": ["conn_mgr", "offline_interceptor", "etag_interceptor", "pipeline_bus", "backend_api"],
+        "note": "Automatic reconnection, offline request queuing, retry backoff, and reactive event pipeline."
+      }
+    ]
+  },
+  "components": [
+    { "id": "flutter_ui", "type": "external", "label": "Flutter UI Layer", "sublabel": "Screens & Widgets", "pos": [40, 240], "size": [140, 60] },
+    { "id": "like_widgets", "type": "frontend", "label": "LIKE Widgets", "sublabel": "LikeBuilder / LikeWhen", "pos": [220, 140], "size": [150, 60], "tag": "Reactive UI" },
+    { "id": "like_notifier", "type": "frontend", "label": "LikeNotifierState", "sublabel": "State & CancelTokens", "pos": [220, 340], "size": [150, 60] },
+    { "id": "like_engine", "type": "backend", "label": "LikeEngine", "sublabel": "Orchestrator & ARS", "pos": [430, 240], "size": [150, 65], "tag": "Core Kernel" },
+    
+    { "id": "conn_mgr", "type": "security", "label": "Connectivity Mgr", "sublabel": "Network Monitoring", "pos": [430, 60], "size": [150, 60], "tag": "Auto Reconnect" },
+    { "id": "pipeline_bus", "type": "messagebus", "label": "LikePipeline Bus", "sublabel": "Stream Event Bus", "pos": [430, 420], "size": [150, 60] },
+    
+    { "id": "like_client", "type": "backend", "label": "LikeClient", "sublabel": "HTTP & WebSocket", "pos": [650, 240], "size": [140, 60] },
+    { "id": "dio_client", "type": "backend", "label": "Dio HTTP Engine", "sublabel": "Interceptor Pipeline", "pos": [850, 240], "size": [140, 60] },
+
+    { "id": "etag_interceptor", "type": "security", "label": "ETag & Retry", "sublabel": "Interceptors", "pos": [850, 60], "size": [140, 60] },
+    { "id": "offline_interceptor", "type": "messagebus", "label": "Offline Sync", "sublabel": "Queue & Sync Task", "pos": [850, 420], "size": [140, 60] },
+
+    { "id": "cache_manager", "type": "database", "label": "AppCacheManager", "sublabel": "4-Tier Coordinator", "pos": [1050, 240], "size": [150, 60], "tag": "Hybrid Cache" },
+    { "id": "l1_mem", "type": "database", "label": "L1: Memory Cache", "sublabel": "In-Memory LRU", "pos": [1280, 60], "size": [140, 55] },
+    { "id": "l2_hive", "type": "database", "label": "L2: Hive Cache", "sublabel": "Fast Key-Value", "pos": [1280, 170], "size": [140, 55] },
+    { "id": "l3_sqlite", "type": "database", "label": "L3: SQLite Cache", "sublabel": "Relational/Durable", "pos": [1280, 280], "size": [140, 55] },
+    { "id": "l4_http_cache", "type": "database", "label": "L4: HTTP ETag Cache", "sublabel": "Disk Cache & Headers", "pos": [1280, 390], "size": [140, 55] },
+
+    { "id": "backend_api", "type": "cloud", "label": "Backend Services", "sublabel": "REST & WS Endpoint", "pos": [1050, 60], "size": [150, 60], "tag": "External" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "LIKE Application Client Framework", "wraps": ["like_widgets", "like_notifier", "like_engine", "conn_mgr", "pipeline_bus", "like_client", "dio_client", "etag_interceptor", "offline_interceptor", "cache_manager", "l1_mem", "l2_hive", "l3_sqlite", "l4_http_cache"] }
+  ],
+  "connections": [
+    { "id": "ui-to-widgets", "from": "flutter_ui", "to": "like_widgets", "labelAt": [150, 160] },
+    { "id": "ui-to-notifier", "from": "flutter_ui", "to": "like_notifier", "labelAt": [150, 360] },
+    { "id": "widgets-to-engine", "from": "like_widgets", "to": "like_engine", "labelAt": [390, 160] },
+    { "id": "notifier-to-engine", "from": "like_notifier", "to": "like_engine", "labelAt": [390, 360] },
+    { "id": "conn-to-engine", "from": "conn_mgr", "to": "like_engine", "labelAt": [520, 160] },
+    { "id": "engine-to-pipeline", "from": "like_engine", "to": "pipeline_bus", "labelAt": [520, 360] },
+    { "id": "engine-to-client", "from": "like_engine", "to": "like_client", "labelAt": [605, 220] },
+    { "id": "client-to-dio", "from": "like_client", "to": "dio_client", "labelAt": [810, 220] },
+    { "id": "dio-to-etag", "from": "dio_client", "to": "etag_interceptor", "labelAt": [930, 160] },
+    { "id": "dio-to-offline", "from": "dio_client", "to": "offline_interceptor", "labelAt": [930, 360] },
+    { "id": "dio-to-cache", "from": "dio_client", "to": "cache_manager", "labelAt": [1010, 220] },
+    { "id": "dio-to-backend", "from": "dio_client", "to": "backend_api", "labelAt": [970, 130] },
+    { "id": "cache-to-l1", "from": "cache_manager", "to": "l1_mem", "labelAt": [1230, 110] },
+    { "id": "cache-to-l2", "from": "cache_manager", "to": "l2_hive", "labelAt": [1230, 190] },
+    { "id": "cache-to-l3", "from": "cache_manager", "to": "l3_sqlite", "labelAt": [1230, 270] },
+    { "id": "cache-to-l4", "from": "cache_manager", "to": "l4_http_cache", "labelAt": [1230, 350] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Core Architectural Highlights", "items": ["4-Tier Hybrid Cache System (Memory -> Hive -> SQLite -> HTTP ETag)", "Declarative Auto-Reconnection & Resynchronization via LikeEngine", "Zero-boilerplate Flutter UI Integration via LikeBuilder & LikeWhen"] },
+    { "dot": "emerald", "title": "Resilience & Offline Sync", "items": ["Offline task queueing & automatic replay upon connectivity restoration", "ETag & Stale-While-Revalidate caching mechanics", "Granular syncWith declarative dependency graphs"] }
+  ]
+}

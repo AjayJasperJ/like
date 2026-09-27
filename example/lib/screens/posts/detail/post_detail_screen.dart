@@ -116,7 +116,6 @@ class _PostDetailScreenState extends State<PostDetailScreen>
         Navigator.of(context).pop();
       },
       enableHaptics: true,
-      disableSuccessToast: false,
     );
   }
 }

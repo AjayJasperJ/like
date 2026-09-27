@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-09-27
+
+### Added
+- **Archify Architecture & Interactive Visualizations**: Added interactive compiled Archify diagrams (`like_package_architecture.html`, `like_package_sequence.html`, `like_package_workflow.html`) covering full 4-tier cache architecture, sequence lifecycle, and execution workflow.
+- **Origin-Aware Connectivity Diagnostics**: Added structured manual connectivity checks through `LikeConnectivityManager` and `LikeClient`, reporting interface availability, internet reachability, server availability, canonical origin, and timestamps.
+- **Terminal Failure Diagnostics**: Added non-blocking connectivity diagnostics after retry exhaustion for socket/timeout failures with single-flight probing and cooldown.
+
+### Changed
+- **Breaking — Toast Support Streamlining**: Completely removed automated toast handling (`disableSuccessToast`, `disableErrorToast`, `disableExceptionToast`, `disableCancelledToast`, `messageOverrides`, and `LikeUtils.showToast`) from `updateNotifier` and `LikeWhen` to keep the widget and action layer pure and unopinionated.
+- **Breaking — Unencrypted Image Cache**: Simplified `AppCacheManager` to store image bytes directly without runtime encryption/decryption overhead while preserving URL normalization, LRU pruning, and web safety. Isolates legacy cache entries into `_universalImageCache_v2`.
+
 ## [2.2.6] - 2026-09-20
 
 ### Added
@@ -24,23 +35,6 @@ All notable changes to this project will be documented in this file.
 
 ### Improved
 - **Example App Architecture & UI**: Refactored `posts_page.dart` into modular stateless widgets (`PostListItem`, `PostErrorView`, `PostPaginationFooter`), extracted auxiliary screens, and updated the theme to modern Material 3 styling.
-
-## [Unreleased]
-
-### Added
-
-- **Origin-Aware Connectivity Diagnostics**: Added structured manual connectivity checks through `LikeConnectivityManager` and each `LikeClient`, reporting interface availability, internet reachability, nullable server availability, canonical origin, reason, timestamp, and legacy-compatible combined online status.
-- **Terminal Failure Observation**: Added non-blocking diagnostics after retry exhaustion for ambiguous no-response connection, timeout, and socket-backed failures, with global/per-origin single-flight work, per-origin cooldown, and stale-probe protection.
-- **Connectivity Configuration**: Added `automaticConnectivityChecksEnabled` (default `true`) and `automaticFailureCheckCooldown` (default three seconds).
-
-### Changed
-
-- **Breaking — Image Cache Storage**: Removed image-cache encryption and decryption. `AppCacheManager` now stores downloaded bytes unchanged through `flutter_cache_manager`, while retaining URL normalization, access-time updates, LRU pruning, clearing, logging, and web behavior.
-- **Image Cache Migration**: Bumped the cache namespace to `_universalImageCache_v2`, isolating legacy cache entries so bytes written in the former format are never served as images. The old temporary namespace is left to normal platform cleanup.
-- **Breaking — Configuration/API Removal**: Removed `LikeConfig.encryptionKey`, `AppCacheSecurity`, `EncryptedHttpFileService`, `EncryptedFileServiceResponse`, decrypted temporary-file handling, and `clearDecryptedCache`.
-- **Dependencies**: Removed the image-cache-only `encrypt` and `shared_preferences` dependencies. Retained `crypto` because SSL certificate SHA-256 pinning still uses it.
-- Every real HTTP response now records positive reachability evidence for its canonical request origin. HTTP errors, cancellation (including take-latest), certificate failures, local transformations, preflight-offline failures, and `OFFLINE_QUEUED` results do not start automatic probes.
-- Flutter Web connectivity diagnostics avoid DNS and raw sockets; no-response browser failures do not establish global internet loss, and server availability may remain unknown.
 
 ## [2.2.4] - 2026-06-30
 

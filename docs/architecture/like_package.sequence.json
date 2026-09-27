@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "LIKE Network & Resynchronization Lifecycle",
+    "output": "like_package_sequence.html",
+    "viewBox": [1050, 850],
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "cache-hit-path", "label": "Fast Cache Read Path", "focus": ["ui", "builder", "engine", "cache"], "note": "Instant UI hydration via L1 Memory or L2 Hive cache." },
+      { "id": "network-fetch-path", "label": "Network & ETag Validation", "focus": ["engine", "client", "interceptors", "network", "cache"], "note": "304 Not Modified validation and cache updates." },
+      { "id": "offline-reconnect-sync", "label": "Offline & Auto-Resync Flow", "focus": ["network", "conn", "engine", "client", "ui"], "note": "Automatic data revalidation upon network restoration." }
+    ]
+  },
+  "participants": [
+    { "id": "ui", "type": "external", "label": "Screen", "sublabel": "Widget Tree" },
+    { "id": "builder", "type": "frontend", "label": "LikeBuilder", "sublabel": "UI State Listener" },
+    { "id": "engine", "type": "backend", "label": "LikeEngine", "sublabel": "Kernel & ARS" },
+    { "id": "client", "type": "backend", "label": "LikeClient", "sublabel": "Dio HTTP/WS" },
+    { "id": "interceptors", "type": "security", "label": "Interceptors", "sublabel": "ETag / Offline" },
+    { "id": "cache", "type": "database", "label": "4-Tier Cache", "sublabel": "Mem/Hive/Sqlite" },
+    { "id": "conn", "type": "security", "label": "Conn Manager", "sublabel": "Network Monitor" },
+    { "id": "network", "type": "cloud", "label": "Remote API", "sublabel": "REST Backend" }
+  ],
+  "segments": [
+    { "from": 150, "to": 290, "label": "Phase 1: Initial Fetch & 4-Tier Cache Lookup" },
+    { "from": 310, "to": 520, "label": "Phase 2: Network Validation & ETag Revalidation" },
+    { "from": 540, "to": 780, "label": "Phase 3: Connection Loss & Auto-Resync Recovery" }
+  ],
+  "messages": [
+    { "from": "ui", "to": "builder", "y": 160, "label": "build(LikeBuilder)", "variant": "emphasis" },
+    { "from": "builder", "to": "engine", "y": 190, "label": "fetch(LikeNotifierState)", "variant": "emphasis" },
+    { "from": "engine", "to": "cache", "y": 220, "label": "check Cache Tiers (L1-L3)", "variant": "default" },
+    { "from": "cache", "to": "engine", "y": 250, "label": "return cached response (stale/valid)", "variant": "return" },
+    { "from": "engine", "to": "builder", "y": 280, "label": "emit StateResponse.success(cache)", "variant": "return" },
+
+    { "from": "engine", "to": "client", "y": 330, "label": "get(path, headers: ETag)", "variant": "emphasis" },
+    { "from": "client", "to": "interceptors", "y": 360, "label": "process interceptor pipeline", "variant": "default" },
+    { "from": "interceptors", "to": "network", "y": 390, "label": "HTTP GET (If-None-Match)", "variant": "emphasis" },
+    { "from": "network", "to": "interceptors", "y": 420, "label": "304 Not Modified", "variant": "return" },
+    { "from": "interceptors", "to": "cache", "y": 450, "label": "extend cache TTL", "variant": "dashed" },
+    { "from": "client", "to": "engine", "y": 480, "label": "ApiResult.success(data)", "variant": "return" },
+
+    { "from": "conn", "to": "engine", "y": 560, "label": "onConnectivityRestored(origin)", "variant": "security" },
+    { "from": "engine", "to": "client", "y": 630, "label": "re-execute registered refreshAction()", "variant": "emphasis" },
+    { "from": "client", "to": "network", "y": 670, "label": "HTTP GET /latest-data", "variant": "emphasis" },
+    { "from": "network", "to": "client", "y": 710, "label": "200 OK (updated JSON)", "variant": "return" },
+    { "from": "engine", "to": "builder", "y": 750, "label": "emit StateResponse.success(freshData)", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "builder", "from": 155, "to": 290, "type": "frontend" },
+    { "participant": "engine", "from": 185, "to": 760, "type": "backend" },
+    { "participant": "client", "from": 325, "to": 720, "type": "backend" },
+    { "participant": "cache", "from": 215, "to": 460, "type": "database" },
+    { "participant": "network", "from": 385, "to": 715, "type": "cloud" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Instant Read path", "items": ["Cached data is immediately emitted to LikeBuilder without waiting for network IO."] },
+    { "dot": "emerald", "title": "Bandwidth Efficiency", "items": ["ETag validation returns lightweight HTTP 304s, saving user mobile data."] },
+    { "dot": "rose", "title": "Auto-Resync Resilience", "items": ["When connectivity drops and recovers, LikeEngine silently re-validates active subscriptions."] }
+  ]
+}
