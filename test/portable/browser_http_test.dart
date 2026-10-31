@@ -48,7 +48,8 @@ void main() {
             .having((e) => e.type, 'type', DioExceptionType.receiveTimeout)));
   });
 
-  test('browser Hive cache and ETags revalidate without cross-origin leakage', () async {
+  test('browser Hive cache and ETags revalidate without cross-origin leakage',
+      () async {
     LikeConstants.apply(LikeConfig(projectName: 'browser-etag-fixture'));
     await Hive.initFlutter('browser-etag-fixture');
     await Hive.openBox(LikeConstants.boxApiCache);

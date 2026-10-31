@@ -44,7 +44,9 @@ class LikeNetworkQualityMonitor {
       required Duration elapsed,
       int? bytes,
       bool timedOut = false}) {
-    if (_disposed || elapsed <= Duration.zero || !uri.hasAuthority ||
+    if (_disposed ||
+        elapsed <= Duration.zero ||
+        !uri.hasAuthority ||
         (uri.scheme != 'http' && uri.scheme != 'https')) return;
     if (_latest.length >= 100 && !_latest.containsKey(uri.origin)) {
       final oldest = _latest.keys.first;
