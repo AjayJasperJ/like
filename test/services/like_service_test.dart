@@ -24,6 +24,34 @@ void main() {
   });
 
   group('LikeService', () {
+    test('cache preserves strings, JSON-looking strings, bytes and lists', () async {
+      final payloads = <dynamic>['OK', '123', '{"id":1}', <int>[0, 255],
+        <dynamic>[{'id': 1}], null];
+      for (var index = 0; index < payloads.length; index++) {
+        final options = RequestOptions(
+          path: '/payload/$index', baseUrl: 'https://cache.example',
+        );
+        await LikeService.saveResponseToCache(Response<dynamic>(
+          requestOptions: options, data: payloads[index], statusCode: 200,
+        ));
+        final cached = await LikeService.fetchResponseFromCache(options);
+        expect(cached, isNotNull);
+        expect(cached!.data, equals(payloads[index]));
+      }
+    });
+
+    test('legacy JSON cache entries remain readable', () async {
+      final options = RequestOptions(
+        path: '/legacy', baseUrl: 'https://cache.example',
+      );
+      await LikeService.cacheBox.put(options.uri.toString(), {
+        'timestamp': DateTime.now().toIso8601String(),
+        'data': '{"id":1}',
+      });
+      final cached = await LikeService.fetchResponseFromCache(options);
+      expect(cached!.data, {'id': 1});
+    });
+
     test('putEtag and getEtag should work correctly', () async {
       const key = 'test-key';
       const etag = 'W/"12345"';

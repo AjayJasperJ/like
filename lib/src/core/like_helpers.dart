@@ -26,7 +26,11 @@ class LikeHelpers {
     if (query == null || query.isEmpty) return 'GET:$normalizedPath';
 
     final sortedKeys = query.keys.toList()..sort();
-    final queryString = sortedKeys.map((k) => '$k=${query[k]}').join('&');
+    final queryString = sortedKeys.map((key) {
+      final name = Uri.encodeQueryComponent(key);
+      final value = Uri.encodeQueryComponent(jsonEncode(query[key]));
+      return '$name=$value';
+    }).join('&');
     return 'GET:$normalizedPath?$queryString';
   }
 

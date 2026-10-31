@@ -10,6 +10,25 @@ void main() {
   });
 
   group('LikeRequestRegistry', () {
+    test('disposed registry rejects late writes even after clear', () {
+      registry.dispose();
+      registry.clear();
+      registry.addSessionKey('late');
+      registry.addInFlight('late', (Future.value(
+        Response(requestOptions: RequestOptions(path: '/late')),
+      ), null));
+      expect(registry.isSessionStale('late'), isFalse);
+      expect(registry.getInFlight('late'), isNull);
+    });
+
+    test('clearing an active registry allows a new session', () {
+      registry.addSessionKey('old');
+      registry.clear();
+      registry.addSessionKey('new');
+      expect(registry.isSessionStale('old'), isFalse);
+      expect(registry.isSessionStale('new'), isTrue);
+    });
+
     test('addSessionKey should store key and data', () {
       final response = Response(requestOptions: RequestOptions(path: '/test'));
       registry.addSessionKey('key1', response: response);

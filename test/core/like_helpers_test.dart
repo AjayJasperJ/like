@@ -3,6 +3,24 @@ import 'package:like/src/core/like_helpers.dart';
 
 void main() {
   group('LikeHelpers', () {
+    test('query delimiters cannot collide with separate parameters', () {
+      expect(
+        LikeHelpers.generateRequestKey('/items', {'a': '1&b=2'}),
+        isNot(LikeHelpers.generateRequestKey('/items', {'a': '1', 'b': '2'})),
+      );
+    });
+
+    test('query values retain their types and key ordering is stable', () {
+      expect(
+        LikeHelpers.generateRequestKey('/items', {'a': 1}),
+        isNot(LikeHelpers.generateRequestKey('/items', {'a': '1'})),
+      );
+      expect(
+        LikeHelpers.generateRequestKey('/items', {'b': 2, 'a': 1}),
+        LikeHelpers.generateRequestKey('/items', {'a': 1, 'b': 2}),
+      );
+    });
+
     test('generateRequestKey should generate consistent keys', () {
       const path = '/users';
       final query = {'id': '123'};
