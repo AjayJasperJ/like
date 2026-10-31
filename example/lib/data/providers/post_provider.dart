@@ -6,7 +6,7 @@ import '../repositories/post_repository.dart';
 final class PostProvider extends ChangeNotifier with LikeStateMixin {
   PostProvider(this._repository);
 
-  final PostRepository _repository;
+  final PostsRepository _repository;
 
   final postsState = PaginatedNotifierState<ApiPost>();
 

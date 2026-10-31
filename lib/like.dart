@@ -28,6 +28,7 @@ export 'src/models/like_sync_task.dart' show LikeSyncPriority;
 
 // Client
 export 'src/client/like_client.dart';
+export 'src/client/like_http_client.dart';
 export 'src/client/like_websocket_client.dart';
 export 'src/client/like_error_handler.dart';
 

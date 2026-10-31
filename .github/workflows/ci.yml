@@ -33,17 +33,24 @@ jobs:
           "$FLUTTER_SDK_DIR/bin/flutter" precache --web
           "$FLUTTER_SDK_DIR/bin/flutter" --version
       - run: flutter pub get
-      - run: flutter test
+      - run: flutter test --coverage
       - name: Check changed Dart formatting
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           git fetch --depth=1 origin "$BASE_SHA"
-          git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format --output=none --set-exit-if-changed
+          git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format
+          git diff --exit-code -- '*.dart'
       - name: Install test server dependencies
         working-directory: server
         run: dart pub get
+      - name: Test API server
+        working-directory: server
+        run: dart test
+      - name: Test state management integrations
+        working-directory: example
+        run: flutter test --coverage --coverage-path=../coverage/example.lcov.info
       - run: flutter analyze
       - name: Build web example
         working-directory: example
@@ -55,6 +62,14 @@ jobs:
           # Flutter setup migrates these files on the runner only.
           git restore -- analysis_options.yaml example/analysis_options.yaml
           flutter pub publish --dry-run
+      - name: Upload test coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-coverage
+          path: coverage/
+          retention-days: 1
+          if-no-files-found: ignore
       # No SDK/dependency cache is uploaded. On cancellation/timeout the hosted
       # runner is also discarded; cleanup is best effort if the job is killed.
       - name: Delete temporary SDK and dependencies

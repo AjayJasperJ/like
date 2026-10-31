@@ -28,7 +28,7 @@ abstract final class DependencyInjection {
             context.read<TokenStorageService>(),
           ),
         ),
-        Provider<PostRepository>(
+        Provider<PostsRepository>(
           create: (context) => PostRepository(
             context.read<PostApiService>(),
           ),
@@ -60,7 +60,7 @@ abstract final class DependencyInjection {
         ),
         ChangeNotifierProvider<PostProvider>(
           create: (context) => PostProvider(
-            context.read<PostRepository>(),
+            context.read<PostsRepository>(),
           ),
         ),
         ChangeNotifierProvider<SystemProvider>(
