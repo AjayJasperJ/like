@@ -15,3 +15,6 @@ export 'src/interceptors/like_retry_interceptor.dart';
 export 'src/services/like_connectivity_manager.dart';
 export 'src/services/like_pipeline.dart';
 export 'src/services/like_sync_manager.dart';
+
+export 'package:dio/dio.dart'
+    show HttpClientAdapter, RequestOptions, ResponseBody, Options;
