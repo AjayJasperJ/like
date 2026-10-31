@@ -1,0 +1,42 @@
+name: Package checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Check changed Dart formatting
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format --output=none --set-exit-if-changed
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build web example
+        working-directory: example
+        run: |
+          flutter pub get
+          flutter build web
+      - name: Validate package contents
+        run: flutter pub publish --dry-run

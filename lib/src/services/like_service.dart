@@ -158,7 +158,11 @@ class LikeService {
       final dynamic rawData = entry['data'];
       dynamic decodedData;
 
-      if (rawData is String &&
+      if (entry['formatVersion'] == 2) {
+        decodedData = rawData is Map
+            ? LikeUtils.castToMapStringDynamic(rawData)
+            : rawData;
+      } else if (rawData is String &&
           rawData.length > LikeConstants.computeThreshold) {
         decodedData = await compute(LikeHelpers.parseJson, rawData);
       } else if (rawData is String) {
@@ -195,6 +199,7 @@ class LikeService {
         (options.extra['cacheStorageDuration'] as Duration?)?.inMilliseconds;
 
     await cacheBox.put(key, {
+      'formatVersion': 2,
       'data': data,
       'timestamp': timestamp,
       if (storageDurationMs != null) 'storageDurationMs': storageDurationMs,

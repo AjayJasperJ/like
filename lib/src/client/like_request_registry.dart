@@ -101,7 +101,6 @@ class LikeRequestRegistry {
     }
     _inFlightRequests.clear();
     _l1Cache.clear();
-    _disposed = false;
   }
 
   void dispose() {
