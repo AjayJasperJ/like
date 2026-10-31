@@ -16,14 +16,22 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
+    env:
+      FLUTTER_SDK_DIR: ${{ runner.temp }}/like-test-flutter
+      PUB_CACHE: ${{ runner.temp }}/like-test-pub-cache
+      CI: true
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Download temporary Flutter SDK
+        run: |
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_SDK_DIR"
+          echo "$FLUTTER_SDK_DIR/bin" >> "$GITHUB_PATH"
+          "$FLUTTER_SDK_DIR/bin/flutter" config --no-analytics
+          "$FLUTTER_SDK_DIR/bin/flutter" precache --web
+          "$FLUTTER_SDK_DIR/bin/flutter" --version
       - run: flutter pub get
+      - run: flutter test
       - name: Check changed Dart formatting
         if: github.event_name == 'pull_request'
         env:
@@ -32,7 +40,6 @@ jobs:
           git fetch --depth=1 origin "$BASE_SHA"
           git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format --output=none --set-exit-if-changed
       - run: flutter analyze
-      - run: flutter test
       - name: Build web example
         working-directory: example
         run: |
@@ -40,3 +47,9 @@ jobs:
           flutter build web
       - name: Validate package contents
         run: flutter pub publish --dry-run
+      # No SDK/dependency cache is uploaded. On cancellation/timeout the hosted
+      # runner is also discarded; cleanup is best effort if the job is killed.
+      - name: Delete temporary SDK and dependencies
+        if: always()
+        run: |
+          rm -rf -- "$FLUTTER_SDK_DIR" "$PUB_CACHE"
