@@ -24,8 +24,7 @@ class LikeLogger {
 
   /// Initializes the logging system.
   static Future<void> init() async {
-    if (LikeConstants.disableFileLogging ||
-        kIsWeb) {
+    if (LikeConstants.disableFileLogging || kIsWeb) {
       _isInitialized = true;
       return;
     }
@@ -71,7 +70,8 @@ class LikeLogger {
     message = LikeRedaction.message(message);
     final timestampStr = DateTime.now().toIso8601String();
     final safeDetails = LikeRedaction.sanitize(details,
-      sensitiveKeys: LikeConstants.current.sensitiveHeaders) as Map<String, Object?>?;
+            sensitiveKeys: LikeConstants.current.sensitiveHeaders)
+        as Map<String, Object?>?;
     final entry = {
       'timestamp': timestampStr,
       'level': level.name,
@@ -120,11 +120,12 @@ class LikeLogger {
         if (method != null) 'method': method,
         if (requestHeaders != null) 'requestHeaders': requestHeaders,
         if (responseHeaders != null) 'responseHeaders': responseHeaders,
-        if (requestBody != null) 'requestBody': kReleaseMode
-            ? LikeRedaction.omitted : requestBody,
+        if (requestBody != null)
+          'requestBody': kReleaseMode ? LikeRedaction.omitted : requestBody,
         if (requestFields != null) 'requestFields': requestFields,
         if (requestQuery != null) 'requestQuery': requestQuery,
-        if (response != null) 'response': LikeRedaction.apiPayload(response, release: kReleaseMode),
+        if (response != null)
+          'response': LikeRedaction.apiPayload(response, release: kReleaseMode),
         if (shouldShrink) 'shrink': true,
         if (statusText != null) 'status': statusText,
       },
