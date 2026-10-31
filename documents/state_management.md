@@ -226,3 +226,9 @@ is not cached and is removed at completion; the job timeout is one hour.
 
 See [ARCHITECTURE.md](../ARCHITECTURE.md) for the source map and
 [the interceptor pipeline](interceptor_pipeline.md) for request processing details.
+
+## Pending integration work
+
+Track cancellation propagation, reconnect/pipeline parity and additional adapters
+in [pending tasks and flow updates](pending_tasks.md). Documentation of a pattern
+does not imply that a dedicated adapter or test suite is implemented.

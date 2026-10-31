@@ -6,33 +6,37 @@ The **Link Intelligent Kernel Engine (LIKE)** network stack relies on a multi-ti
 
 ## Architecture & Execution Order
 
-When a request is initiated via `LikeClient` or `LikeService`, it flows sequentially through the interceptor pipeline in the following order:
+Requests dispatched by LikeClient use the following registration order from
+[LikeClientFactory](../lib/src/client/like_client_factory.dart). LikeService owns
+storage/bootstrap; it is not the HTTP request entrypoint.
 
-```
-Outgoing Request
-   │
-   ├─► 1. LikePerformanceInterceptor    (Starts duration timer)
-   ├─► 2. LikeThrottlingInterceptor     (Applies dev latency simulation)
-   ├─► 3. LikeMockInterceptor           (Intercepts & resolves mock rules)
-   ├─► 4. LikeConnectivityInterceptor   (Preflight check & fast-fail offline)
-   ├─► 5. LikeAuthInterceptor           (Injects Bearer token & x-api-key; rate-limit delays)
-   ├─► 6. LikeEtagInterceptor           (Attaches If-None-Match header)
-   ├─► 7. LikeRetryInterceptor          (Manages request-local transport retries)
-   ├─► 8. LikeOfflineSyncInterceptor    (Prepares offline mutation metadata)
-   ├─► 9. LikeCacheInterceptor          (Saves GET responses to Hive L2 cache)
-   ├─► 10. LikePipelineInterceptor      (Emits GET responses to LikePipeline)
-   ├─► 11. LikeLoggerInterceptor        (Prints compact / expanded log output)
-   │
-   ▼
-Network Transmission (Dio HttpClientAdapter)
-```
+| Order | Interceptor | Condition |
+| --- | --- | --- |
+| 1 | LikeLoggerInterceptor | logApiResponses enabled |
+| 2 | LikeMockInterceptor | Always installed |
+| 3 | LikeEtagInterceptor | Always installed |
+| 4 | LikeCacheInterceptor | Always installed |
+| 5 | LikePipelineInterceptor | Always installed |
+| 6 | LikeConnectivityInterceptor | Always installed |
+| 7 | LikeOfflineSyncInterceptor | offlineSyncEnabled |
+| 8 | LikeRetryInterceptor | Always installed |
+| 9 | LikePerformanceInterceptor | perfTrackingEnabled |
+| 10 | LikeThrottlingInterceptor | Always installed |
+| 11 | LikeAuthInterceptor | Always installed |
+| 12 | Custom interceptors | App-supplied order |
+
+This table describes registration, not a guarantee that every handler runs.
+A resolve/reject short-circuit and nested retry can change which handlers execute.
+Offline queuing happens in error handling for eligible mutations.
+
+See [pending tasks and target flows](pending_tasks.md) for planned changes.
 
 ---
 
 ## Detailed Interceptor Breakdown
 
 ### 1. `LikeConnectivityInterceptor`
-- **File**: [`like_connectivity_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_connectivity_interceptor.dart)
+- **File**: [`like_connectivity_interceptor.dart`](../lib/src/interceptors/like_connectivity_interceptor.dart)
 - **Role**: Preflight connection check & fast-fail mechanism.
 - **Key Behaviors**:
   - `onRequest`: Checks device connectivity via `LikeConnectivityManager()`. If marked offline, it triggers an instant reachability probe. If the probe confirms offline state, it immediately rejects the request with `DioExceptionType.connectionError` (0ms delay), preventing long timeout waits.
@@ -41,7 +45,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 2. `LikeAuthInterceptor`
-- **File**: [`like_auth_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_auth_interceptor.dart)
+- **File**: [`like_auth_interceptor.dart`](../lib/src/interceptors/like_auth_interceptor.dart)
 - **Role**: Access token injection, HTTP 401 token refresh queue, and HTTP 429 rate-limiting.
 - **Key Behaviors**:
   - **Token Injection**: Injects `Authorization: Bearer <token>` and `x-api-key: <key>` headers automatically unless `withAuth: false` is configured in `options.extra`.
@@ -51,7 +55,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 3. `LikeOfflineSyncInterceptor`
-- **File**: [`like_offline_sync_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_offline_sync_interceptor.dart)
+- **File**: [`like_offline_sync_interceptor.dart`](../lib/src/interceptors/like_offline_sync_interceptor.dart)
 - **Role**: Persistent offline queue for `POST`, `PUT`, `DELETE`, and `PATCH` mutations.
 - **Key Behaviors**:
   - `onError`: When an eligible mutation request fails due to an ambiguous transport error, the payload, headers, endpoint, and query parameters are serialized to a Hive box with a unique SHA-256 stable ID.
@@ -61,7 +65,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 4. `LikeCacheInterceptor`
-- **File**: [`like_cache_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_cache_interceptor.dart)
+- **File**: [`like_cache_interceptor.dart`](../lib/src/interceptors/like_cache_interceptor.dart)
 - **Role**: Persists successful GET responses to the Hive L2 disk cache.
 - **Key Behaviors**:
   - `onResponse`: Awaits saving HTTP 200 `GET` responses into Hive before proceeding, ensuring the L2 cache is immediately ready for 304 validation.
@@ -70,7 +74,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 5. `LikeEtagInterceptor`
-- **File**: [`like_etag_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_etag_interceptor.dart)
+- **File**: [`like_etag_interceptor.dart`](../lib/src/interceptors/like_etag_interceptor.dart)
 - **Role**: HTTP ETag conditional request validation (HTTP 304 Not Modified).
 - **Key Behaviors**:
   - `onRequest`: Attaches `If-None-Match: <etag>` header if an ETag is saved in `LikeService` for the target request key.
@@ -80,7 +84,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 6. `LikePipelineInterceptor`
-- **File**: [`like_pipeline_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_pipeline_interceptor.dart)
+- **File**: [`like_pipeline_interceptor.dart`](../lib/src/interceptors/like_pipeline_interceptor.dart)
 - **Role**: Broadcasts successful `GET` responses to `LikePipeline`.
 - **Key Behaviors**:
   - `onResponse`: Re-wraps HTTP 200 responses and emits them to `LikePipeline().emit(key, response)`, automatically updating all active UI `LikeNotifierState` listeners observing that endpoint path.
@@ -88,7 +92,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 7. `LikeRetryInterceptor`
-- **File**: [`like_retry_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_retry_interceptor.dart)
+- **File**: [`like_retry_interceptor.dart`](../lib/src/interceptors/like_retry_interceptor.dart)
 - **Role**: Bounded request-local retries for idempotent transport failures (`GET`, `HEAD`, `OPTIONS`).
 - **Key Behaviors**:
   - Only retries safe read methods on connection errors, timeouts, or socket failures.
@@ -97,7 +101,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 8. `LikeLoggerInterceptor`
-- **File**: [`like_logger_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_logger_interceptor.dart)
+- **File**: [`like_logger_interceptor.dart`](../lib/src/interceptors/like_logger_interceptor.dart)
 - **Role**: Request and response developer console logging.
 - **Key Behaviors**:
   - Generates request UUIDs (`requestId`) and logs query parameters, headers, and multipart form fields.
@@ -107,7 +111,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 9. `LikeMockInterceptor`
-- **File**: [`like_mock_interceptor.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_mock_interceptor.dart)
+- **File**: [`like_mock_interceptor.dart`](../lib/src/interceptors/like_mock_interceptor.dart)
 - **Role**: Dev/staging network mocking engine.
 - **Key Behaviors**:
   - `onRequest`: Evaluates enabled `MockRule`s against request method, URL pattern, regex, query parameters, headers, and request body.
@@ -116,7 +120,7 @@ Network Transmission (Dio HttpClientAdapter)
 ---
 
 ### 10. `LikePerformanceInterceptor` & `LikeThrottlingInterceptor`
-- **File**: [`like_perf_interceptors.dart`](file:///home/ja5p3r/Projects/packages/like/lib/src/interceptors/like_perf_interceptors.dart)
+- **File**: [`like_perf_interceptors.dart`](../lib/src/interceptors/like_perf_interceptors.dart)
 - **Role**: Performance timing & simulated network latency.
 - **Key Behaviors**:
   - **`LikePerformanceInterceptor`**: Tracks start time in `options.extra['startTime']` and logs total roundtrip execution duration in milliseconds (`options.extra['durationMs']`).

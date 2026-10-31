@@ -63,3 +63,8 @@ Coverage artifacts remain downloadable for one day. SDK/dependency downloads are
 not uploaded and are deleted at job completion, with a one-hour job timeout.
 Coverage describes exercised lines, not a promise that every behavior is tested.
 The original offline/session/retry roadmap remains separate from this integration.
+
+## Implementation status
+
+See [pending tasks and flow updates](documents/pending_tasks.md) for completed
+increments, remaining work, acceptance criteria and current versus target flows.
