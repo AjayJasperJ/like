@@ -6,7 +6,8 @@ typedef BaseApiService = LikeBaseApiService;
 abstract class LikeBaseApiService {
   final LikeHttpClient _client;
 
-  LikeBaseApiService({LikeHttpClient? client}) : _client = client ?? LikeClient();
+  LikeBaseApiService({LikeHttpClient? client})
+      : _client = client ?? LikeClient();
 
   Future<ApiResult<Response>> get(
     String path, {
