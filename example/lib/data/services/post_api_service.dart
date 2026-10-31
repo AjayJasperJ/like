@@ -3,6 +3,8 @@ import '../models/api_models.dart';
 import '../../core/constants/api_urls.dart';
 
 final class PostApiService extends LikeBaseApiService {
+  PostApiService({super.client});
+
   Future<ApiResult<PaginatedPosts>> list({
     int page = 1,
     int limit = 10,

@@ -1,5 +1,8 @@
 import 'dart:async';
-import 'package:http_parser/http_parser.dart';
+import 'package:like/src/core/like_multipart_file.dart';
+import 'package:like/src/client/like_http_client.dart';
+
+export 'package:like/src/core/like_multipart_file.dart';
 import 'package:like/src/core/like_ars.dart';
 import 'package:like/src/core/like_auth_config.dart';
 import 'package:dio/dio.dart';
@@ -31,7 +34,7 @@ import 'package:like/src/services/like_service.dart';
 /// * **Offline Sync**: Queues POST/PUT/DELETE requests for later synchronization.
 ///
 /// Matches enterprise's ApiClient and ApiExecutor parity with 1000/1000 architectural alignment.
-class LikeClient {
+class LikeClient implements LikeHttpClient {
   static LikeClient? _instance;
 
   /// Resets the singleton instance. Primarily used for testing.
@@ -564,6 +567,7 @@ class LikeClient {
   /// [ars] provides fine-grained control over caching and deduplication.
   /// [requestConfig] optionally overrides network settings (baseUrl, timeouts,
   /// headers, unpacker) for this single call without affecting global defaults.
+  @override
   Future<LikeApiResult<Response>> get(
     String path, {
     Map<String, dynamic>? query,
@@ -627,6 +631,7 @@ class LikeClient {
   /// [offlineSync] must be explicitly enabled to make this application-owned
   /// mutation eligible for durable replay after an ambiguous network failure.
   /// [requestConfig] optionally overrides network settings for this single call.
+  @override
   Future<LikeApiResult<Response>> post(
     String path, {
     Object? body,
@@ -669,6 +674,7 @@ class LikeClient {
   ///
   /// Durable replay remains disabled unless [offlineSync] is explicitly true.
   /// [requestConfig] optionally overrides network settings for this single call.
+  @override
   Future<LikeApiResult<Response>> put(
     String path, {
     Object? body,
@@ -711,6 +717,7 @@ class LikeClient {
   ///
   /// Durable replay remains disabled unless [offlineSync] is explicitly true.
   /// [requestConfig] optionally overrides network settings for this single call.
+  @override
   Future<LikeApiResult<Response>> patch(
     String path, {
     Object? body,
@@ -753,6 +760,7 @@ class LikeClient {
   ///
   /// Durable replay remains disabled unless [offlineSync] is explicitly true.
   /// [requestConfig] optionally overrides network settings for this single call.
+  @override
   Future<LikeApiResult<Response>> delete(
     String path, {
     Object? body,
@@ -798,6 +806,7 @@ class LikeClient {
   /// [files] is a list of [MultipartBytesFile] for in-memory file data.
   /// [requestConfig] optionally overrides network settings for this single call.
   /// This is especially useful for upload endpoints that need a longer [sendTimeout].
+  @override
   Future<LikeApiResult<Response>> multipart(
     String path, {
     String method = 'POST',
@@ -988,26 +997,4 @@ class LikeClient {
     _dio.close();
     _instance = null;
   }
-}
-
-/// Represents a file to be uploaded as byte data in a multipart request.
-class MultipartBytesFile {
-  /// The form field name for the file.
-  final String field;
-
-  /// The raw bytes of the file.
-  final Uint8List bytes;
-
-  /// The name of the file to be sent to the server.
-  final String filename;
-
-  /// The MIME type of the file.
-  final MediaType? contentType;
-
-  const MultipartBytesFile({
-    required this.field,
-    required this.bytes,
-    required this.filename,
-    this.contentType,
-  });
 }

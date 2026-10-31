@@ -4,9 +4,9 @@ import 'package:like/like.dart';
 typedef BaseApiService = LikeBaseApiService;
 
 abstract class LikeBaseApiService {
-  final LikeClient _client;
+  final LikeHttpClient _client;
 
-  LikeBaseApiService({LikeClient? client}) : _client = client ?? LikeClient();
+  LikeBaseApiService({LikeHttpClient? client}) : _client = client ?? LikeClient();
 
   Future<ApiResult<Response>> get(
     String path, {
