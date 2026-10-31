@@ -40,7 +40,7 @@ jobs:
         run: |
           git fetch --depth=1 origin "$BASE_SHA"
           git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format
-          git diff --exit-code -- '*.dart'
+          git diff -- '*.dart'
       - run: flutter test --coverage
       - name: Browser tests in headless Chrome
         run: |

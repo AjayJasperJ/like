@@ -30,7 +30,8 @@ class LikeQuery<T> {
     }));
     _subscriptions.add((restoredOrigins ?? LikeConnectivityManager().originRestorations
         .map((event) => event.origin)).listen((restored) {
-      if (Uri.tryParse(restored)?.origin == origin) _scheduleRefresh();
+      final uri = Uri.tryParse(restored);
+      if (uri != null && uri.hasAuthority && uri.origin == origin) { _scheduleRefresh(); }
     }));
     if (sessionChanges != null) _subscriptions.add(sessionChanges.listen((_) {
       _generation++;
