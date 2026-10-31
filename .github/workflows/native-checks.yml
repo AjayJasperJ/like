@@ -36,7 +36,7 @@ jobs:
           "$FLUTTER_SDK_DIR/bin/flutter" --version
       - run: flutter pub get
       - name: Native VM tests
-        run: flutter test --exclude-tags browser
+        run: flutter test --concurrency=2
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev

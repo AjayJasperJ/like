@@ -62,22 +62,22 @@ void main() {
     });
     dio.interceptors.addAll([LikeEtagInterceptor(), LikeCacheInterceptor()]);
     final first = await dio.get<dynamic>('/ok').timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => throw TimeoutException('Initial cached GET stalled'),
-    );
+          const Duration(seconds: 5),
+          onTimeout: () => throw TimeoutException('Initial cached GET stalled'),
+        );
     expect(first.data['ok'], isTrue);
     expect(LikeService.getEtag('$base/ok'), '"fixture-v1"');
     expect(LikeService.getEtag('http://localhost:8765/ok'), isNull);
     final second = await dio.get<dynamic>('/ok').timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => throw TimeoutException('Conditional GET stalled'),
-    );
+          const Duration(seconds: 5),
+          onTimeout: () => throw TimeoutException('Conditional GET stalled'),
+        );
     expect(second.extra['isFrom304'], isTrue);
     expect(second.data['ok'], isTrue);
     final other = await dio.get<dynamic>('http://localhost:8765/ok').timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => throw TimeoutException('Second origin GET stalled'),
-    );
+          const Duration(seconds: 5),
+          onTimeout: () => throw TimeoutException('Second origin GET stalled'),
+        );
     expect(other.extra['isFrom304'], isNot(isTrue));
   });
 

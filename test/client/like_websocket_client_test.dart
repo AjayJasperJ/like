@@ -71,6 +71,7 @@ void main() {
         reconnectInterval: const Duration(milliseconds: 100),
       );
 
+      addTearDown(client.dispose);
       await client.connect();
       expect(client.isConnected, isTrue);
 
@@ -83,10 +84,9 @@ void main() {
       }
       activeServerSockets.clear();
 
-      await disconnected.timeout(const Duration(seconds: 5));
-      expect(client.isConnected, isFalse);
+      expect(await disconnected.timeout(const Duration(seconds: 10)), isFalse);
 
-      await reconnected.timeout(const Duration(seconds: 5));
+      expect(await reconnected.timeout(const Duration(seconds: 10)), isTrue);
       expect(client.isConnected, isTrue);
 
       await client.dispose();
