@@ -41,7 +41,7 @@ void main() {
   });
 
   test('LIKE uses the real browser adapter and leaves application data intact', () async {
-    LikeConstants.apply(LikeConfig(disableFileLogging: true, silentConsole: true));
+    LikeConstants.apply(LikeConfig(projectName: 'portable-tests', disableFileLogging: true, silentConsole: true));
     final client = LikeClient(baseUrl: base, dio: dio);
     addTearDown(() { client.dispose(); LikeConstants.reset(); });
     final result = await client.get('/ok', disableCache: true);

@@ -72,7 +72,7 @@ void main() {
   });
 
   test('logger sanitizes all sinks without modifying the Dio response', () async {
-    LikeConstants.apply(LikeConfig(disableFileLogging: true, silentConsole: true));
+    LikeConstants.apply(LikeConfig(projectName: 'portable-tests', disableFileLogging: true, silentConsole: true));
     addTearDown(LikeConstants.reset);
     final entry = LikeLogger.logStream.first;
     final dio = Dio()..httpClientAdapter = _Adapter();

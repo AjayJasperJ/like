@@ -33,6 +33,14 @@ jobs:
           "$FLUTTER_SDK_DIR/bin/flutter" precache --web
           "$FLUTTER_SDK_DIR/bin/flutter" --version
       - run: flutter pub get
+      - name: Check changed Dart formatting
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format
+          git diff --exit-code -- '*.dart'
       - run: flutter test --coverage
       - name: Browser tests in headless Chrome
         run: |
@@ -44,14 +52,6 @@ jobs:
             sleep 1
           done
           flutter test --platform chrome test/portable test/core test/models test/widgets/like_builder_test.dart test/widgets/like_when_test.dart test/widgets/like_sliver_builder_test.dart test/extensions_test.dart test/pagination_test.dart
-      - name: Check changed Dart formatting
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          git fetch --depth=1 origin "$BASE_SHA"
-          git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format
-          git diff --exit-code -- '*.dart'
       - name: Install test server dependencies
         working-directory: server
         run: dart pub get
