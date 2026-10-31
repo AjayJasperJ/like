@@ -1,3 +1,5 @@
+import 'package:universal_io/io.dart' show SocketException;
+import 'package:like/src/core/like_retry_policy.dart';
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -15,8 +17,10 @@ class LikeRetryInterceptor extends Interceptor {
   static const String _retryInterceptorKey = 'like.transportRetryEnabled';
 
   final Dio dio;
+  final LikeRetryPolicy policy;
 
-  LikeRetryInterceptor({required this.dio});
+  LikeRetryInterceptor({required this.dio, LikeRetryPolicy? policy})
+      : policy = policy ?? LikeRetryPolicy();
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -45,7 +49,7 @@ class LikeRetryInterceptor extends Interceptor {
 
     try {
       await _cancellableDelay(
-        _delayForAttempt(options, retryCount),
+        policy.jitter(_delayForAttempt(options, retryCount)),
         options.cancelToken,
       );
       if (options.cancelToken?.isCancelled ?? false) {
@@ -88,6 +92,9 @@ class LikeRetryInterceptor extends Interceptor {
   }
 
   static bool _isRetryableTransportFailure(DioException error) {
+    if (error.type == DioExceptionType.unknown && error.error is! SocketException) {
+      return false;
+    }
     final method = error.requestOptions.method.toUpperCase();
     const safeMethods = <String>{'GET', 'HEAD', 'OPTIONS'};
     if (!safeMethods.contains(method) || error.response != null) return false;

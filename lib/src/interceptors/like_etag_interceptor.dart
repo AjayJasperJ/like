@@ -1,3 +1,4 @@
+import 'package:like/src/core/like_session_scope.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/services/like_pipeline.dart';
 import 'package:like/src/services/like_service.dart';
@@ -11,7 +12,7 @@ class LikeEtagInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     if (options.method == 'GET' && options.extra['disableCache'] != true) {
-      final key = options.uri.toString();
+      final key = LikeSessionIdentity.forRequest(options);
       final etag = LikeService.getEtag(key);
       if (etag != null) {
         options.headers['If-None-Match'] = etag;
@@ -26,7 +27,7 @@ class LikeEtagInterceptor extends Interceptor {
       // Store new ETag on successful 200
       final etag = response.headers.value('etag');
       if (etag != null && response.statusCode == 200) {
-        final key = response.requestOptions.uri.toString();
+        final key = LikeSessionIdentity.forRequest(response.requestOptions);
         LikeService.putEtag(key, etag);
       }
     }
@@ -41,14 +42,16 @@ class LikeEtagInterceptor extends Interceptor {
     if (response != null &&
         response.statusCode == 304 &&
         err.requestOptions.method == 'GET') {
-      final key = err.requestOptions.uri.toString();
+      final key = LikeSessionIdentity.forRequest(err.requestOptions);
 
       final cached =
           await LikeService.fetchResponseFromCache(err.requestOptions);
       if (cached != null) {
         cached.extra['isFromCache'] = true;
         cached.extra['isFrom304'] = true;
-        LikePipeline().emit(key, cached);
+        if (LikeSessionIdentity.isCurrent(err.requestOptions)) {
+          LikePipeline().emit(key, cached);
+        }
         return handler.resolve(cached);
       }
 

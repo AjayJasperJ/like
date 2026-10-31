@@ -1,3 +1,4 @@
+import 'package:like/src/core/like_session_scope.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -136,7 +137,7 @@ class LikeService {
     RequestOptions options,
   ) async {
     if (!Hive.isBoxOpen(LikeConstants.boxApiCache)) return null;
-    final key = options.uri.toString();
+    final key = LikeSessionIdentity.forRequest(options);
     final entry = cacheBox.get(key);
 
     if (entry != null && entry is Map) {
@@ -192,7 +193,7 @@ class LikeService {
     final options = response.requestOptions;
     if (options.extra['disableCache'] == true) return;
 
-    final key = options.uri.toString();
+    final key = LikeSessionIdentity.forRequest(options);
     final data = response.data;
     final timestamp = DateTime.now().toIso8601String();
     final storageDurationMs =

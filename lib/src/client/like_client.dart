@@ -1,3 +1,5 @@
+import 'package:like/src/models/like_offline_task.dart';
+import 'package:like/src/core/like_session_scope.dart';
 import 'dart:async';
 import 'package:like/src/core/like_multipart_file.dart';
 import 'package:like/src/client/like_http_client.dart';
@@ -41,6 +43,18 @@ class LikeClient implements LikeHttpClient {
   @visibleForTesting
   static void reset() => _instance = null;
 
+  LikeSessionScope _sessionScope = const LikeSessionScope();
+  LikeSessionScope get sessionScope => _sessionScope;
+
+  /// Call before loading another account's data. Dispose account-owned UI state.
+  void setSessionScope(LikeSessionScope scope) {
+    if (_sessionScope.key == scope.key) return;
+    cancelOfflineSync(reason: 'Session changed');
+    _registry.clear();
+    _sessionScope = scope;
+    offlineQueue?.resume();
+  }
+
   late final Dio _dio;
   late final LikeRequestRegistry _registry;
 
@@ -79,12 +93,14 @@ class LikeClient implements LikeHttpClient {
     Duration? timeout,
     Dio? dio,
     LikeAuthConfig? authConfig,
+    LikeSessionScope sessionScope = const LikeSessionScope(),
   }) {
     _instance ??= LikeClient._internal(
       baseUrl: baseUrl,
       timeout: timeout,
       dio: dio,
       authConfig: authConfig,
+      sessionScope: sessionScope,
     );
     return _instance!;
   }
@@ -124,13 +140,16 @@ class LikeClient implements LikeHttpClient {
     Duration? timeout,
     Dio? dio,
     LikeAuthConfig? authConfig,
+    LikeSessionScope sessionScope = const LikeSessionScope(),
   }) {
+    _sessionScope = sessionScope;
     _registry = LikeRequestRegistry();
     _dio = dio ??
         LikeClientFactory.create(
           baseUrl: baseUrl ?? '',
           timeout: timeout,
           registry: _registry,
+          currentSession: () => _sessionScope,
           authConfig: authConfig ?? LikeConstants.current.authConfig,
           // Wire in developer-provided global interceptors from LikeConfig
           customInterceptors: LikeConstants.current.interceptors,
@@ -138,10 +157,12 @@ class LikeClient implements LikeHttpClient {
   }
 
   LikeClient._scoped(LikeClientConfig config) {
+    _sessionScope = config.sessionScope;
     _registry = LikeRequestRegistry();
     _dio = LikeClientFactory.create(
       baseUrl: config.baseUrl ?? LikeConstants.current.baseUrl,
       registry: _registry,
+      currentSession: () => _sessionScope,
       authConfig: config.authConfig,
       customInterceptors: [
         // Global interceptors come first
@@ -197,7 +218,14 @@ class LikeClient implements LikeHttpClient {
     // Per-request network config override. Null means use global defaults.
     LikeRequestConfig? requestConfig,
   }) async {
-    final extra = options?.extra ?? {};
+    final extra = Map<String, dynamic>.from(options?.extra ?? {});
+    final capturedScope = _sessionScope;
+    extra[LikeSessionIdentity.scopeKey] = capturedScope.key;
+    extra[LikeSessionIdentity.currentKey] = () => _sessionScope.key == capturedScope.key;
+    if (capturedScope.isAnonymous && extra['withAuth'] == true) {
+      extra['disableCache'] = true;
+      extra['offlineSync'] = false;
+    }
     final bool isGet = method == 'GET';
     final activeState = Zone.current[#likeActiveState];
     CancelToken? zoneCancelToken;
@@ -256,6 +284,10 @@ class LikeClient implements LikeHttpClient {
     final bool effectiveCacheOnException =
         requestConfig?.cacheOnException ?? LikeConstants.cacheOnException;
 
+    if (requestConfig?.idempotencyKey != null) {
+      extra['idempotencyKey'] = requestConfig!.idempotencyKey;
+    }
+
     // Pass retry overrides into extras so LikeRetryInterceptor can read them
     if (requestConfig?.maxAutoRetries != null) {
       extra['maxAutoRetries'] = requestConfig!.maxAutoRetries;
@@ -286,8 +318,9 @@ class LikeClient implements LikeHttpClient {
       baseUrl: effectiveBaseUrl,
       path: effectivePath,
       queryParameters: queryParameters,
+      extra: extra,
     );
-    final absoluteUriKey = tempOptions.uri.toString();
+    final absoluteUriKey = LikeSessionIdentity.forRequest(tempOptions);
     final requestKey = absoluteUriKey;
 
     // 1. Reset Logic
@@ -496,6 +529,11 @@ class LikeClient implements LikeHttpClient {
     Response response,
     String key,
   ) async {
+    final responseScope = response.requestOptions.extra[LikeSessionIdentity.scopeKey];
+    if (responseScope != null && responseScope != _sessionScope.key) {
+      return LikeApiResult.error(LikeError(message: 'Session changed',
+        type: LikeApiErrorType.cancelled));
+    }
     final bool isFromCache = response.extra['isFromCache'] ?? false;
     if (!isFromCache) {
       LikeConnectivityManager().markServerAvailable(
@@ -532,7 +570,7 @@ class LikeClient implements LikeHttpClient {
 
     // 2. Emit to Pipeline if GET to finalize SWR/Sync states
     if (response.requestOptions.method == 'GET') {
-      final absoluteUriKey = response.requestOptions.uri.toString();
+      final absoluteUriKey = LikeSessionIdentity.forRequest(response.requestOptions);
 
       // Final promotion to L1 cache on success
       _registry.addSessionKey(absoluteUriKey, response: response);
@@ -931,6 +969,7 @@ class LikeClient implements LikeHttpClient {
     return LikeClient._internal(
       baseUrl: baseUrl ?? _dio.options.baseUrl,
       timeout: timeout ?? _dio.options.connectTimeout,
+      sessionScope: _sessionScope,
     );
   }
 
@@ -984,14 +1023,22 @@ class LikeClient implements LikeHttpClient {
     interceptor?.cancelSync(origin: origin, reason: reason);
   }
 
+  LikeOfflineSyncInterceptor? get offlineQueue =>
+      _dio.interceptors.whereType<LikeOfflineSyncInterceptor>().firstOrNull;
+  List<LikeOfflineTask> get offlineTasks => offlineQueue?.tasks ?? const [];
+
   /// Clears the in-memory session registry and L1 cache.
   void clearSession() => _registry.clear();
 
   /// Disposes of the client, closing all streams and cleaning up the registry.
   void dispose() {
+    cancelOfflineSync(reason: 'Client disposed');
+    final queue = offlineQueue;
+    if (queue != null) unawaited(queue.dispose());
     _refreshController.close();
+    _syncController.close();
     _registry.dispose();
     _dio.close();
-    _instance = null;
+    if (identical(_instance, this)) _instance = null;
   }
 }

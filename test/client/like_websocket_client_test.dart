@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:universal_io/io.dart';
@@ -8,15 +9,18 @@ import 'package:like/src/services/like_pipeline.dart';
 void main() {
   late HttpServer server;
   late String wsUrl;
+  late Completer<void> serverAccepted;
   final List<WebSocket> activeServerSockets = [];
 
   setUp(() async {
+    serverAccepted = Completer<void>();
     // Spin up a local mock WebSocket server
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     wsUrl = 'ws://${server.address.address}:${server.port}';
 
     server.transform(WebSocketTransformer()).listen((WebSocket clientSocket) {
       activeServerSockets.add(clientSocket);
+      if (!serverAccepted.isCompleted) serverAccepted.complete();
       clientSocket.listen((message) {
         if (message is String) {
           try {
@@ -74,6 +78,7 @@ void main() {
       addTearDown(client.dispose);
       await client.connect();
       expect(client.isConnected, isTrue);
+      await serverAccepted.future.timeout(const Duration(seconds: 5));
 
       final disconnected = client.connectionChanges.firstWhere((open) => !open);
       final reconnected = client.connectionChanges.firstWhere((open) => open);
@@ -84,9 +89,9 @@ void main() {
       }
       activeServerSockets.clear();
 
-      expect(await disconnected.timeout(const Duration(seconds: 10)), isFalse);
+      expect(await disconnected.timeout(const Duration(seconds: 5)), isFalse);
 
-      expect(await reconnected.timeout(const Duration(seconds: 10)), isTrue);
+      expect(await reconnected.timeout(const Duration(seconds: 5)), isTrue);
       expect(client.isConnected, isTrue);
 
       await client.dispose();

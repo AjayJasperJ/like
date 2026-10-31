@@ -57,7 +57,12 @@ void main() {
     await Hive.openBox(LikeConstants.boxCacheMetadata);
     await Hive.openBox(LikeConstants.boxEtags);
     addTearDown(() async {
-      await Hive.deleteFromDisk();
+      // Clear records before closing connections. Deleting IndexedDB databases
+      // can block on browser-owned handles and is not part of HTTP revalidation.
+      await LikeService.cacheBox.clear();
+      await LikeService.metadataBox.clear();
+      await LikeService.etagBox.clear();
+      await Hive.close();
       LikeConstants.reset();
     });
     dio.interceptors.addAll([LikeEtagInterceptor(), LikeCacheInterceptor()]);
@@ -79,6 +84,7 @@ void main() {
           onTimeout: () => throw TimeoutException('Second origin GET stalled'),
         );
     expect(other.extra['isFrom304'], isNot(isTrue));
+    // HTTP assertions have completed before storage cleanup starts.
   });
 
   test('LIKE uses the real browser adapter and leaves application data intact',

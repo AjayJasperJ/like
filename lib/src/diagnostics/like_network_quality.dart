@@ -47,7 +47,9 @@ class LikeNetworkQualityMonitor {
     if (_disposed ||
         elapsed <= Duration.zero ||
         !uri.hasAuthority ||
-        (uri.scheme != 'http' && uri.scheme != 'https')) return;
+        (uri.scheme != 'http' && uri.scheme != 'https')) {
+      return;
+    }
     if (_latest.length >= 100 && !_latest.containsKey(uri.origin)) {
       final oldest = _latest.keys.first;
       _latest.remove(oldest);
@@ -110,7 +112,9 @@ class LikeNetworkQualityInterceptor extends Interceptor {
     clock.stop();
     if (response?.extra['isFromCache'] == true ||
         response?.extra['isFromStaleWhileRevalidate'] == true ||
-        response?.extra['isFrom304'] == true) return;
+        response?.extra['isFrom304'] == true) {
+      return;
+    }
     final lengths = response?.headers.map['content-length'];
     final bytes = lengths != null && lengths.length == 1
         ? int.tryParse(lengths.first)

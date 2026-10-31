@@ -1,3 +1,4 @@
+import 'package:like/src/core/like_session_scope.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_data_unpacker.dart';
@@ -38,6 +39,8 @@ import 'package:like/src/core/like_data_unpacker.dart';
 /// final result = await paymentsClient.post('/charge', body: chargePayload);
 /// ```
 class LikeClientConfig {
+  final LikeSessionScope sessionScope;
+
   /// The base server URL for all requests made through this scoped client.
   ///
   /// Falls back to [LikeConstants.current.baseUrl] if `null`.
@@ -92,6 +95,7 @@ class LikeClientConfig {
   final List<Interceptor>? interceptors;
 
   const LikeClientConfig({
+    this.sessionScope = const LikeSessionScope(),
     this.baseUrl,
     this.authConfig,
     this.connectTimeout,
