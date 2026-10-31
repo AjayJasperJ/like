@@ -94,6 +94,13 @@ class LikeRequestRegistry {
     return true;
   }
 
+  void invalidateKeys(Iterable<String> keys) {
+    for (final key in keys) {
+      _l1Cache.remove(key);
+      _inFlightRequests.remove(key)?.$2?.cancel('Resource invalidated');
+    }
+  }
+
   /// Cancels all in-flight requests and clears state.
   void clear() {
     for (final entry in _inFlightRequests.values) {

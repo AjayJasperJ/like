@@ -1,3 +1,4 @@
+import 'package:like/src/diagnostics/like_request_trace.dart';
 import 'package:like/src/core/like_session_scope.dart';
 import 'package:like/src/diagnostics/like_network_quality.dart';
 // Conditional import: compiler selects the correct SSL implementation.
@@ -96,6 +97,8 @@ class LikeClientFactory {
     dio.interceptors.addAll(
       [
         LikeSessionInterceptor(currentSession ?? () => const LikeSessionScope()),
+
+        LikeTraceCaptureInterceptor(),
 
         // 0. Logging (Catches all requests)
         if (LikeConstants.logApiResponses) LikeLoggerInterceptor(),

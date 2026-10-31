@@ -11,6 +11,7 @@ class PaginationTool<T> {
   final int? currentContent;
   final bool? hasNextOverride;
   final bool? hasPreviousOverride;
+  final bool cursorBased;
   final String? cursor;
   final String? nextCursor;
   final List<T>? listData;
@@ -24,6 +25,7 @@ class PaginationTool<T> {
     this.currentContent,
     this.hasNextOverride,
     this.hasPreviousOverride,
+    this.cursorBased = false,
     this.cursor,
     this.nextCursor,
     this.listData,
@@ -65,7 +67,7 @@ class PaginationTool<T> {
   /// Selects a strategy based only on metadata supplied by the API.
   bool get hasMore {
     if (hasNextOverride != null) return hasNextOverride!;
-    if (nextCursor != null) return hasMoreByCursor;
+    if (cursorBased || cursor != null || nextCursor != null) return hasMoreByCursor;
     if (totalContent != null) return hasMoreByTotal;
     if (totalPages != null) return hasMoreByPages;
     if (listData != null && contentLimit != null) return hasMoreByList;
@@ -126,10 +128,11 @@ class PaginationTool<T> {
       contentLimit: limit,
       totalPages: totalPages ?? this.totalPages,
       totalContent: totalContent ?? this.totalContent,
-      hasNextOverride: hasNext ?? hasNextOverride,
-      hasPreviousOverride: hasPrevious ?? hasPreviousOverride,
+      hasNextOverride: hasNext,
+      hasPreviousOverride: hasPrevious,
       cursor: cursor ?? this.cursor,
-      nextCursor: nextCursor ?? this.nextCursor,
+      nextCursor: nextCursor,
+      cursorBased: cursorBased || cursor != null || this.cursor != null || this.nextCursor != null,
       listData: data,
     );
   }
@@ -216,6 +219,7 @@ class PaginationTool<T> {
         hasPreviousOverride: hasPreviousOverride ?? this.hasPreviousOverride,
         cursor: cursor ?? this.cursor,
         nextCursor: nextCursor ?? this.nextCursor,
+        cursorBased: cursorBased,
         listData: listData ?? this.listData,
       );
 

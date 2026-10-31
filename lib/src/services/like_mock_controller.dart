@@ -1,7 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+enum LikeMockFailure { none, offline, timeout, cancelled }
+
 class MockRule {
+  final int delayMs;
+  final int maxUses;
+  final LikeMockFailure failure;
+  final Map<String, String> responseHeaders;
   final String id;
   final String name;
   final String description;
@@ -18,6 +24,10 @@ class MockRule {
 
   MockRule({
     required this.id,
+    this.delayMs = 0,
+    this.maxUses = 0,
+    this.failure = LikeMockFailure.none,
+    this.responseHeaders = const {},
     this.name = '',
     this.description = '',
     required this.pathPattern,
@@ -35,6 +45,10 @@ class MockRule {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'delayMs': delayMs,
+      'maxUses': maxUses,
+      'failure': failure.name,
+      'responseHeaders': responseHeaders,
       'name': name,
       'description': description,
       'pathPattern': pathPattern,
@@ -53,6 +67,10 @@ class MockRule {
   factory MockRule.fromMap(Map<dynamic, dynamic> map) {
     return MockRule(
       id: map['id'] as String? ?? '',
+      delayMs: (map['delayMs'] as int? ?? 0).clamp(0, 60000),
+      maxUses: (map['maxUses'] as int? ?? 0).clamp(0, 100000),
+      failure: LikeMockFailure.values.firstWhere((value) => value.name == map['failure'], orElse: () => LikeMockFailure.none),
+      responseHeaders: Map<String, String>.from(map['responseHeaders'] as Map? ?? {}),
       name: map['name'] as String? ?? '',
       description: map['description'] as String? ?? '',
       pathPattern: map['pathPattern'] as String? ?? '',
@@ -69,6 +87,10 @@ class MockRule {
   }
 
   MockRule copyWith({
+    int? delayMs,
+    int? maxUses,
+    LikeMockFailure? failure,
+    Map<String, String>? responseHeaders,
     String? id,
     String? name,
     String? description,
@@ -85,6 +107,10 @@ class MockRule {
   }) {
     return MockRule(
       id: id ?? this.id,
+      delayMs: delayMs ?? this.delayMs,
+      maxUses: maxUses ?? this.maxUses,
+      failure: failure ?? this.failure,
+      responseHeaders: responseHeaders ?? this.responseHeaders,
       name: name ?? this.name,
       description: description ?? this.description,
       pathPattern: pathPattern ?? this.pathPattern,

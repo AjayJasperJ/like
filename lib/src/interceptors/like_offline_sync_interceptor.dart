@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:like/src/services/like_service.dart';
+import 'package:like/src/services/like_invalidation.dart';
 import 'package:universal_io/io.dart' show SocketException;
 import 'package:like/src/services/like_replay_codec.dart';
 import 'package:like/src/models/like_offline_task.dart';
@@ -42,7 +45,8 @@ class LikeOfflineSyncInterceptor extends Interceptor {
 
   List<LikeOfflineTask> get tasks => queueKeys.map((key) {
     final task = Map<String, dynamic>.from(_queueBox.get(key) as Map);
-    final ownerMatches = task['scope'] == currentSession().key;
+    final ownerMatches = task['scope'] == currentSession().key &&
+      !(task['synthetic'] == true && (kReleaseMode || !LikeConstants.mockEnabled));
     final state = !ownerMatches ? LikeOfflineTaskStatus.blocked
         : _running.containsKey(key) ? LikeOfflineTaskStatus.running
         : task['status'] == 'failed' ? LikeOfflineTaskStatus.failed
@@ -65,6 +69,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
       (task) => task['scope'] == currentSession().key && task['status'] == 'failed')
         .map((task) => task['origin']).toSet();
     for (final raw in _queueBox.values) {
+      if (raw is Map && raw['synthetic'] == true && (kReleaseMode || !LikeConstants.mockEnabled)) continue;
       if (raw is! Map || raw['scope'] != currentSession().key || raw['eligible'] == false ||
           raw['status'] == 'failed' || (raw['attempts'] as int? ?? 0) >= (raw['maxAttempts'] as int? ?? 3)) continue;
       final origin = raw['origin'] as String?;
@@ -112,7 +117,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    if (options.extra['offlineSync'] == true && options.extra['isSyncRequest'] != true &&
+    if ((options.extra['offlineSync'] == true || options.extra['idempotencyKey'] is String) && options.extra['isSyncRequest'] != true &&
         const {'POST', 'PUT', 'PATCH', 'DELETE'}.contains(options.method.toUpperCase())) {
       final supplied = options.extra['idempotencyKey'];
       final existing = options.headers.entries.where((e) => e.key.toLowerCase() == 'idempotency-key');
@@ -210,6 +215,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         'version': queueSchemaVersion,
         'scope': options.extra[LikeSessionIdentity.scopeKey] ?? currentSession().key,
         'withAuth': options.extra['withAuth'] == true,
+        'invalidates': options.extra['like.invalidates'] ?? const <String>[],
         'id': stableId,
         'origin': origin,
         'eligible': true,
@@ -221,6 +227,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         'method': options.method.toUpperCase(),
         'body': encodedBody,
         'status': 'pending',
+        'synthetic': options.extra['like.synthetic'] == true,
         'query': options.queryParameters,
         'headers': Map<String, dynamic>.from(options.headers)
           ..removeWhere((name, _) => const {'authorization', 'x-api-key', 'cookie'}.contains(name.toLowerCase())),
@@ -296,6 +303,9 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     if (raw is! Map) return;
     final task = Map<String, dynamic>.from(raw);
     if (task['eligible'] == false) return;
+    if (task['synthetic'] == true && (kReleaseMode || !LikeConstants.mockEnabled)) {
+      throw StateError('Synthetic scenario is disabled');
+    }
     if (task['scope'] != currentSession().key) {
       throw StateError('Queued action belongs to another or legacy session');
     }
@@ -367,6 +377,13 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     // before notifying presentation code. A refresh-listener failure must never
     // reclassify acknowledged work as a failed replay.
     await _lock.synchronized(() => _queueBox.delete(key));
+    final tags = Set<String>.from(task['invalidates'] as List? ?? const []);
+    if (tags.isNotEmpty && task['scope'] == currentSession().key) {
+      final origin = Uri.parse(task['origin'] as String).origin;
+      try { await LikeService.invalidateTags(tags, task['scope'] as String, origin); } catch (_) {}
+      LikeInvalidationHub.shared.emit(LikeInvalidationEvent(tags,
+        scope: task['scope'] as String, origin: origin));
+    }
     try {
       await _notifyRefresh(task['path'] as String);
     } catch (error) {
@@ -465,7 +482,8 @@ class LikeOfflineSyncInterceptor extends Interceptor {
       if (raw is! Map) continue;
       final task = Map<String, dynamic>.from(raw);
       final taskOrigin = task['origin'] as String?;
-      final eligible = task['eligible'] != false;
+      final eligible = task['eligible'] != false &&
+          !(task['synthetic'] == true && (kReleaseMode || !LikeConstants.mockEnabled));
       if (failedOrigins.contains(taskOrigin)) continue;
       if (!eligible || task['scope'] != currentSession().key ||
           (origin != null && taskOrigin != origin)) continue;

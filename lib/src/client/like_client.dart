@@ -1,3 +1,6 @@
+import 'package:like/src/diagnostics/like_request_trace.dart';
+import 'package:uuid/uuid.dart';
+import 'package:like/src/services/like_invalidation.dart';
 import 'package:like/src/models/like_offline_task.dart';
 import 'package:like/src/core/like_session_scope.dart';
 import 'dart:async';
@@ -43,6 +46,30 @@ class LikeClient implements LikeHttpClient {
   @visibleForTesting
   static void reset() => _instance = null;
 
+  final _resourceIndex = LikeResourceIndex();
+  final _sessionChanges = StreamController<LikeSessionScope>.broadcast();
+  Stream<LikeSessionScope> get sessionChanges => _sessionChanges.stream;
+  StreamSubscription<LikeInvalidationEvent>? _invalidationSubscription;
+  void _watchInvalidations() {
+    _invalidationSubscription = LikeInvalidationHub.shared.stream.listen((event) {
+      if (event.scope == _sessionScope.key) _registry.invalidateKeys(_resourceIndex.matching(event));
+    });
+  }
+
+  Future<void> invalidateTags(Iterable<String> tags, {String? origin}) async {
+    if (tags.isEmpty) return;
+    final target = origin ?? Uri.parse(_dio.options.baseUrl).origin;
+    final event = LikeInvalidationEvent(tags, scope: _sessionScope.key, origin: target);
+    final keys = _resourceIndex.matching(event);
+    try {
+      keys.addAll(await LikeService.invalidateTags(event.tags, event.scope, event.origin));
+    } catch (_) {
+      // Acknowledged writes remain successful even when optional cache cleanup fails.
+    }
+    _registry.invalidateKeys(keys);
+    LikeInvalidationHub.shared.emit(event);
+  }
+
   LikeSessionScope _sessionScope = const LikeSessionScope();
   LikeSessionScope get sessionScope => _sessionScope;
 
@@ -51,7 +78,9 @@ class LikeClient implements LikeHttpClient {
     if (_sessionScope.key == scope.key) return;
     cancelOfflineSync(reason: 'Session changed');
     _registry.clear();
+    _resourceIndex.clear();
     _sessionScope = scope;
+    _sessionChanges.add(scope);
     offlineQueue?.resume();
   }
 
@@ -144,6 +173,7 @@ class LikeClient implements LikeHttpClient {
   }) {
     _sessionScope = sessionScope;
     _registry = LikeRequestRegistry();
+    _watchInvalidations();
     _dio = dio ??
         LikeClientFactory.create(
           baseUrl: baseUrl ?? '',
@@ -159,6 +189,7 @@ class LikeClient implements LikeHttpClient {
   LikeClient._scoped(LikeClientConfig config) {
     _sessionScope = config.sessionScope;
     _registry = LikeRequestRegistry();
+    _watchInvalidations();
     _dio = LikeClientFactory.create(
       baseUrl: config.baseUrl ?? LikeConstants.current.baseUrl,
       registry: _registry,
@@ -218,7 +249,71 @@ class LikeClient implements LikeHttpClient {
     // Per-request network config override. Null means use global defaults.
     LikeRequestConfig? requestConfig,
   }) async {
+    final id = const Uuid().v4();
+    final context = LikeTraceContext();
+    final clock = Stopwatch()..start();
+    var origin = '';
+    try { origin = RequestOptions(baseUrl: _resolveBaseUrl(requestConfig), path: path).uri.origin; } catch (_) {}
+    final scope = _sessionScope.key;
+    LikeDiagnostics.shared.emit(LikeRequestTrace(requestId: id, method: method,
+      origin: origin, scope: scope, phase: LikeTracePhase.started, source: LikeResponseSource.network));
+    try {
+      final result = await _executeRequest(method: method, path: path, data: data,
+        queryParameters: queryParameters, cancelToken: cancelToken,
+        options: (options ?? Options()).copyWith(extra: {...?options?.extra,
+          'requestId': id, 'like.trace': context}),
+        onSendProgress: onSendProgress, onReceiveProgress: onReceiveProgress,
+        requestConfig: requestConfig);
+      final response = result.data;
+      final flags = response?.extra ?? const <String, dynamic>{};
+      final source = result.isError
+          ? result.error?.type == LikeApiErrorType.offlineQueued ? LikeResponseSource.queued
+          : result.error?.type == LikeApiErrorType.cancelled ? LikeResponseSource.cancelled : LikeResponseSource.failed
+          : flags['isMocked'] == true ? LikeResponseSource.mocked
+          : flags['isFrom304'] == true ? LikeResponseSource.notModified
+          : result.isFromStaleWhileRevalidate ? LikeResponseSource.staleWhileRevalidate
+          : result.isResiliencyFallback ? LikeResponseSource.fallback
+          : flags['isFromL1Cache'] == true ? LikeResponseSource.memoryCache
+          : result.isFromCache ? LikeResponseSource.diskCache : LikeResponseSource.network;
+      final extra = context.lastOptions?.extra ?? const <String, dynamic>{};
+      LikeDiagnostics.shared.emit(LikeRequestTrace(requestId: id, method: method,
+        origin: origin, scope: scope, phase: LikeTracePhase.completed, source: source,
+        elapsed: clock.elapsed, statusCode: response?.statusCode ?? result.error?.code,
+        transportRetries: extra['like.transportRetryCount'] as int? ?? 0,
+        rateLimitRetries: extra['x-retry-count'] as int? ?? 0, authRetried: extra['isRetry'] == true));
+      return result;
+    } catch (_) {
+      LikeDiagnostics.shared.emit(LikeRequestTrace(requestId: id, method: method,
+        origin: origin, scope: scope, phase: LikeTracePhase.completed,
+        source: LikeResponseSource.failed, elapsed: clock.elapsed));
+      rethrow;
+    } finally { clock.stop(); }
+  }
+
+  Response? _cachedMemory(String key, RequestOptions current) {
+    final stored = _registry.getSessionData(key);
+    if (stored == null) return null;
+    final extra = Map<String, dynamic>.from(stored.extra)
+      ..remove('isFrom304')..remove('isFromStaleWhileRevalidate')..remove('isResiliencyFallback')
+      ..['isFromCache'] = true..['isFromL1Cache'] = true;
+    return Response(requestOptions: current, data: stored.data, headers: stored.headers,
+      statusCode: stored.statusCode, extra: extra);
+  }
+
+  Future<LikeApiResult<Response>> _executeRequest({
+    required String method,
+    required String path,
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+    Options? options,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+    // Per-request network config override. Null means use global defaults.
+    LikeRequestConfig? requestConfig,
+  }) async {
     final extra = Map<String, dynamic>.from(options?.extra ?? {});
+    if (LikeConstants.mockEnabled) extra['disableCache'] = true;
     final capturedScope = _sessionScope;
     extra[LikeSessionIdentity.scopeKey] = capturedScope.key;
     extra[LikeSessionIdentity.currentKey] = () => _sessionScope.key == capturedScope.key;
@@ -236,6 +331,9 @@ class LikeClient implements LikeHttpClient {
         cancelToken ?? zoneCancelToken ?? CancelToken();
     final effectivePath =
         path.startsWith('http') || path.startsWith('/') ? path : '/$path';
+
+    extra['like.cacheTags'] = List<String>.unmodifiable(requestConfig?.cacheTags ?? const []);
+    extra['like.invalidates'] = List<String>.unmodifiable(requestConfig?.invalidates ?? const []);
 
     // --- Per-request config resolution ---
     // Resolve the base URL: requestConfig.baseUrl > namedBaseUrl > dio default
@@ -322,6 +420,8 @@ class LikeClient implements LikeHttpClient {
     );
     final absoluteUriKey = LikeSessionIdentity.forRequest(tempOptions);
     final requestKey = absoluteUriKey;
+    if (isGet) _resourceIndex.bind(requestKey, tempOptions.uri.origin,
+      requestConfig?.cacheTags ?? const <String>[]);
 
     // 1. Reset Logic
     final bool resetSessionStale = extra['resetSessionStale'] ?? false;
@@ -342,7 +442,7 @@ class LikeClient implements LikeHttpClient {
 
     if (isGet && !disableCache) {
       // 1. Check L1 Memory Cache (RAM)
-      final l1Cached = _registry.getSessionData(absoluteUriKey);
+      final l1Cached = _cachedMemory(absoluteUriKey, tempOptions);
       if (sessionStale && l1Cached != null) {
         // suppressErrors: Request Suppression Strategy
         final bool suppressErrors =
@@ -350,12 +450,14 @@ class LikeClient implements LikeHttpClient {
         if (suppressErrors && _registry.isFresh(absoluteUriKey)) {
           l1Cached.extra['isFromL1Cache'] = true;
           l1Cached.extra['isFromCache'] = true;
+        l1Cached.extra['isFromL1Cache'] = true;
           l1Cached.extra['isSuppressedByRSS'] = true;
           return await _handleSuccess(l1Cached, requestKey);
         }
 
         l1Cached.extra['isFromL1Cache'] = true;
         l1Cached.extra['isFromCache'] = true;
+        l1Cached.extra['isFromL1Cache'] = true;
         return await _handleSuccess(l1Cached, requestKey);
       }
 
@@ -455,7 +557,7 @@ class LikeClient implements LikeHttpClient {
 
       if (allowCache) {
         // Try L1 then L2 for SWR instant UI transition
-        var cached = _registry.getSessionData(absoluteUriKey);
+        var cached = _cachedMemory(absoluteUriKey, tempOptions);
         if (cached == null) {
           cached = await LikeService.fetchResponseFromCache(tempOptions);
           if (cached != null) cached.extra['isFromL2Cache'] = true;
@@ -489,7 +591,7 @@ class LikeClient implements LikeHttpClient {
 
       // Update session registry on successful fetch and promote to L1 RAM Cache
       if (isGet && sessionStale) {
-        _registry.addSessionKey(absoluteUriKey, response: response);
+        if (response.extra['isMocked'] != true) _registry.addSessionKey(absoluteUriKey, response: response);
       }
       return await _handleSuccess(response, requestKey);
     } on DioException catch (e) {
@@ -573,7 +675,7 @@ class LikeClient implements LikeHttpClient {
       final absoluteUriKey = LikeSessionIdentity.forRequest(response.requestOptions);
 
       // Final promotion to L1 cache on success
-      _registry.addSessionKey(absoluteUriKey, response: response);
+      if (response.extra['isMocked'] != true) _registry.addSessionKey(absoluteUriKey, response: response);
 
       LikePipeline().emit(
         absoluteUriKey,
@@ -589,6 +691,7 @@ class LikeClient implements LikeHttpClient {
       isFromStaleWhileRevalidate:
           response.extra['isFromStaleWhileRevalidate'] ?? false,
       isResiliencyFallback: response.extra['isResiliencyFallback'] ?? false,
+      isFrom304: response.extra['isFrom304'] ?? false,
     );
   }
 
@@ -701,7 +804,11 @@ class LikeClient implements LikeHttpClient {
         },
       ),
     );
-    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
+    if (result.isSuccess) {
+      notifySync(path, _extractPayload(body, query));
+      await invalidateTags(requestConfig?.invalidates ?? const [],
+        origin: RequestOptions(baseUrl: _resolveBaseUrl(requestConfig), path: path).uri.origin);
+    }
     return result;
   }
 
@@ -744,7 +851,11 @@ class LikeClient implements LikeHttpClient {
         },
       ),
     );
-    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
+    if (result.isSuccess) {
+      notifySync(path, _extractPayload(body, query));
+      await invalidateTags(requestConfig?.invalidates ?? const [],
+        origin: RequestOptions(baseUrl: _resolveBaseUrl(requestConfig), path: path).uri.origin);
+    }
     return result;
   }
 
@@ -787,7 +898,11 @@ class LikeClient implements LikeHttpClient {
         },
       ),
     );
-    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
+    if (result.isSuccess) {
+      notifySync(path, _extractPayload(body, query));
+      await invalidateTags(requestConfig?.invalidates ?? const [],
+        origin: RequestOptions(baseUrl: _resolveBaseUrl(requestConfig), path: path).uri.origin);
+    }
     return result;
   }
 
@@ -830,7 +945,11 @@ class LikeClient implements LikeHttpClient {
         },
       ),
     );
-    if (result.isSuccess) notifySync(path, _extractPayload(body, query));
+    if (result.isSuccess) {
+      notifySync(path, _extractPayload(body, query));
+      await invalidateTags(requestConfig?.invalidates ?? const [],
+        origin: RequestOptions(baseUrl: _resolveBaseUrl(requestConfig), path: path).uri.origin);
+    }
     return result;
   }
 
@@ -1037,6 +1156,8 @@ class LikeClient implements LikeHttpClient {
     if (queue != null) unawaited(queue.dispose());
     _refreshController.close();
     _syncController.close();
+    _sessionChanges.close();
+    _invalidationSubscription?.cancel();
     _registry.dispose();
     _dio.close();
     if (identical(_instance, this)) _instance = null;

@@ -5,6 +5,7 @@ import 'package:like/testing.dart';
 import 'package:like_example/data/bloc/posts_cubit.dart';
 import 'package:like_example/data/models/paginated_posts.dart';
 import 'package:like_example/data/providers/post_provider.dart';
+import 'package:like_example/data/providers/posts_query_provider.dart';
 import 'package:like_example/data/repositories/post_repository.dart';
 import 'package:like_example/data/riverpod/posts_providers.dart';
 import 'package:like_example/data/services/post_api_service.dart';
@@ -22,6 +23,38 @@ PaginatedPosts page() => PaginatedPosts.fromJson({
     });
 
 void main() {
+  test('all three state adapters share invalidation and transport cancellation', () async {
+    final repository = MockRepository();
+    final hub = LikeInvalidationHub();
+    var calls = 0;
+    final refreshed = Completer<void>();
+    when(() => repository.watchPage(1)).thenAnswer((_) => LikeQuery(
+      action: (token) async {
+        calls++;
+        if (calls == 6) refreshed.complete();
+        return ApiResult.success(page());
+      }, scope: () => 'account', origin: 'https://test.example', tags: ['posts'],
+      invalidations: hub, restoredOrigins: const Stream.empty()));
+    final provider = PostsQueryProvider(repository);
+    await provider.refresh();
+    final container = ProviderContainer(overrides: [postsRepositoryProvider.overrideWithValue(repository)]);
+    final riverLoaded = Completer<void>();
+    final listener = container.listen(postsQueryProvider(1), (_, value) {
+      if (value.asData?.value.state == LikeState.success && !riverLoaded.isCompleted) riverLoaded.complete();
+    });
+    await riverLoaded.future;
+    final cubit = PostsCubit(repository);
+    await cubit.load();
+    expect(calls, 3);
+    hub.emit(LikeInvalidationEvent(['posts'], scope: 'account', origin: 'https://test.example'));
+    await refreshed.future.timeout(const Duration(seconds: 2));
+    provider.dispose();
+    listener.close();
+    container.dispose();
+    await cubit.close();
+    await hub.dispose();
+  });
+
   test('service and repository work with an injected client without bootstrap',
       () async {
     final client = MockClient();
@@ -29,6 +62,7 @@ void main() {
           '/api/posts/1',
           withAuth: true,
           disableCache: true,
+          requestConfig: const LikeRequestConfig(cacheTags: ['posts']),
         )).thenAnswer((_) async => ApiResult.success(Response<dynamic>(
           requestOptions: RequestOptions(path: '/api/posts/1'),
           data: {
@@ -78,7 +112,9 @@ void main() {
     when(() => repository.list(page: 1)).thenAnswer((_) async =>
         ApiResult.error(
             LikeError(message: 'Missing', type: LikeApiErrorType.notFound)));
-    final cubit = PostsCubit(repository);
+    final cubit = PostsCubit(repository, watch: (page) => LikeQuery(
+      action: (_) => repository.list(page: page), scope: () => '', origin: 'https://test.example',
+      restoredOrigins: const Stream.empty()));
     addTearDown(cubit.close);
     await cubit.load();
     expect(cubit.state.state, LikeState.error);
@@ -91,7 +127,9 @@ void main() {
     final second = Completer<ApiResult<PaginatedPosts>>();
     when(() => repository.list(page: 1)).thenAnswer((_) => first.future);
     when(() => repository.list(page: 2)).thenAnswer((_) => second.future);
-    final cubit = PostsCubit(repository);
+    final cubit = PostsCubit(repository, watch: (page) => LikeQuery(
+      action: (_) => repository.list(page: page), scope: () => '', origin: 'https://test.example',
+      restoredOrigins: const Stream.empty()));
     final oldRun = cubit.load();
     final newRun = cubit.load(page: 2);
     final latest = page();

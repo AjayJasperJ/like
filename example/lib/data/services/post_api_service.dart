@@ -6,6 +6,7 @@ final class PostApiService extends LikeBaseApiService {
 
   Future<ApiResult<PaginatedPosts>> list({
     int page = 1,
+    CancelToken? cancelToken,
     int limit = 10,
     String? search,
     bool? published,
@@ -15,6 +16,8 @@ final class PostApiService extends LikeBaseApiService {
   }) =>
       get(
         ApiUrls.posts,
+        cancelToken: cancelToken,
+        requestConfig: const LikeRequestConfig(cacheTags: ['posts']),
         query: {
           'page': page,
           'limit': limit,
@@ -29,8 +32,10 @@ final class PostApiService extends LikeBaseApiService {
         disableCache: true,
       ).mapSync((value) => PaginatedPosts.fromJson(jsonMap(value)));
 
-  Future<ApiResult<ApiPost>> find(int id) => get(
+  Future<ApiResult<ApiPost>> find(int id, {CancelToken? cancelToken}) => get(
         ApiUrls.post(id),
+        cancelToken: cancelToken,
+        requestConfig: const LikeRequestConfig(cacheTags: ['posts']),
         withAuth: true,
         disableCache: true,
       ).mapSync((value) => ApiPost.fromJson(_envelopeData(value)));
@@ -43,6 +48,7 @@ final class PostApiService extends LikeBaseApiService {
   }) =>
       post(
         ApiUrls.posts,
+        requestConfig: const LikeRequestConfig(invalidates: ['posts']),
         body: {
           'title': title,
           'body': body,
@@ -61,6 +67,7 @@ final class PostApiService extends LikeBaseApiService {
   }) =>
       put(
         ApiUrls.post(id),
+        requestConfig: const LikeRequestConfig(invalidates: ['posts']),
         body: {
           'title': title,
           'body': body,
@@ -77,6 +84,7 @@ final class PostApiService extends LikeBaseApiService {
   ) =>
       patch(
         ApiUrls.post(id),
+        requestConfig: const LikeRequestConfig(invalidates: ['posts']),
         body: values,
         withAuth: true,
         disableCache: true,
@@ -85,6 +93,7 @@ final class PostApiService extends LikeBaseApiService {
   Future<ApiResult<void>> remove(int id) async {
     final result = await delete(
       ApiUrls.post(id),
+      requestConfig: const LikeRequestConfig(invalidates: ['posts']),
       withAuth: true,
       disableCache: true,
     );

@@ -142,6 +142,7 @@ typedef NotifierState<T> = LikeNotifierState<T>;
 /// A specialized [NotifierState] that manages paginated data, cleanly
 /// separating the 1st page / initial state from the load-more (pagination) state.
 class PaginatedNotifierState<T> extends NotifierState<List<T>> {
+  final LikeEngine _ownedEngine = LikeEngine();
   /// Internal pagination state tracker.
   Pagination<T> _pagination;
   Pagination<T> get pagination => _pagination;
@@ -168,6 +169,7 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
   void dispose() {
     loadMoreState.removeListener(notifyListeners);
     loadMoreState.dispose();
+    _ownedEngine.dispose();
     super.dispose();
   }
 
@@ -289,7 +291,7 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
     NotifierState<List<T>> targetStateForPage(int page) =>
         page == 1 ? this : loadMoreState;
     final targetState = targetStateForPage(page);
-    final activeEngine = engine ?? LikeEngine();
+    final activeEngine = engine ?? _ownedEngine;
 
     final effectiveARS = ars ??
         LikeARS(

@@ -13,3 +13,12 @@ final postsPageProvider = FutureProvider.autoDispose
     .family<ApiResult<PaginatedPosts>, int>((ref, page) {
   return ref.watch(postsRepositoryProvider).list(page: page);
 });
+
+/// Shared query engine supplies cancellation, resource invalidation and reconnects.
+final postsQueryProvider = StreamProvider.autoDispose
+    .family<LikeStateResponse<PaginatedPosts>, int>((ref, page) {
+  final query = ref.watch(postsRepositoryProvider).watchPage(page);
+  ref.onDispose(query.dispose);
+  query.refresh();
+  return query.watch();
+});

@@ -16,7 +16,7 @@ class LikeLoggerInterceptor extends Interceptor {
     if (!LikeConstants.silentConsole &&
         options.extra['disableLogger'] != true &&
         (LikeConstants.verboseLogging || LikeConstants.logApiResponses)) {
-      final requestId = _uuid.v4();
+      final requestId = options.extra['requestId'] as String? ?? _uuid.v4();
       options.extra['requestId'] = requestId;
 
       Map<String, String>? fields;
