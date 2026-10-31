@@ -11,7 +11,7 @@ class Handler(BaseHTTPRequestHandler):
     def cors(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'authorization, content-type, x-test')
+        self.send_header('Access-Control-Allow-Headers', 'authorization, content-type, x-test, if-none-match')
         self.send_header('Access-Control-Expose-Headers', 'content-length, etag')
 
     def do_OPTIONS(self):
@@ -22,9 +22,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/slow'):
             time.sleep(0.5)
+        if self.headers.get('If-None-Match') == '"fixture-v1"':
+            self.send_response(304)
+            self.cors()
+            self.end_headers()
+            return
         body = json.dumps({'ok': True, 'token': 'fixture-secret'}).encode()
         self.send_response(503 if self.path.startswith('/error') else 200)
         self.cors()
+        self.send_header('ETag', '"fixture-v1"')
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()

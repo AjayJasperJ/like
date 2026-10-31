@@ -22,8 +22,9 @@ storage/bootstrap; it is not the HTTP request entrypoint.
 | 8 | LikeRetryInterceptor | Always installed |
 | 9 | LikePerformanceInterceptor | perfTrackingEnabled |
 | 10 | LikeThrottlingInterceptor | Always installed |
-| 11 | LikeAuthInterceptor | Always installed |
-| 12 | Custom interceptors | App-supplied order |
+| 11 | LikeNetworkQualityInterceptor | Passive API-path measurements |
+| 12 | LikeAuthInterceptor | Always installed |
+| 13 | Custom interceptors | App-supplied order |
 
 This table describes registration, not a guarantee that every handler runs.
 A resolve/reject short-circuit and nested retry can change which handlers execute.
