@@ -1,4 +1,3 @@
-import 'package:like/like.dart';
 
 import '../models/api_models.dart';
 import '../services/post_api_service.dart';

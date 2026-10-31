@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:like/like.dart';
 
 import '../models/api_models.dart';
 import '../repositories/post_repository.dart';

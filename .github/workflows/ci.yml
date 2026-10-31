@@ -41,6 +41,9 @@ jobs:
         run: |
           git fetch --depth=1 origin "$BASE_SHA"
           git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format --output=none --set-exit-if-changed
+      - name: Install test server dependencies
+        working-directory: server
+        run: dart pub get
       - run: flutter analyze
       - name: Build web example
         working-directory: example
