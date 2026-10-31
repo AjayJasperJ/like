@@ -58,3 +58,7 @@ export 'src/interceptors/like_auth_interceptor.dart';
 
 // Third Party Exports
 export 'package:dio/dio.dart' show CancelToken, Response;
+
+// Diagnostics
+export 'src/diagnostics/like_redaction.dart';
+export 'src/diagnostics/like_network_quality.dart';

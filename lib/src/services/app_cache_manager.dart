@@ -51,7 +51,7 @@ class AppCacheManager extends CacheManager {
       withProgress: withProgress,
     );
 
-    if (kIsWeb && LikeConstants.supportWeb) {
+    if (kIsWeb) {
       return stream;
     }
 
@@ -80,7 +80,7 @@ class AppCacheManager extends CacheManager {
   /// Checks the total size of the cache and performs LRU pruning if it exceeds
   /// [maxMB]. Prunes down to [minMB] by deleting least-recently-used files.
   Future<void> pruneCacheIfExceedsSize({double? maxMB, double? minMB}) async {
-    if (kIsWeb && LikeConstants.supportWeb) return;
+    if (kIsWeb) return;
     final limitMax = maxMB ?? LikeConstants.maxImageCacheMB;
     final limitMin = minMB ?? LikeConstants.minImageCacheMB;
 
@@ -146,7 +146,7 @@ class AppCacheManager extends CacheManager {
         message: 'Failed to empty flutter_cache_manager cache: $e',
       );
     }
-    if (kIsWeb && LikeConstants.supportWeb) return;
+    if (kIsWeb) return;
 
     // Remove remaining cache binaries while preserving cache-manager metadata.
     try {

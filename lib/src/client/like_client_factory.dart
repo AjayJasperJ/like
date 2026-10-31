@@ -1,3 +1,4 @@
+import 'package:like/src/diagnostics/like_network_quality.dart';
 // Conditional import: compiler selects the correct SSL implementation.
 //   - Web   → like_ssl_stub.dart  (no-op, browser handles TLS)
 //   - Native → like_ssl_io.dart   (IOHttpClientAdapter + HttpClient pinning)
@@ -115,6 +116,8 @@ class LikeClientFactory {
         LikeRetryInterceptor(dio: dio),
         if (LikeConstants.perfTrackingEnabled) LikePerformanceInterceptor(),
         LikeThrottlingInterceptor(),
+
+        LikeNetworkQualityInterceptor(),
 
         // 4. Security & Session (Last to ensure headers are final)
         LikeAuthInterceptor(dio: dio, authConfig: authConfig),

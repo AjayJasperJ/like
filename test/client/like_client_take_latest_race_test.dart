@@ -80,7 +80,7 @@ void main() {
       );
       addTearDown(manager.reset);
       const path = '/take-latest-race';
-      const requestKey = 'GET:$path';
+      const requestKey = 'https://www.google.com$path';
       final adapter = _ControlledAdapter();
       final dio = Dio(BaseOptions(baseUrl: 'https://www.google.com'));
       dio.httpClientAdapter = adapter;
