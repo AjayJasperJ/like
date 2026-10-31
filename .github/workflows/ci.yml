@@ -51,7 +51,10 @@ jobs:
           flutter pub get
           flutter build web
       - name: Validate package contents
-        run: flutter pub publish --dry-run
+        run: |
+          # Flutter setup migrates these files on the runner only.
+          git restore -- analysis_options.yaml example/analysis_options.yaml
+          flutter pub publish --dry-run
       # No SDK/dependency cache is uploaded. On cancellation/timeout the hosted
       # runner is also discarded; cleanup is best effort if the job is killed.
       - name: Delete temporary SDK and dependencies

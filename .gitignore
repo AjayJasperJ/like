@@ -53,4 +53,3 @@ server/*.db-wal
 .roomodes
 example/.agent/
 usage/
-documents/
