@@ -18,11 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      FLUTTER_SDK_DIR: ${{ runner.temp }}/like-test-flutter
-      PUB_CACHE: ${{ runner.temp }}/like-test-pub-cache
-      CI: true
+      CI: "true"
     steps:
       - uses: actions/checkout@v4
+      - name: Configure temporary SDK paths
+        run: |
+          echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/like-test-flutter" >> "$GITHUB_ENV"
+          echo "PUB_CACHE=$RUNNER_TEMP/like-test-pub-cache" >> "$GITHUB_ENV"
       - name: Download temporary Flutter SDK
         run: |
           git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_SDK_DIR"
