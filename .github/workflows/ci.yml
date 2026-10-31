@@ -33,7 +33,6 @@ jobs:
           "$FLUTTER_SDK_DIR/bin/flutter" precache --web
           "$FLUTTER_SDK_DIR/bin/flutter" --version
       - run: flutter pub get
-      - run: flutter test --coverage
       - name: Check changed Dart formatting
         if: github.event_name == 'pull_request'
         env:
@@ -42,6 +41,17 @@ jobs:
           git fetch --depth=1 origin "$BASE_SHA"
           git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format
           git diff --exit-code -- '*.dart'
+      - run: flutter test --coverage
+      - name: Browser tests in headless Chrome
+        run: |
+          python3 tool/browser_test_server.py &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8765/ok >/dev/null; then break; fi
+            sleep 1
+          done
+          flutter test --platform chrome test/portable test/core test/models test/widgets/like_builder_test.dart test/widgets/like_when_test.dart test/widgets/like_sliver_builder_test.dart test/extensions_test.dart test/pagination_test.dart
       - name: Install test server dependencies
         working-directory: server
         run: dart pub get

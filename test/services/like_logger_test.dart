@@ -103,7 +103,7 @@ void main() {
       final decoded = jsonDecode(logs.first);
       expect(decoded['category'], 'test_category');
       expect(decoded['message'], 'Hello, Logger!');
-      expect(decoded['details']['key'], 'value');
+      expect(decoded['details']['key'], LikeRedaction.omitted);
 
       final fileContent = await LikeLogger.readLogs();
       expect(fileContent, contains('Hello, Logger!'));
@@ -271,7 +271,8 @@ void main() {
 
       await Future.delayed(const Duration(milliseconds: 50));
       expect(logs.length, 1);
-      expect(logs.first, contains('req_start_2'));
+      expect(logs.first, isNot(contains('req_start_2')));
+      expect(logs.first, contains(LikeRedaction.omitted));
 
       await subscription.cancel();
     });

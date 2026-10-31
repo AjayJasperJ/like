@@ -89,7 +89,7 @@ class LikeService {
     LikeOfflineSyncManager().init();
 
     // Ensure the disk image cache respects the configured limits on startup
-    if (!(kIsWeb && LikeConstants.supportWeb)) {
+    if (!kIsWeb) {
       await AppCacheManager().pruneCacheIfExceedsSize();
     }
 

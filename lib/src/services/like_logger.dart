@@ -1,3 +1,4 @@
+import 'package:like/src/diagnostics/like_redaction.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/io.dart';
@@ -23,8 +24,7 @@ class LikeLogger {
 
   /// Initializes the logging system.
   static Future<void> init() async {
-    if (LikeConstants.disableFileLogging ||
-        (kIsWeb && LikeConstants.supportWeb)) {
+    if (LikeConstants.disableFileLogging || kIsWeb) {
       _isInitialized = true;
       return;
     }
@@ -67,18 +67,22 @@ class LikeLogger {
   }) async {
     await _ensureInitialized();
 
+    message = LikeRedaction.message(message);
     final timestampStr = DateTime.now().toIso8601String();
+    final safeDetails = LikeRedaction.sanitize(details,
+            sensitiveKeys: LikeConstants.current.sensitiveHeaders)
+        as Map<String, Object?>?;
     final entry = {
       'timestamp': timestampStr,
       'level': level.name,
       'category': category,
       'message': message,
-      if (details != null && details.isNotEmpty) 'details': details,
+      if (details != null && details.isNotEmpty) 'details': safeDetails,
     };
 
     final jsonString = jsonEncode(entry, toEncodable: (o) => o.toString());
     await _writeLine(jsonString);
-    _printToConsole(level, category, message, details, timestampStr);
+    _printToConsole(level, category, message, safeDetails, timestampStr);
   }
 
   /// Specialized API event logging.
@@ -97,6 +101,7 @@ class LikeLogger {
     bool? shrinkEndpointOnly,
     String? statusText,
   }) async {
+    endpoint = LikeRedaction.endpoint(endpoint);
     final shouldShrink = shrinkEndpointOnly ?? LikeConstants.compactApiLogs;
     final finalStatus = statusText ?? (success ? 'SUCCESS' : 'FAILED');
 
@@ -115,10 +120,12 @@ class LikeLogger {
         if (method != null) 'method': method,
         if (requestHeaders != null) 'requestHeaders': requestHeaders,
         if (responseHeaders != null) 'responseHeaders': responseHeaders,
-        if (requestBody != null) 'requestBody': requestBody,
+        if (requestBody != null)
+          'requestBody': kReleaseMode ? LikeRedaction.omitted : requestBody,
         if (requestFields != null) 'requestFields': requestFields,
         if (requestQuery != null) 'requestQuery': requestQuery,
-        if (response != null) 'response': response.toString(),
+        if (response != null)
+          'response': LikeRedaction.apiPayload(response, release: kReleaseMode),
         if (shouldShrink) 'shrink': true,
         if (statusText != null) 'status': statusText,
       },
@@ -140,12 +147,12 @@ class LikeLogger {
     await log(
       level: LikeLogLevel.info,
       category: 'api',
-      message: '$endpoint | STARTED',
+      message: '${LikeRedaction.endpoint(endpoint)} | STARTED',
       details: {
         'requestId': requestId,
         if (method != null) 'method': method,
         if (headers != null) 'headers': headers,
-        if (body != null) 'body': body,
+        if (body != null) 'body': kReleaseMode ? LikeRedaction.omitted : body,
         if (fields != null) 'fields': fields,
         if (query != null) 'query': query,
       },

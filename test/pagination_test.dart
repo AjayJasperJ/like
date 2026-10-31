@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:like/like.dart';
 
 class SampleItem {
@@ -46,8 +47,12 @@ class CustomPaginatedResponse extends PaginationTool<SampleItem> {
 }
 
 Future<void> initTestHive() async {
-  final temp = Directory.systemTemp.createTempSync('hive_pagination_test');
-  Hive.init(temp.path);
+  if (kIsWeb) {
+    await Hive.initFlutter('pagination_browser_tests');
+  } else {
+    final temp = Directory.systemTemp.createTempSync('hive_pagination_test');
+    Hive.init(temp.path);
+  }
 }
 
 void setupMocks() {
@@ -59,7 +64,7 @@ void setupMocks() {
       if (methodCall.method == 'getApplicationDocumentsDirectory' ||
           methodCall.method == 'getTemporaryDirectory' ||
           methodCall.method == 'getApplicationSupportDirectory') {
-        return Directory.systemTemp.path;
+        return kIsWeb ? '/' : Directory.systemTemp.path;
       }
       return null;
     },

@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/services/like_pipeline.dart';
 import 'package:like/src/services/like_service.dart';
 
@@ -12,10 +11,7 @@ class LikeEtagInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     if (options.method == 'GET' && options.extra['disableCache'] != true) {
-      final key = LikeHelpers.generateRequestKey(
-        options.path,
-        options.queryParameters,
-      );
+      final key = options.uri.toString();
       final etag = LikeService.getEtag(key);
       if (etag != null) {
         options.headers['If-None-Match'] = etag;
@@ -30,10 +26,7 @@ class LikeEtagInterceptor extends Interceptor {
       // Store new ETag on successful 200
       final etag = response.headers.value('etag');
       if (etag != null && response.statusCode == 200) {
-        final key = LikeHelpers.generateRequestKey(
-          response.requestOptions.path,
-          response.requestOptions.queryParameters,
-        );
+        final key = response.requestOptions.uri.toString();
         LikeService.putEtag(key, etag);
       }
     }
@@ -48,10 +41,7 @@ class LikeEtagInterceptor extends Interceptor {
     if (response != null &&
         response.statusCode == 304 &&
         err.requestOptions.method == 'GET') {
-      final key = LikeHelpers.generateRequestKey(
-        err.requestOptions.path,
-        err.requestOptions.queryParameters,
-      );
+      final key = err.requestOptions.uri.toString();
 
       final cached =
           await LikeService.fetchResponseFromCache(err.requestOptions);

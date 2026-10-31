@@ -74,6 +74,13 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# This dependency bundles an older nlohmann/json header. Keep -Werror for the
+# application and other diagnostics while supporting modern Clang toolchains.
+if(TARGET flutter_secure_storage_linux_plugin AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(flutter_secure_storage_linux_plugin PRIVATE
+    -Wno-error=deprecated-literal-operator)
+endif()
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build

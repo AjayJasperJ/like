@@ -219,8 +219,8 @@ class LikeEngine {
             try {
               binding.processAndAssign(event.data);
               handled = true;
-            } catch (e) {
-              debugPrint('AutoReconnect Pipeline Mapping Error: $e');
+            } catch (_) {
+              debugPrint('AutoReconnect pipeline mapping failed.');
             }
           }
         }

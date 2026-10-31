@@ -208,10 +208,6 @@ class LikeClient implements LikeHttpClient {
         cancelToken ?? zoneCancelToken ?? CancelToken();
     final effectivePath =
         path.startsWith('http') || path.startsWith('/') ? path : '/$path';
-    final requestKey = LikeHelpers.generateRequestKey(
-      effectivePath,
-      queryParameters,
-    );
 
     // --- Per-request config resolution ---
     // Resolve the base URL: requestConfig.baseUrl > namedBaseUrl > dio default
@@ -292,6 +288,7 @@ class LikeClient implements LikeHttpClient {
       queryParameters: queryParameters,
     );
     final absoluteUriKey = tempOptions.uri.toString();
+    final requestKey = absoluteUriKey;
 
     // 1. Reset Logic
     final bool resetSessionStale = extra['resetSessionStale'] ?? false;

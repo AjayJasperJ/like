@@ -71,8 +71,12 @@ void main() {
         reconnectInterval: const Duration(milliseconds: 100),
       );
 
+      addTearDown(client.dispose);
       await client.connect();
       expect(client.isConnected, isTrue);
+
+      final disconnected = client.connectionChanges.firstWhere((open) => !open);
+      final reconnected = client.connectionChanges.firstWhere((open) => open);
 
       // Force-close all server sockets to trigger a disconnect
       for (final socket in activeServerSockets) {
@@ -80,11 +84,9 @@ void main() {
       }
       activeServerSockets.clear();
 
-      await Future.delayed(const Duration(milliseconds: 50));
-      expect(client.isConnected, isFalse);
+      expect(await disconnected.timeout(const Duration(seconds: 10)), isFalse);
 
-      // Wait for reconnect interval to run
-      await Future.delayed(const Duration(milliseconds: 200));
+      expect(await reconnected.timeout(const Duration(seconds: 10)), isTrue);
       expect(client.isConnected, isTrue);
 
       await client.dispose();

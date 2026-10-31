@@ -21,6 +21,25 @@ specific hardening or extension described here.
 Evidence: [passing architecture workflow](https://github.com/AjayJasperJ/like/actions/runs/41220924576).
 This is a historical validation run, not the status of every later commit.
 
+## Current increment in review
+
+[PR #3](https://github.com/AjayJasperJ/like/pull/3) implements NET-01 origin
+identity, passive slow API-path detection, conservative LikeLogger redaction and
+expanded browser/native CI. Validation is in progress; these are not all marked
+complete yet. DevTool raw-traffic redaction, account isolation, device-runtime
+integration and the remaining offline/session work stay pending.
+
+Additional acceptance criteria:
+
+- NET-03: repeated slow evidence, recovery, origin isolation, optional throughput
+  estimates, cache/cancellation exclusions and bounded monitor state are tested.
+- PRIVACY-02: debug/release policies redact diagnostic copies without changing
+  application responses; all DevTool/export consumers still need an audit.
+- WEB-01: headless browser HTTP/CORS, cache/ETag persistence, timeout, cancellation,
+  core/model/widget tests and release compilation pass.
+- PLATFORM-01: native VM suites and Linux/macOS/Windows/Android/iOS-simulator builds
+  pass. These are not equivalent to Android/iOS runtime device tests.
+
 ## Next implementation order
 
 | Order | ID | Pending work | Completion criteria |

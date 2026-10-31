@@ -1,0 +1,73 @@
+# Network quality, diagnostic privacy and platform verification
+
+## Slow API-path detection
+
+LikeClientFactory installs LikeNetworkQualityInterceptor. Subscribe to
+LikeNetworkQualityMonitor.shared.stream, or inject a separate monitor into a custom
+interceptor/client stack. Use sample.origin, elapsed, quality and the nullable
+estimatedBytesPerSecond value. Dispose subscriptions owned by a screen; do not
+dispose the shared monitor when a screen closes. An injected monitor is caller-owned.
+
+The default slow threshold is two consecutive requests taking at least two seconds,
+or large responses averaging below 32 KiB/s. The first slow sample reports unknown;
+a normal sample resets the streak. Thresholds are configurable through an injected
+monitor. State is isolated per origin and limited to 100 origins.
+
+Measurements use Stopwatch, work on browser and native targets, and never launch
+extra speed-test downloads. Small/missing content lengths have no throughput estimate.
+Content-Length might be unavailable under CORS or compression. The rate includes
+server latency and is not a calibrated bandwidth measurement. Slow servers, proxies
+and authentication delays can affect results. Cached/304 responses, cancellations
+and local mapping failures are excluded. Timeouts can contribute slow evidence.
+
+This does not replace connectivity state: a slow API path can still be online.
+The feature reports quality; it does not silently change timeouts or replay mutations.
+
+## Redaction before diagnostic publication
+
+LikeLogger sanitizes diagnostic details before console, file and log-stream output.
+Application response objects remain intact. Nested maps/lists and JSON strings are
+handled without modifying the source object. Built-in secret/PII keys and configured
+sensitiveHeaders are matched without case or punctuation differences.
+
+Safe defaults omit opaque strings and arbitrary object stringification, even in
+debug. Release API response/request bodies are omitted. URI query/fragment/userinfo
+are removed from API endpoint logs; generic messages also scrub URL queries and
+Bearer values. Existing request correlation strings are omitted with other detail
+strings under this conservative policy.
+
+This protects the logger's output, not network traffic from an authorized device
+owner, arbitrary application logs, crash-reporting SDKs or existing stored log files.
+Apps must avoid placing secrets in URL paths or unstructured messages. The raw
+LikePipeline is an application data bus, not a sanitized diagnostic stream. A separate
+DevTool/raw-traffic audit remains pending. Do not promise that redaction prevents
+hacking or secures a compromised device. Use HTTPS and server-side authorization.
+
+## Request identity
+
+Deduplication uses the effective absolute URI, matching L1/L2 keys. ETags use the
+same absolute request URI instead of a shared relative path. Old path-based ETags
+are ignored and refreshed by new successful requests. This is origin isolation,
+not account isolation; SESSION-01 remains pending.
+
+## Web support and test coverage
+
+Web filesystem guards no longer depend on supportWeb being enabled. The logger and
+image pruning avoid native filesystem operations whenever kIsWeb is true. Hive can
+use browser storage; managed image metadata does not persist as native disk storage.
+Browser TLS, CORS, exposed headers and storage quotas still apply.
+
+CI runs browser-compatible core/model/widget tests in headless Chrome, plus real
+browser HTTP tests against a loopback CORS fixture covering preflight, JSON,
+HTTP errors, cancellation, receive timeout and a LIKE request. No external API
+or credentials are needed. Browser execution is separate from web compilation.
+
+The native workflow runs VM tests on Linux, macOS and Windows and compiles the
+example for Linux/Android, macOS/iOS simulator and Windows. Missing platform
+scaffolding is generated only inside CI. SDK/dependency downloads are temporary,
+uncached and removed at completion, with a one-hour limit per job.
+
+These are distinct levels of evidence: VM tests are not real-device plugin tests;
+native builds are not Android/iOS runtime or simulator interaction tests. Device
+integration, additional browsers, web persistence/quota cases and complete platform
+parity remain pending until their tests have been implemented and passed.
