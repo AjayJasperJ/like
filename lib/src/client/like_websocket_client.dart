@@ -1,3 +1,4 @@
+import 'package:like/src/diagnostics/like_redaction.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
@@ -29,6 +30,11 @@ class LikeWebSocketClient {
   bool _isConnecting = false;
 
   final Lock _lock = Lock();
+  final _connectionController = StreamController<bool>.broadcast();
+
+  /// Connection transitions; subscribers never receive tokens or message data.
+  Stream<bool> get connectionChanges => _connectionController.stream;
+
   final StreamController<dynamic> _messageController =
       StreamController<dynamic>.broadcast();
 
@@ -71,15 +77,16 @@ class LikeWebSocketClient {
           }
         }
 
-        debugPrint('[LIKE WebSocket] Connecting to $connectionUrl...');
+        final safeUrl = LikeRedaction.endpoint(connectionUrl);
+        debugPrint('[LIKE WebSocket] Connecting to $safeUrl...');
         final socket = await WebSocket.connect(connectionUrl);
         _socket = socket;
         _isConnecting = false;
 
         _onConnected(socket);
-      } catch (e) {
+      } catch (_) {
         _isConnecting = false;
-        debugPrint('[LIKE WebSocket] Connection failed: $e');
+        debugPrint('[LIKE WebSocket] Connection failed.');
         _scheduleReconnect();
       }
     });
@@ -92,14 +99,17 @@ class LikeWebSocketClient {
       _reconnectTimer?.cancel();
       if (_socket != null) {
         debugPrint('[LIKE WebSocket] Closing connection...');
-        await _socket!.close();
+        final socket = _socket!;
         _socket = null;
+        await socket.close();
+        _connectionController.add(false);
       }
     });
   }
 
   void _onConnected(WebSocket socket) {
     debugPrint('[LIKE WebSocket] Connected successfully.');
+    _connectionController.add(true);
     _startHeartbeat();
 
     socket.listen(
@@ -107,7 +117,7 @@ class LikeWebSocketClient {
         _handleIncomingMessage(rawData);
       },
       onError: (err) {
-        debugPrint('[LIKE WebSocket] Socket error occurred: $err');
+        debugPrint('[LIKE WebSocket] Socket error occurred.');
         _handleDisconnect(socket);
       },
       onDone: () {
@@ -159,6 +169,7 @@ class LikeWebSocketClient {
       if (_socket == socket) {
         _socket = null;
         _pingTimer?.cancel();
+        _connectionController.add(false);
         _scheduleReconnect();
       }
     });
@@ -191,10 +202,13 @@ class LikeWebSocketClient {
       _reconnectTimer?.cancel();
       _pingTimer?.cancel();
       if (_socket != null) {
-        await _socket!.close();
+        final socket = _socket!;
         _socket = null;
+        await socket.close();
+        _connectionController.add(false);
       }
       await _messageController.close();
+      await _connectionController.close();
       debugPrint('[LIKE WebSocket] Disposed client.');
     });
   }

@@ -74,17 +74,19 @@ void main() {
       await client.connect();
       expect(client.isConnected, isTrue);
 
+      final disconnected = client.connectionChanges.firstWhere((open) => !open);
+      final reconnected = client.connectionChanges.firstWhere((open) => open);
+
       // Force-close all server sockets to trigger a disconnect
       for (final socket in activeServerSockets) {
         await socket.close();
       }
       activeServerSockets.clear();
 
-      await Future.delayed(const Duration(milliseconds: 50));
+      await disconnected.timeout(const Duration(seconds: 5));
       expect(client.isConnected, isFalse);
 
-      // Wait for reconnect interval to run
-      await Future.delayed(const Duration(milliseconds: 200));
+      await reconnected.timeout(const Duration(seconds: 5));
       expect(client.isConnected, isTrue);
 
       await client.dispose();
