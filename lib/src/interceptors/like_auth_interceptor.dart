@@ -1,9 +1,10 @@
+import 'package:like/src/core/like_retry_policy.dart';
+import 'package:like/src/core/like_session_scope.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_constants.dart';
-import 'package:like/src/core/like_helpers.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 
 /// Interceptor to handle authentication tokens, 401 token refresh, and 429 rate limiting.
@@ -15,17 +16,20 @@ class LikeAuthInterceptor extends Interceptor {
   final LikeAuthConfig? authConfig;
 
   static final Map<String, DateTime> _rateLimitedUntilByOrigin = {};
-  static const Duration _maximumRateLimitDelay = Duration(seconds: 60);
+  final LikeRetryPolicy retryPolicy;
+  static final Map<String, Future<String?>> _legacyRefreshes = {};
+  final Map<String, Future<String?>> _scopedRefreshes = {};
+  Future<void>? _logoutFuture;
   static const String _retryCountKey = 'x-retry-count';
 
   /// Global synchronization lock for legacy static token refreshes.
-  static Completer<String?>? _refreshCompleter;
+
 
   /// Global notifier indicating if a legacy token refresh is in progress.
   static final ValueNotifier<bool> isRefreshing = ValueNotifier<bool>(false);
 
   /// Instance-level synchronization lock for concurrent token refreshes on this client.
-  Completer<String?>? _instanceRefreshCompleter;
+
 
   /// Instance-level notifier indicating if a token refresh is in progress on this client.
   final ValueNotifier<bool> instanceIsRefreshing = ValueNotifier<bool>(false);
@@ -42,7 +46,47 @@ class LikeAuthInterceptor extends Interceptor {
   /// Hook for the host app to provide an API Key (x-api-key) (legacy static API).
   static FutureOr<String?> Function()? getApiKey;
 
-  LikeAuthInterceptor({required this.dio, this.authConfig});
+  LikeAuthInterceptor({required this.dio, this.authConfig, LikeRetryPolicy? retryPolicy})
+      : retryPolicy = retryPolicy ?? LikeRetryPolicy();
+
+  Future<void> _safeLogout() {
+    final active = _logoutFuture;
+    if (active != null) return active;
+    final future = Future<void>(() async {
+      try { await _resolveLogout(statusCode: 401, force: true); } catch (_) {}
+    });
+    _logoutFuture = future;
+    future.then((_) { if (identical(_logoutFuture, future)) _logoutFuture = null; });
+    return future;
+  }
+
+  Future<String?> _joinRefresh(RequestOptions options) {
+    final scoped = authConfig?.refreshToken != null || LikeConstants.current.authConfig?.refreshToken != null;
+    final map = scoped ? _scopedRefreshes : _legacyRefreshes;
+    final scope = options.extra[LikeSessionIdentity.scopeKey] as String? ?? '';
+    final active = map[scope];
+    if (active != null) return active;
+    final future = Future<String?>(() async {
+      try {
+        if (!LikeSessionIdentity.isCurrent(options)) return null;
+        final token = await _resolveRefreshToken();
+        if (!LikeSessionIdentity.isCurrent(options)) return null;
+        if (token == null || token.isEmpty) { await _safeLogout(); return null; }
+        return token;
+      } catch (_) {
+        if (LikeSessionIdentity.isCurrent(options)) await _safeLogout();
+        return null;
+      }
+    });
+    map[scope] = future;
+    final notifier = scoped ? instanceIsRefreshing : isRefreshing;
+    notifier.value = true;
+    future.then((_) {
+      if (identical(map[scope], future)) map.remove(scope);
+      notifier.value = map.isNotEmpty;
+    });
+    return future;
+  }
 
   FutureOr<String?> _resolveToken() {
     if (authConfig?.getToken != null) {
@@ -146,86 +190,24 @@ class LikeAuthInterceptor extends Interceptor {
     final bool withAuth =
         err.requestOptions.extra['withAuth'] ?? LikeConstants.withAuthByDefault;
 
-    // Handle 401 Unauthorized
+    if (!LikeSessionIdentity.isCurrent(err.requestOptions)) {
+      handler.next(DioException.requestCancelled(requestOptions: err.requestOptions,
+        reason: 'Session changed'));
+      return;
+    }
     if (err.response?.statusCode == 401 && withAuth) {
-      final bool isRetry = err.requestOptions.extra['isRetry'] ?? false;
-      if (isRetry) {
-        await _resolveLogout(statusCode: 401, force: true);
-        return handler.next(err);
+      if (err.requestOptions.extra['isRetry'] == true) {
+        await _safeLogout();
+        handler.next(err);
+        return;
       }
-
       final hasRefresh = authConfig?.refreshToken != null ||
-          LikeConstants.current.authConfig?.refreshToken != null ||
-          refreshToken != null;
-
+          LikeConstants.current.authConfig?.refreshToken != null || refreshToken != null;
       if (hasRefresh) {
-        final bool isScoped = authConfig?.refreshToken != null ||
-            LikeConstants.current.authConfig?.refreshToken != null;
-
-        if (isScoped) {
-          if (_instanceRefreshCompleter != null) {
-            final newToken = await _instanceRefreshCompleter!.future;
-            if (newToken != null) {
-              return _retryRequest(err.requestOptions, newToken, handler);
-            } else {
-              return handler.next(err);
-            }
-          }
-
-          _instanceRefreshCompleter = Completer<String?>();
-          instanceIsRefreshing.value = true;
-
-          try {
-            final newToken = await _resolveRefreshToken();
-            _instanceRefreshCompleter?.complete(newToken);
-
-            if (newToken != null) {
-              return await _retryRequest(err.requestOptions, newToken, handler);
-            } else {
-              await _resolveLogout(statusCode: 401, force: true);
-              return handler.next(err);
-            }
-          } catch (e) {
-            _instanceRefreshCompleter?.complete(null);
-            await _resolveLogout(statusCode: 401, force: true);
-            return handler.next(err);
-          } finally {
-            _instanceRefreshCompleter = null;
-            instanceIsRefreshing.value = false;
-          }
-        } else {
-          // Legacy static completer path
-          if (_refreshCompleter != null) {
-            final newToken = await _refreshCompleter!.future;
-            if (newToken != null) {
-              return _retryRequest(err.requestOptions, newToken, handler);
-            } else {
-              return handler.next(err);
-            }
-          }
-
-          _refreshCompleter = Completer<String?>();
-          isRefreshing.value = true;
-
-          try {
-            final newToken = await _resolveRefreshToken();
-            _refreshCompleter?.complete(newToken);
-
-            if (newToken != null) {
-              return await _retryRequest(err.requestOptions, newToken, handler);
-            } else {
-              await _resolveLogout(statusCode: 401, force: true);
-              return handler.next(err);
-            }
-          } catch (e) {
-            _refreshCompleter?.complete(null);
-            await _resolveLogout(statusCode: 401, force: true);
-            return handler.next(err);
-          } finally {
-            _refreshCompleter = null;
-            isRefreshing.value = false;
-          }
-        }
+        final token = await _joinRefresh(err.requestOptions);
+        if (token == null) { handler.next(err); return; }
+        await _retryRequest(err.requestOptions, token, handler);
+        return;
       }
     }
 
@@ -242,7 +224,8 @@ class LikeAuthInterceptor extends Interceptor {
 
       if (retryCount >= maximumRetries) return handler.next(err);
 
-      final waitDuration = _rateLimitDelay(err, retryCount);
+      final waitDuration = retryPolicy.rateLimit(err.response?.headers.value('retry-after'), retryCount);
+      if (waitDuration == null) { handler.next(err); return; }
       final origin =
           LikeConnectivityManager.canonicalOrigin(options.uri.toString());
       if (origin != null) {
@@ -256,7 +239,9 @@ class LikeAuthInterceptor extends Interceptor {
           return handler.next(err);
         }
         options.extra[_retryCountKey] = retryCount + 1;
-        final response = await dio.fetch(options);
+        final retry = options.copyWith(data: options.data is FormData
+            ? (options.data as FormData).clone() : options.data);
+        final response = await dio.fetch(retry);
         return handler.resolve(response);
       } on DioException catch (error) {
         return handler.next(error);
@@ -272,17 +257,6 @@ class LikeAuthInterceptor extends Interceptor {
     }
 
     return handler.next(err);
-  }
-
-  static Duration _rateLimitDelay(DioException error, int retryCount) {
-    final retryAfter = error.response?.headers.value('retry-after');
-    final seconds = int.tryParse(retryAfter ?? '');
-    final requested = seconds == null
-        ? Duration(seconds: 1 << retryCount.clamp(0, 6))
-        : Duration(seconds: seconds < 0 ? 0 : seconds);
-    return requested > _maximumRateLimitDelay
-        ? _maximumRateLimitDelay
-        : requested;
   }
 
   static Future<void> _cancellableDelay(
@@ -310,67 +284,21 @@ class LikeAuthInterceptor extends Interceptor {
     String token,
     ErrorInterceptorHandler handler,
   ) async {
-    options.headers['Authorization'] = 'Bearer $token';
-
-    final apiKey = await _resolveApiKey();
-    if (apiKey != null && apiKey.isNotEmpty) {
-      options.headers['x-api-key'] = apiKey;
-    }
-
-    options.extra['isRetry'] = true;
-
-    // Refresh FormData if it's a multipart request
-    if (options.data is FormData ||
-        options.extra.containsKey('multipartFields')) {
-      final fields = options.extra['multipartFields'] as Map<String, String>?;
-      final filePaths = options.extra['multipartFilePaths'];
-      final files = options.extra['multipartFiles'] as List<LikeMultipartFile>?;
-
-      if (fields != null || filePaths != null || files != null) {
-        final formData = FormData();
-        if (fields != null) {
-          formData.fields.addAll(
-            fields.entries.map((e) => MapEntry(e.key, e.value)),
-          );
-        }
-
-        // MultipartFile.fromFile() requires a native file-system path.
-        // On web there is no file-system — filePaths retries are skipped.
-        // Callers should use MultipartBytesFile (bytes) for web compatibility.
-        if (filePaths != null && !kIsWeb) {
-          if (filePaths is Map<String, String>) {
-            for (final entry in filePaths.entries) {
-              formData.files.add(
-                MapEntry(entry.key, await MultipartFile.fromFile(entry.value)),
-              );
-            }
-          }
-        }
-
-        if (files != null) {
-          for (final f in files) {
-            formData.files.add(
-              MapEntry(
-                f.field,
-                MultipartFile.fromBytes(
-                  f.bytes,
-                  filename: f.filename,
-                  contentType: f.contentType,
-                ),
-              ),
-            );
-          }
-        }
-        options.data = formData;
-      }
-    }
-
     try {
-      final response = await dio.fetch(options);
-      return handler.resolve(response);
-    } catch (e) {
-      if (e is DioException) return handler.next(e);
-      return handler.reject(DioException(requestOptions: options, error: e));
+      if (!LikeSessionIdentity.isCurrent(options)) {
+        throw DioException.requestCancelled(requestOptions: options, reason: 'Session changed');
+      }
+      final apiKey = await _resolveApiKey();
+      final retry = options.copyWith(
+        headers: {...options.headers, 'Authorization': 'Bearer $token',
+          if (apiKey != null && apiKey.isNotEmpty) 'x-api-key': apiKey},
+        extra: {...options.extra, 'isRetry': true},
+        data: options.data is FormData ? (options.data as FormData).clone() : options.data,
+      );
+      final response = await dio.fetch(retry);
+      handler.resolve(response);
+    } catch (error) {
+      handler.next(error is DioException ? error : DioException(requestOptions: options, error: error));
     }
   }
 }

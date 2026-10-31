@@ -26,6 +26,7 @@ void main() {
   setUp(() {
     LikeClient.reset();
     mockDio = MockDio();
+    when(() => mockDio.interceptors).thenReturn(Interceptors());
     client = LikeClient(baseUrl: baseUrl, dio: mockDio);
     when(() => mockDio.options).thenReturn(BaseOptions(baseUrl: baseUrl));
 

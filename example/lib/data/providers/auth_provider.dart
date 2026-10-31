@@ -28,7 +28,8 @@ final class AuthProvider extends ChangeNotifier with LikeStateMixin {
       refreshToken: () async {
         final result = await _repository.refresh();
         if (result.isSuccess && result.data != null) {
-          authState.value = LikeStateResponse.success(result.data!.user);
+          LikeClient().setSessionScope(LikeSessionScope(accountId: result.data!.user.id.toString()));
+      authState.value = LikeStateResponse.success(result.data!.user);
           notifyListeners();
           return result.data!.accessToken;
         }
@@ -50,6 +51,7 @@ final class AuthProvider extends ChangeNotifier with LikeStateMixin {
         action: (ct, ars) async {
           final result = await _repository.currentUser();
           if (result.isSuccess && result.data != null) {
+            LikeClient().setSessionScope(LikeSessionScope(accountId: result.data!.id.toString()));
             return LikeStateResponse.success(result.data!);
           }
           await _storage.clear();
@@ -81,6 +83,7 @@ final class AuthProvider extends ChangeNotifier with LikeStateMixin {
     authState.value = LikeStateResponse.loading();
     notifyListeners();
     await _repository.logout();
+    LikeClient().setSessionScope(const LikeSessionScope());
     authState.value = LikeStateResponse.idle();
     notifyListeners();
   }
@@ -101,6 +104,7 @@ final class AuthProvider extends ChangeNotifier with LikeStateMixin {
     notifyListeners();
     final result = await action();
     if (result.isSuccess && result.data != null) {
+      LikeClient().setSessionScope(LikeSessionScope(accountId: result.data!.user.id.toString()));
       authState.value = LikeStateResponse.success(result.data!.user);
     } else {
       final err = result.error ??
@@ -116,6 +120,7 @@ final class AuthProvider extends ChangeNotifier with LikeStateMixin {
 
   Future<void> _expireSession() async {
     await _repository.clearSession();
+    LikeClient().setSessionScope(const LikeSessionScope());
     authState.value = LikeStateResponse.idle();
     notifyListeners();
   }

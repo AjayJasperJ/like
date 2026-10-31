@@ -62,3 +62,7 @@ export 'package:dio/dio.dart' show CancelToken, Response;
 // Diagnostics
 export 'src/diagnostics/like_redaction.dart';
 export 'src/diagnostics/like_network_quality.dart';
+export 'src/core/like_session_scope.dart';
+export 'src/models/like_offline_task.dart';
+export 'src/services/like_replay_codec.dart';
+export 'src/core/like_retry_policy.dart';

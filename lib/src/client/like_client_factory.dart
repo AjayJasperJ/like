@@ -1,3 +1,4 @@
+import 'package:like/src/core/like_session_scope.dart';
 import 'package:like/src/diagnostics/like_network_quality.dart';
 // Conditional import: compiler selects the correct SSL implementation.
 //   - Web   → like_ssl_stub.dart  (no-op, browser handles TLS)
@@ -29,6 +30,7 @@ class LikeClientFactory {
     required String baseUrl,
     Duration? timeout,
     required LikeRequestRegistry registry,
+    LikeSessionScope Function()? currentSession,
 
     /// Optional authentication configuration scoped to this Dio stack.
     LikeAuthConfig? authConfig,
@@ -70,7 +72,7 @@ class LikeClientFactory {
     );
 
     _setupInterceptors(dio, registry, customInterceptors,
-        authConfig: authConfig);
+        authConfig: authConfig, currentSession: currentSession);
 
     // Delegate to the platform-correct SSL implementation:
     //   • Mobile/Desktop → like_ssl_io.dart  (IOHttpClientAdapter)
@@ -89,9 +91,12 @@ class LikeClientFactory {
     LikeRequestRegistry registry,
     List<Interceptor> customInterceptors, {
     LikeAuthConfig? authConfig,
+    LikeSessionScope Function()? currentSession,
   }) {
     dio.interceptors.addAll(
       [
+        LikeSessionInterceptor(currentSession ?? () => const LikeSessionScope()),
+
         // 0. Logging (Catches all requests)
         if (LikeConstants.logApiResponses) LikeLoggerInterceptor(),
 
@@ -110,6 +115,8 @@ class LikeClientFactory {
             dio: dio,
             queueBox: LikeService.boxOfflineQueue,
             authConfig: authConfig,
+            currentSession: currentSession,
+            autoSchedule: LikeConstants.backgroundSyncEnabled,
           ),
 
         // 3. Infrastructure

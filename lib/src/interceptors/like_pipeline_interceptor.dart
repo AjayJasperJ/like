@@ -1,3 +1,4 @@
+import 'package:like/src/core/like_session_scope.dart';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:like/src/core/like_helpers.dart';
@@ -8,7 +9,8 @@ import 'package:like/src/services/like_pipeline.dart';
 class LikePipelineInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    if (response.requestOptions.method == 'GET') {
+    if (response.requestOptions.method == 'GET' &&
+        LikeSessionIdentity.isCurrent(response.requestOptions)) {
       final key = LikeHelpers.generateRequestKey(
         response.requestOptions.path,
         response.requestOptions.queryParameters,

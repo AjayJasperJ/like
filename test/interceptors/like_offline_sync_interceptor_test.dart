@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:like/like.dart' show LikeOfflineTaskStatus;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:like/src/interceptors/like_offline_sync_interceptor.dart';
@@ -40,10 +41,42 @@ void main() {
   });
 
   tearDown(() async {
+    await interceptor.dispose();
     dio.close(force: true);
     await queue.close();
     await Hive.deleteBoxFromDisk('offline_interceptor_test');
     await LikeConnectivityManager().reset();
+  });
+
+  test('another session and legacy unowned records never replay', () async {
+    final task = _task(origin: 'https://queued.example:443', path: '/private',
+      url: 'https://queued.example:443/private')..['scope'] = 'other-account';
+    await queue.add(task);
+    await queue.add({...task}..remove('scope'));
+    await interceptor.syncQueue();
+    verifyNever(() => adapter.fetch(any(), any(), any()));
+    expect(interceptor.tasks.every((task) => task.status == LikeOfflineTaskStatus.blocked), isTrue);
+  });
+
+  test('scheduled replay wakes after a retryable failure without another reconnect', () async {
+    await interceptor.dispose();
+    dio.interceptors.clear();
+    interceptor = LikeOfflineSyncInterceptor(dio: dio, queueBox: queue,
+      autoSchedule: true, notifyRefresh: refreshNotifications.add);
+    dio.interceptors.add(interceptor);
+    var calls = 0;
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((invocation) async {
+      calls++;
+      if (calls == 1) throw DioException(requestOptions: invocation.positionalArguments.first as RequestOptions,
+        type: DioExceptionType.connectionError);
+      return ResponseBody.fromString('{}', 200);
+    });
+    final empty = interceptor.taskChanges.firstWhere((tasks) => tasks.isEmpty);
+    await queue.add(_task(origin: 'https://queued.example:443', path: '/retry',
+      url: 'https://queued.example:443/retry'));
+    await empty.timeout(const Duration(seconds: 5));
+    expect(calls, 2);
+    expect(queue, isEmpty);
   });
 
   test('queues only explicitly eligible mutation network failures', () async {
@@ -86,7 +119,7 @@ void main() {
     expect(task['method'], 'POST');
   });
 
-  test('deduplicates equivalent durable mutations', () async {
+  test('keeps separate user actions even when their payloads match', () async {
     when(() => adapter.fetch(any(), any(), any()))
         .thenAnswer((invocation) async {
       final options = invocation.positionalArguments.first as RequestOptions;
@@ -111,7 +144,7 @@ void main() {
     await queueRequest();
     await queueRequest();
 
-    expect(queue.length, 1);
+    expect(queue.length, 2);
   });
 
   test('replays through the persisted absolute origin and cannot requeue',
@@ -225,7 +258,7 @@ void main() {
     expect(queue, isEmpty);
   });
 
-  test('terminal client errors delete durable work and remain observable',
+  test('terminal client errors remain inspectable and can be retried',
       () async {
     await queue.add(_task(
       origin: 'https://queued.example:443',
@@ -245,6 +278,11 @@ void main() {
         ),
       ),
     );
+    expect(queue.length, 1);
+    expect(interceptor.tasks.single.status, LikeOfflineTaskStatus.failed);
+    await interceptor.retryTask(queue.keys.single);
+    expect(interceptor.tasks.single.status, LikeOfflineTaskStatus.pending);
+    await interceptor.cancelTask(queue.keys.single);
     expect(queue, isEmpty);
   });
 
@@ -355,6 +393,8 @@ Map<String, dynamic> _task({
     'id': '$origin|$path',
     'origin': origin,
     'eligible': true,
+    'scope': '',
+    'withAuth': false,
     'path': path,
     'url': url,
     'method': 'POST',
