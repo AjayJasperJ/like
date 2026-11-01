@@ -65,15 +65,17 @@ class LikeClientFactory {
         sendTimeout: kIsWeb
             ? null
             : (timeout ?? Duration(seconds: LikeConstants.sendTimeout)),
-        headers: {
-          'Accept': LikeConstants.defaultAcceptHeader,
-          ...extraHeaders,
-        },
+        headers: {'Accept': LikeConstants.defaultAcceptHeader, ...extraHeaders},
       ),
     );
 
-    _setupInterceptors(dio, registry, customInterceptors,
-        authConfig: authConfig, currentSession: currentSession);
+    _setupInterceptors(
+      dio,
+      registry,
+      customInterceptors,
+      authConfig: authConfig,
+      currentSession: currentSession,
+    );
 
     // Delegate to the platform-correct SSL implementation:
     //   • Mobile/Desktop → like_ssl_io.dart  (IOHttpClientAdapter)
@@ -97,7 +99,8 @@ class LikeClientFactory {
     dio.interceptors.addAll(
       [
         LikeSessionInterceptor(
-            currentSession ?? () => const LikeSessionScope()),
+          currentSession ?? () => const LikeSessionScope(),
+        ),
 
         LikeTraceCaptureInterceptor(),
 

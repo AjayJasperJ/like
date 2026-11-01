@@ -1,17 +1,25 @@
 """Contract smoke test. Never prints credentials, response bodies or tokens."""
 import json
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 def call(path, body=None, token=None):
-    headers = {'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json',
+               'User-Agent': 'Mozilla/5.0 LIKE-Public-Demo/1.0'}
     if token:
         headers['Authorization'] = 'Bearer ' + token
     request = Request('https://dummyjson.com' + path,
                       data=None if body is None else json.dumps(body).encode(),
                       headers=headers)
-    with urlopen(request, timeout=30) as response:
-        assert response.status in (200, 201)
-        return json.load(response)
+    try:
+        with urlopen(request, timeout=30) as response:
+            assert response.status in (200, 201)
+            return json.load(response)
+    except HTTPError as error:
+        # Metadata only: never print a response body or Authorization header.
+        raise RuntimeError('Public API rejected ' + path.split('?')[0] +
+                           ': HTTP ' + str(error.code) +
+                           ', server=' + error.headers.get('server', 'unknown')) from None
 
 products = call('/products?limit=2&skip=0')
 assert len(products['products']) == 2 and products['total'] > 0

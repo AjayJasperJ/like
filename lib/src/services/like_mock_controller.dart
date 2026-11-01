@@ -70,10 +70,12 @@ class MockRule {
       delayMs: (map['delayMs'] as int? ?? 0).clamp(0, 60000),
       maxUses: (map['maxUses'] as int? ?? 0).clamp(0, 100000),
       failure: LikeMockFailure.values.firstWhere(
-          (value) => value.name == map['failure'],
-          orElse: () => LikeMockFailure.none),
-      responseHeaders:
-          Map<String, String>.from(map['responseHeaders'] as Map? ?? {}),
+        (value) => value.name == map['failure'],
+        orElse: () => LikeMockFailure.none,
+      ),
+      responseHeaders: Map<String, String>.from(
+        map['responseHeaders'] as Map? ?? {},
+      ),
       name: map['name'] as String? ?? '',
       description: map['description'] as String? ?? '',
       pathPattern: map['pathPattern'] as String? ?? '',
@@ -237,7 +239,8 @@ class MockController {
     for (var rule in newRules) {
       final finalRule = rule.id.isEmpty
           ? rule.copyWith(
-              id: DateTime.now().millisecondsSinceEpoch.toString() +
+              id:
+                  DateTime.now().millisecondsSinceEpoch.toString() +
                   updatedRules.length.toString(),
             )
           : rule;

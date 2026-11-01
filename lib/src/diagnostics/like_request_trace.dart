@@ -11,7 +11,7 @@ enum LikeResponseSource {
   fallback,
   queued,
   cancelled,
-  failed
+  failed,
 }
 
 enum LikeTracePhase { started, completed }
@@ -30,38 +30,38 @@ class LikeRequestTrace {
   final int rateLimitRetries;
   final bool authRetried;
   final DateTime timestamp;
-  LikeRequestTrace(
-      {required this.requestId,
-      required this.method,
-      required this.origin,
-      required this.scope,
-      required this.phase,
-      required this.source,
-      this.elapsed = Duration.zero,
-      this.statusCode,
-      this.transportRetries = 0,
-      this.rateLimitRetries = 0,
-      this.authRetried = false})
-      : timestamp = DateTime.now();
+  LikeRequestTrace({
+    required this.requestId,
+    required this.method,
+    required this.origin,
+    required this.scope,
+    required this.phase,
+    required this.source,
+    this.elapsed = Duration.zero,
+    this.statusCode,
+    this.transportRetries = 0,
+    this.rateLimitRetries = 0,
+    this.authRetried = false,
+  }) : timestamp = DateTime.now();
 
   Map<String, Object?> toLog() => {
-        'timestamp': timestamp.toIso8601String(),
-        'level': source == LikeResponseSource.failed ? 'error' : 'info',
-        'category': 'api',
-        'message': '$method $origin: ${source.name}',
-        'details': {
-          'action': phase == LikeTracePhase.started ? 'started' : 'completed',
-          'requestId': requestId,
-          'method': method,
-          'statusCode': statusCode,
-          'durationMs': elapsed.inMilliseconds,
-          'source': source.name,
-          'transportRetries': transportRetries,
-          'rateLimitRetries': rateLimitRetries,
-          'authRetried': authRetried,
-          'scope': scope
-        },
-      };
+    'timestamp': timestamp.toIso8601String(),
+    'level': source == LikeResponseSource.failed ? 'error' : 'info',
+    'category': 'api',
+    'message': '$method $origin: ${source.name}',
+    'details': {
+      'action': phase == LikeTracePhase.started ? 'started' : 'completed',
+      'requestId': requestId,
+      'method': method,
+      'statusCode': statusCode,
+      'durationMs': elapsed.inMilliseconds,
+      'source': source.name,
+      'transportRetries': transportRetries,
+      'rateLimitRetries': rateLimitRetries,
+      'authRetried': authRetried,
+      'scope': scope,
+    },
+  };
 }
 
 class LikeDiagnostics {

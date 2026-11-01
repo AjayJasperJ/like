@@ -19,7 +19,7 @@ jobs:
         run: |
           echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/minimum-flutter" >> "$GITHUB_ENV"
           echo "PUB_CACHE=$RUNNER_TEMP/minimum-pub" >> "$GITHUB_ENV"
-          git clone --depth 1 --branch 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/minimum-flutter"
+          git clone --depth 1 --branch 3.38.0 https://github.com/flutter/flutter.git "$RUNNER_TEMP/minimum-flutter"
           echo "$RUNNER_TEMP/minimum-flutter/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/minimum-flutter/bin/flutter" config --no-analytics
           "$RUNNER_TEMP/minimum-flutter/bin/flutter" --version

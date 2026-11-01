@@ -66,10 +66,11 @@ class LikeOptimisticStore<T> extends ValueNotifier<T> {
     value = result;
   }
 
-  Future<LikeApiResult<R>> mutate<R>(
-      {required T Function(T) optimistic,
-      required T Function(T base, R? result) reconcile,
-      required Future<LikeApiResult<R>> Function(CancelToken) action}) async {
+  Future<LikeApiResult<R>> mutate<R>({
+    required T Function(T) optimistic,
+    required T Function(T base, R? result) reconcile,
+    required Future<LikeApiResult<R>> Function(CancelToken) action,
+  }) async {
     final id = begin(optimistic);
     final token = CancelToken();
     _tokens[id] = token;

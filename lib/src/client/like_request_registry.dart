@@ -7,10 +7,7 @@ class _L1CacheEntry {
   final Response? response;
   final DateTime timestamp;
 
-  _L1CacheEntry({
-    required this.response,
-    required this.timestamp,
-  });
+  _L1CacheEntry({required this.response, required this.timestamp});
 }
 
 /// Registry to track in-flight requests and session-stale keys (L1 Memory Cache).
@@ -25,7 +22,7 @@ class LikeRequestRegistry {
   final LinkedHashMap<String, _L1CacheEntry> _l1Cache = LinkedHashMap();
 
   final LinkedHashMap<String, (Future<Response>, CancelToken?)>
-      _inFlightRequests = LinkedHashMap();
+  _inFlightRequests = LinkedHashMap();
 
   /// Adds a key to the session-fetched set and stores its data in the L1 RAM cache.
   void addSessionKey(String key, {Response? response}) {

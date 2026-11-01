@@ -2,12 +2,13 @@ name: like_shop_shared
 publish_to: none
 version: 1.0.0
 environment:
-  sdk: '>=3.8.0 <4.0.0'
+  sdk: '>=3.10.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
   like:
     path: ../../
+  dio: ^5.10.0
   flutter_secure_storage: ^9.2.4
   hive_flutter: ^1.1.0
 dev_dependencies:

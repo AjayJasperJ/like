@@ -45,8 +45,9 @@ class LikeEtagInterceptor extends Interceptor {
         err.requestOptions.method == 'GET') {
       final key = LikeSessionIdentity.forRequest(err.requestOptions);
 
-      final cached =
-          await LikeService.fetchResponseFromCache(err.requestOptions);
+      final cached = await LikeService.fetchResponseFromCache(
+        err.requestOptions,
+      );
       if (cached != null) {
         cached.extra['isFromCache'] = true;
         cached.extra['isFrom304'] = true;

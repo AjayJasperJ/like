@@ -6,7 +6,12 @@ final class FixtureItem {
   final String title;
   final double price;
   final String? note;
-  const FixtureItem({required this.id, required this.title, required this.price, this.note});
+  const FixtureItem({
+    required this.id,
+    required this.title,
+    required this.price,
+    this.note,
+  });
   factory FixtureItem.fromJson(Map<String, dynamic> json) => FixtureItem(
     id: json['id'] as int,
     title: json['title'] as String,
@@ -24,8 +29,19 @@ final class FixtureItem {
 final class GeneratedApi {
   final LikeHttpClient client;
   const GeneratedApi(this.client);
-  Future<ApiResult<FixtureItem>> getItem({CancelToken? cancelToken, required int id}) async {
-    final result = await client.get('/items/${Uri.encodeComponent(id.toString())}', cancelToken: cancelToken, withAuth: false, requestConfig: const LikeRequestConfig(cacheTags: ['items']));
-    return result.mapSuccess((response) => FixtureItem.fromJson(Map<String, dynamic>.from(response.data as Map)));
+  Future<ApiResult<FixtureItem>> getItem({
+    CancelToken? cancelToken,
+    required int id,
+  }) async {
+    final result = await client.get(
+      '/items/${Uri.encodeComponent(id.toString())}',
+      cancelToken: cancelToken,
+      withAuth: false,
+      requestConfig: const LikeRequestConfig(cacheTags: ['items']),
+    );
+    return result.mapSuccess(
+      (response) =>
+          FixtureItem.fromJson(Map<String, dynamic>.from(response.data as Map)),
+    );
   }
 }

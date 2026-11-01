@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:like_shop_shared/shop_shared.dart';
 
 final shopRepositoryProvider = Provider<ShopRepository>(
-    (ref) => throw StateError('Repository must be injected'));
-final shopProvider =
-    NotifierProvider<ShopNotifier, ShopState>(ShopNotifier.new);
+  (ref) => throw StateError('Repository must be injected'),
+);
+final shopProvider = NotifierProvider<ShopNotifier, ShopState>(
+  ShopNotifier.new,
+);
 
 final class ShopNotifier extends Notifier<ShopState> with ShopActions {
   late ShopRepository _repository;
@@ -29,11 +31,13 @@ class ShopApp extends StatelessWidget {
   const ShopApp({super.key, required this.repository});
   @override
   Widget build(BuildContext context) => ProviderScope(
-      overrides: [shopRepositoryProvider.overrideWithValue(repository)],
-      child: MaterialApp(
-          title: 'LIKE Riverpod Shop',
-          theme: ThemeData(colorSchemeSeed: Colors.teal),
-          home: const _ShopHome()));
+    overrides: [shopRepositoryProvider.overrideWithValue(repository)],
+    child: MaterialApp(
+      title: 'LIKE Riverpod Shop',
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const _ShopHome(),
+    ),
+  );
 }
 
 class _ShopHome extends ConsumerStatefulWidget {
@@ -55,7 +59,8 @@ class _ShopHomeState extends ConsumerState<_ShopHome> {
 
   @override
   Widget build(BuildContext context) => ShopView(
-      title: 'Riverpod Shop',
-      state: ref.watch(shopProvider),
-      actions: ref.read(shopProvider.notifier));
+    title: 'Riverpod Shop',
+    state: ref.watch(shopProvider),
+    actions: ref.read(shopProvider.notifier),
+  );
 }

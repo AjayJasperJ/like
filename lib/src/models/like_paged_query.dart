@@ -11,21 +11,25 @@ class LikePageSnapshot<T> {
   final int page;
   final int? failedPage;
   final LikeError? error;
-  LikePageSnapshot(
-      {Iterable<T> items = const [],
-      this.loading = false,
-      this.hasMore = true,
-      this.page = 0,
-      this.failedPage,
-      this.error})
-      : items = List.unmodifiable(items);
+  LikePageSnapshot({
+    Iterable<T> items = const [],
+    this.loading = false,
+    this.hasMore = true,
+    this.page = 0,
+    this.failedPage,
+    this.error,
+  }) : items = List.unmodifiable(items);
 }
 
 /// Page storage remains separate from the de-duplicated view, so replacing a page
 /// cannot shift another page's offsets. Failed pages retain their cursor for retry.
 class LikePagedQuery<T> extends ValueNotifier<LikePageSnapshot<T>> {
   final Future<LikeApiResult<PaginationTool<T>>> Function(
-      int page, String? cursor, CancelToken token) action;
+    int page,
+    String? cursor,
+    CancelToken token,
+  )
+  action;
   final Object Function(T) identity;
   final int pageSize;
   final Map<int, List<T>> _pages = {};
@@ -34,9 +38,11 @@ class LikePagedQuery<T> extends ValueNotifier<LikePageSnapshot<T>> {
   int _epoch = 0;
   bool _disposed = false;
   String? _nextCursor;
-  LikePagedQuery(
-      {required this.action, required this.identity, this.pageSize = 20})
-      : super(LikePageSnapshot<T>());
+  LikePagedQuery({
+    required this.action,
+    required this.identity,
+    this.pageSize = 20,
+  }) : super(LikePageSnapshot<T>());
 
   Future<void> refresh() {
     _epoch++;
@@ -45,8 +51,9 @@ class LikePagedQuery<T> extends ValueNotifier<LikePageSnapshot<T>> {
   }
 
   Future<void> loadNext() {
-    if (_disposed || value.loading || !value.hasMore)
-      { return Future<void>.value(); }
+    if (_disposed || value.loading || !value.hasMore) {
+      return Future<void>.value();
+    }
     return _load(value.page + 1, _nextCursor);
   }
 
@@ -74,50 +81,56 @@ class LikePagedQuery<T> extends ValueNotifier<LikePageSnapshot<T>> {
     _token = token;
     _cursors[page] = cursor;
     value = LikePageSnapshot(
-        items: value.items,
-        page: value.page,
-        hasMore: value.hasMore,
-        loading: true);
+      items: value.items,
+      page: value.page,
+      hasMore: value.hasMore,
+      loading: true,
+    );
     try {
       final result = await action(page, cursor, token);
       if (_disposed || epoch != _epoch || token.isCancelled) return;
       if (!result.isSuccess || result.data == null) {
         value = LikePageSnapshot(
-            items: value.items,
-            page: value.page,
-            hasMore: value.hasMore,
-            failedPage: page,
-            error: result.error);
+          items: value.items,
+          page: value.page,
+          hasMore: value.hasMore,
+          failedPage: page,
+          error: result.error,
+        );
         return;
       }
       final data = result.data!;
       if (refresh) _pages.clear();
       _pages[page] = data.items ?? const [];
       _nextCursor = data.nextCursor;
-      final cursorMode = data.cursorBased ||
+      final cursorMode =
+          data.cursorBased ||
           cursor != null ||
           data.cursor != null ||
           data.nextCursor != null;
-      var more = data.hasNextOverride ??
+      var more =
+          data.hasNextOverride ??
           (cursorMode
               ? data.hasMoreByCursor
               : data.totalPages != null
-                  ? page < data.totalPages!
-                  : data.totalContent != null
-                      ? page * pageSize < data.totalContent!
-                      : (data.items?.length ?? 0) >= pageSize);
+              ? page < data.totalPages!
+              : data.totalContent != null
+              ? page * pageSize < data.totalContent!
+              : (data.items?.length ?? 0) >= pageSize);
       if (cursorMode && _nextCursor == cursor) more = false;
       value = LikePageSnapshot(items: _items(), page: page, hasMore: more);
     } catch (_) {
       if (!_disposed && epoch == _epoch && !token.isCancelled) {
         value = LikePageSnapshot(
-            items: value.items,
-            page: value.page,
-            hasMore: value.hasMore,
-            failedPage: page,
-            error: LikeError(
-                message: 'Page request failed',
-                type: LikeApiErrorType.unknown));
+          items: value.items,
+          page: value.page,
+          hasMore: value.hasMore,
+          failedPage: page,
+          error: LikeError(
+            message: 'Page request failed',
+            type: LikeApiErrorType.unknown,
+          ),
+        );
       }
     }
   }

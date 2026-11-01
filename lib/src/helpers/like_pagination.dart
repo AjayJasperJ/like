@@ -67,8 +67,9 @@ class PaginationTool<T> {
   /// Selects a strategy based only on metadata supplied by the API.
   bool get hasMore {
     if (hasNextOverride != null) return hasNextOverride!;
-    if (cursorBased || cursor != null || nextCursor != null)
-      { return hasMoreByCursor; }
+    if (cursorBased || cursor != null || nextCursor != null) {
+      return hasMoreByCursor;
+    }
     if (totalContent != null) return hasMoreByTotal;
     if (totalPages != null) return hasMoreByPages;
     if (listData != null && contentLimit != null) return hasMoreByList;
@@ -94,16 +95,16 @@ class PaginationTool<T> {
 
   /// Converts pagination state into a standard Map payload.
   Map<String, dynamic> toMap() => {
-        if (page != null) 'page': page,
-        if (contentLimit != null) 'limit': contentLimit,
-        if (totalPages != null) 'totalPages': totalPages,
-        if (totalContent != null) 'total': totalContent,
-        'hasNext': hasNext,
-        'hasPrevious': hasPrevious,
-        if (cursor != null) 'cursor': cursor,
-        if (nextCursor != null) 'nextCursor': nextCursor,
-        if (listData != null) 'items': listData,
-      };
+    if (page != null) 'page': page,
+    if (contentLimit != null) 'limit': contentLimit,
+    if (totalPages != null) 'totalPages': totalPages,
+    if (totalContent != null) 'total': totalContent,
+    'hasNext': hasNext,
+    'hasPrevious': hasPrevious,
+    if (cursor != null) 'cursor': cursor,
+    if (nextCursor != null) 'nextCursor': nextCursor,
+    if (listData != null) 'items': listData,
+  };
 
   /// Alias for [toMap].
   Map<String, dynamic> toJson() => toMap();
@@ -133,7 +134,8 @@ class PaginationTool<T> {
       hasPreviousOverride: hasPrevious,
       cursor: cursor ?? this.cursor,
       nextCursor: nextCursor,
-      cursorBased: cursorBased ||
+      cursorBased:
+          cursorBased ||
           cursor != null ||
           this.cursor != null ||
           this.nextCursor != null,
@@ -176,11 +178,7 @@ class PaginationTool<T> {
 
     final updated = List<T>.from(existing);
     final endIndex = (startIndex + limit).clamp(0, updated.length);
-    updated.replaceRange(
-      startIndex,
-      endIndex,
-      pageData,
-    );
+    updated.replaceRange(startIndex, endIndex, pageData);
 
     return copyWith(
       page: pageNumber,
@@ -211,21 +209,20 @@ class PaginationTool<T> {
     String? cursor,
     String? nextCursor,
     List<T>? listData,
-  }) =>
-      PaginationTool<T>(
-        page: page ?? this.page,
-        contentLimit: contentLimit ?? this.contentLimit,
-        totalPages: totalPages ?? this.totalPages,
-        totalContent: totalContent ?? this.totalContent,
-        currentPage: currentPage ?? this.currentPage,
-        currentContent: currentContent ?? this.currentContent,
-        hasNextOverride: hasNextOverride ?? this.hasNextOverride,
-        hasPreviousOverride: hasPreviousOverride ?? this.hasPreviousOverride,
-        cursor: cursor ?? this.cursor,
-        nextCursor: nextCursor ?? this.nextCursor,
-        cursorBased: cursorBased,
-        listData: listData ?? this.listData,
-      );
+  }) => PaginationTool<T>(
+    page: page ?? this.page,
+    contentLimit: contentLimit ?? this.contentLimit,
+    totalPages: totalPages ?? this.totalPages,
+    totalContent: totalContent ?? this.totalContent,
+    currentPage: currentPage ?? this.currentPage,
+    currentContent: currentContent ?? this.currentContent,
+    hasNextOverride: hasNextOverride ?? this.hasNextOverride,
+    hasPreviousOverride: hasPreviousOverride ?? this.hasPreviousOverride,
+    cursor: cursor ?? this.cursor,
+    nextCursor: nextCursor ?? this.nextCursor,
+    cursorBased: cursorBased,
+    listData: listData ?? this.listData,
+  );
 
   factory PaginationTool.initial() => PaginationTool<T>();
 }

@@ -43,30 +43,35 @@ class LikeOfflineSyncInterceptor extends Interceptor {
   final Map<dynamic, CancelToken> _running = {};
   Stream<List<LikeOfflineTask>> get taskChanges => _changes.stream;
 
-  List<LikeOfflineTask> get tasks => queueKeys.map((key) {
+  List<LikeOfflineTask> get tasks => queueKeys
+      .map((key) {
         final task = Map<String, dynamic>.from(_queueBox.get(key) as Map);
-        final ownerMatches = task['scope'] == currentSession().key &&
+        final ownerMatches =
+            task['scope'] == currentSession().key &&
             !(task['synthetic'] == true &&
                 (kReleaseMode || !LikeConstants.mockEnabled));
         final state = !ownerMatches
             ? LikeOfflineTaskStatus.blocked
             : _running.containsKey(key)
-                ? LikeOfflineTaskStatus.running
-                : task['status'] == 'failed'
-                    ? LikeOfflineTaskStatus.failed
-                    : LikeOfflineTaskStatus.pending;
+            ? LikeOfflineTaskStatus.running
+            : task['status'] == 'failed'
+            ? LikeOfflineTaskStatus.failed
+            : LikeOfflineTaskStatus.pending;
         return LikeOfflineTask(
-            key: key,
-            id: task['id'] as String? ?? '',
-            origin: task['origin'] as String? ?? '',
-            attempts: task['attempts'] as int? ?? 0,
-            status: state,
-            failure: ownerMatches
-                ? task['lastFailure'] as String?
-                : 'Session owner unavailable',
-            nextAttemptAt:
-                DateTime.tryParse(task['nextAttemptAt'] as String? ?? ''));
-      }).toList(growable: false);
+          key: key,
+          id: task['id'] as String? ?? '',
+          origin: task['origin'] as String? ?? '',
+          attempts: task['attempts'] as int? ?? 0,
+          status: state,
+          failure: ownerMatches
+              ? task['lastFailure'] as String?
+              : 'Session owner unavailable',
+          nextAttemptAt: DateTime.tryParse(
+            task['nextAttemptAt'] as String? ?? '',
+          ),
+        );
+      })
+      .toList(growable: false);
 
   void _publish() {
     if (!_disposed && !_changes.isClosed) _changes.add(tasks);
@@ -74,30 +79,40 @@ class LikeOfflineSyncInterceptor extends Interceptor {
 
   void _scheduleNext() {
     _retryTimer?.cancel();
-    if (_disposed || _paused || !autoSchedule || _originDrains.isNotEmpty)
-      { return; }
+    if (_disposed || _paused || !autoSchedule || _originDrains.isNotEmpty) {
+      return;
+    }
     DateTime? next;
     final blockedOrigins = _queueBox.values
         .whereType<Map>()
-        .where((task) =>
-            task['scope'] == currentSession().key && task['status'] == 'failed')
+        .where(
+          (task) =>
+              task['scope'] == currentSession().key &&
+              task['status'] == 'failed',
+        )
         .map((task) => task['origin'])
         .toSet();
     for (final raw in _queueBox.values) {
       if (raw is Map &&
           raw['synthetic'] == true &&
-          (kReleaseMode || !LikeConstants.mockEnabled)) { continue; }
+          (kReleaseMode || !LikeConstants.mockEnabled)) {
+        continue;
+      }
       if (raw is! Map ||
           raw['scope'] != currentSession().key ||
           raw['eligible'] == false ||
           raw['status'] == 'failed' ||
-          (raw['attempts'] as int? ?? 0) >= (raw['maxAttempts'] as int? ?? 3))
-        { continue; }
+          (raw['attempts'] as int? ?? 0) >= (raw['maxAttempts'] as int? ?? 3)) {
+        continue;
+      }
       final origin = raw['origin'] as String?;
       if (origin == null ||
           blockedOrigins.contains(origin) ||
-          !LikeConnectivityManager().isOriginAvailable(origin)) { continue; }
-      final due = DateTime.tryParse(raw['nextAttemptAt'] as String? ?? '') ??
+          !LikeConnectivityManager().isOriginAvailable(origin)) {
+        continue;
+      }
+      final due =
+          DateTime.tryParse(raw['nextAttemptAt'] as String? ?? '') ??
           DateTime.now();
       if (next == null || due.isBefore(next)) next = due;
     }
@@ -115,11 +130,13 @@ class LikeOfflineSyncInterceptor extends Interceptor {
   }
 
   Future<void> retryTask(dynamic key) async {
-    if (_running.containsKey(key))
-      { throw StateError('Cancel the running action before retrying'); }
+    if (_running.containsKey(key)) {
+      throw StateError('Cancel the running action before retrying');
+    }
     final task = Map<String, dynamic>.from(_queueBox.get(key) as Map);
-    if (task['scope'] != currentSession().key)
-      { throw StateError('Session owner unavailable'); }
+    if (task['scope'] != currentSession().key) {
+      throw StateError('Session owner unavailable');
+    }
     task['attempts'] = 0;
     task['status'] = 'pending';
     task['nextAttemptAt'] = DateTime.now().toIso8601String();
@@ -149,25 +166,34 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     if ((options.extra['offlineSync'] == true ||
             options.extra['idempotencyKey'] is String) &&
         options.extra['isSyncRequest'] != true &&
-        const {'POST', 'PUT', 'PATCH', 'DELETE'}
-            .contains(options.method.toUpperCase())) {
+        const {
+          'POST',
+          'PUT',
+          'PATCH',
+          'DELETE',
+        }.contains(options.method.toUpperCase())) {
       final supplied = options.extra['idempotencyKey'];
-      final existing = options.headers.entries
-          .where((e) => e.key.toLowerCase() == 'idempotency-key');
+      final existing = options.headers.entries.where(
+        (e) => e.key.toLowerCase() == 'idempotency-key',
+      );
       final id = supplied is String
           ? supplied
           : existing.isNotEmpty
-              ? existing.first.value.toString()
-              : const Uuid().v4();
+          ? existing.first.value.toString()
+          : const Uuid().v4();
       if (!RegExp(r'^[A-Za-z0-9._:-]{1,200}$').hasMatch(id)) {
-        handler.reject(DioException(
+        handler.reject(
+          DioException(
             requestOptions: options,
-            error: ArgumentError('Invalid idempotency key')));
+            error: ArgumentError('Invalid idempotency key'),
+          ),
+        );
         return;
       }
       options.extra['like.operationId'] ??= id;
-      options.headers
-          .removeWhere((name, _) => name.toLowerCase() == 'idempotency-key');
+      options.headers.removeWhere(
+        (name, _) => name.toLowerCase() == 'idempotency-key',
+      );
       options.headers['Idempotency-Key'] = id;
     }
     handler.next(options);
@@ -191,10 +217,10 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     this.autoSchedule = false,
     LikeSessionScope Function()? currentSession,
     FutureOr<void> Function(String path)? notifyRefresh,
-  })  : currentSession = currentSession ?? (() => const LikeSessionScope()),
-        _queueBox = queueBox,
-        _notifyRefresh =
-            notifyRefresh ?? ((path) => LikeClient().notifyRefresh(path)) {
+  }) : currentSession = currentSession ?? (() => const LikeSessionScope()),
+       _queueBox = queueBox,
+       _notifyRefresh =
+           notifyRefresh ?? ((path) => LikeClient().notifyRefresh(path)) {
     if (autoSchedule) {
       _queueSubscription = _queueBox.watch().listen((_) {
         _publish();
@@ -212,8 +238,12 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     final options = err.requestOptions;
     final eligible = options.extra['offlineSync'] == true;
     final isReplay = options.extra['isSyncRequest'] == true;
-    final isMutation = const <String>{'POST', 'PUT', 'DELETE', 'PATCH'}
-        .contains(options.method.toUpperCase());
+    final isMutation = const <String>{
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+    }.contains(options.method.toUpperCase());
 
     final unscopedAuth =
         options.extra['withAuth'] == true && currentSession().isAnonymous;
@@ -226,12 +256,15 @@ class LikeOfflineSyncInterceptor extends Interceptor {
       try {
         await _queueRequest(options);
       } catch (error, stack) {
-        handler.next(DioException(
+        handler.next(
+          DioException(
             requestOptions: options,
             type: err.type,
             error: error,
             stackTrace: stack,
-            message: 'Unable to persist offline action'));
+            message: 'Unable to persist offline action',
+          ),
+        );
         return;
       }
       handler.reject(
@@ -247,8 +280,9 @@ class LikeOfflineSyncInterceptor extends Interceptor {
   }
 
   Future<void> _queueRequest(RequestOptions options) async {
-    final origin =
-        LikeConnectivityManager.canonicalOrigin(options.uri.toString());
+    final origin = LikeConnectivityManager.canonicalOrigin(
+      options.uri.toString(),
+    );
     if (origin == null) return;
     final encodedBody = await codec.encode(options.data);
     final stableId = _stableId(options, origin);
@@ -281,11 +315,13 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         'synthetic': options.extra['like.synthetic'] == true,
         'query': options.queryParameters,
         'headers': Map<String, dynamic>.from(options.headers)
-          ..removeWhere((name, _) => const {
-                'authorization',
-                'x-api-key',
-                'cookie'
-              }.contains(name.toLowerCase())),
+          ..removeWhere(
+            (name, _) => const {
+              'authorization',
+              'x-api-key',
+              'cookie',
+            }.contains(name.toLowerCase()),
+          ),
         'contentType': options.contentType,
         'createdAt': now.toIso8601String(),
         // Legacy readers used this field.
@@ -367,7 +403,8 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     }
 
     final headers = Map<String, dynamic>.from(task['headers'] ?? const {});
-    final getTokenFn = authConfig?.getToken ??
+    final getTokenFn =
+        authConfig?.getToken ??
         LikeConstants.current.authConfig?.getToken ??
         LikeAuthInterceptor.getToken;
     if (task['withAuth'] == true && getTokenFn != null) {
@@ -386,12 +423,14 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     }
     final taskOrigin = task['origin'] as String?;
     final persistedUrl = task['url'] as String?;
-    final requestTarget = persistedUrl ??
+    final requestTarget =
+        persistedUrl ??
         (taskOrigin == null
             ? task['path'] as String
             : '$taskOrigin${Uri.parse(task['path'] as String).path}');
-    final requestOrigin =
-        LikeConnectivityManager.canonicalOrigin(requestTarget);
+    final requestOrigin = LikeConnectivityManager.canonicalOrigin(
+      requestTarget,
+    );
     if (taskOrigin != null && requestOrigin != taskOrigin) {
       await _lock.synchronized(() => _queueBox.delete(key));
       throw StateError('Offline queue origin does not match replay URL');
@@ -440,8 +479,13 @@ class LikeOfflineSyncInterceptor extends Interceptor {
       try {
         await LikeService.invalidateTags(tags, task['scope'] as String, origin);
       } catch (_) {}
-      LikeInvalidationHub.shared.emit(LikeInvalidationEvent(tags,
-          scope: task['scope'] as String, origin: origin));
+      LikeInvalidationHub.shared.emit(
+        LikeInvalidationEvent(
+          tags,
+          scope: task['scope'] as String,
+          origin: origin,
+        ),
+      );
     }
     try {
       await _notifyRefresh(task['path'] as String);
@@ -520,9 +564,12 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     // Do not discard a `whenComplete` future: if the drain fails, that creates
     // a second unobserved error. This cleanup branch consumes its own result
     // while the original future still propagates to the caller.
-    future.then<void>((_) => cleanup(), onError: (Object _, StackTrace __) {
-      cleanup();
-    });
+    future.then<void>(
+      (_) => cleanup(),
+      onError: (Object _, StackTrace __) {
+        cleanup();
+      },
+    );
     return future;
   }
 
@@ -543,13 +590,16 @@ class LikeOfflineSyncInterceptor extends Interceptor {
       if (raw is! Map) continue;
       final task = Map<String, dynamic>.from(raw);
       final taskOrigin = task['origin'] as String?;
-      final eligible = task['eligible'] != false &&
+      final eligible =
+          task['eligible'] != false &&
           !(task['synthetic'] == true &&
               (kReleaseMode || !LikeConstants.mockEnabled));
       if (failedOrigins.contains(taskOrigin)) continue;
       if (!eligible ||
           task['scope'] != currentSession().key ||
-          (origin != null && taskOrigin != origin)) { continue; }
+          (origin != null && taskOrigin != origin)) {
+        continue;
+      }
       if (taskOrigin != null &&
           !LikeConnectivityManager().isOriginAvailable(taskOrigin)) {
         continue;
@@ -560,8 +610,9 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         failedOrigins.add(taskOrigin);
         continue;
       }
-      final nextAttempt =
-          DateTime.tryParse(task['nextAttemptAt'] as String? ?? '');
+      final nextAttempt = DateTime.tryParse(
+        task['nextAttemptAt'] as String? ?? '',
+      );
       if (nextAttempt != null && nextAttempt.isAfter(DateTime.now())) continue;
 
       try {

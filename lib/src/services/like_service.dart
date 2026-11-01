@@ -56,9 +56,10 @@ class LikeService {
 
     // 1. Core Storage
     logDebug('DEBUG: Hive.initFlutter starting');
-    final projectNamespace = LikeConstants.projectName
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    final projectNamespace = LikeConstants.projectName.toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9_]'),
+      '_',
+    );
     await Hive.initFlutter(projectNamespace);
     logDebug('DEBUG: Hive.initFlutter completed');
 
@@ -147,7 +148,8 @@ class LikeService {
       final timestamp = DateTime.tryParse(timestampStr ?? '');
       if (timestamp == null) return null;
 
-      final storageDurationMs = (entry['storageDurationMs'] as int?) ??
+      final storageDurationMs =
+          (entry['storageDurationMs'] as int?) ??
           (Hive.isBoxOpen(LikeConstants.boxCacheMetadata)
               ? (metadataBox.get(key) as int?)
               : null);
@@ -214,7 +216,10 @@ class LikeService {
   }
 
   static Future<Set<String>> invalidateTags(
-      Set<String> tags, String scope, String origin) async {
+    Set<String> tags,
+    String scope,
+    String origin,
+  ) async {
     if (!Hive.isBoxOpen(LikeConstants.boxApiCache)) return {};
     final keys = <String>{};
     for (final key in cacheBox.keys) {
@@ -222,13 +227,15 @@ class LikeService {
       if (entry is Map &&
           (entry['scope'] ?? '') == scope &&
           entry['origin'] == origin &&
-          (entry['tags'] as List? ?? const []).any(tags.contains))
-        { keys.add(key.toString()); }
+          (entry['tags'] as List? ?? const []).any(tags.contains)) {
+        keys.add(key.toString());
+      }
     }
     _invalidatedKeys.addAll(keys);
     await cacheBox.deleteAll(keys);
-    if (Hive.isBoxOpen(LikeConstants.boxCacheMetadata))
-      { await metadataBox.deleteAll(keys); }
+    if (Hive.isBoxOpen(LikeConstants.boxCacheMetadata)) {
+      await metadataBox.deleteAll(keys);
+    }
     if (Hive.isBoxOpen(LikeConstants.boxEtags)) await etagBox.deleteAll(keys);
     _invalidatedKeys.removeAll(keys);
     return keys;

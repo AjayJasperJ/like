@@ -69,9 +69,12 @@ class LikeLogger {
 
     message = LikeRedaction.message(message);
     final timestampStr = DateTime.now().toIso8601String();
-    final safeDetails = LikeRedaction.sanitize(details,
-            sensitiveKeys: LikeConstants.current.sensitiveHeaders)
-        as Map<String, Object?>?;
+    final safeDetails =
+        LikeRedaction.sanitize(
+              details,
+              sensitiveKeys: LikeConstants.current.sensitiveHeaders,
+            )
+            as Map<String, Object?>?;
     final entry = {
       'privacyVersion': 2,
       'timestamp': timestampStr,
@@ -264,7 +267,9 @@ class LikeLogger {
       for (final line in lines) {
         try {
           final value = jsonDecode(line);
-          if (value is Map && value['privacyVersion'] == 2) { safe.add(line); }
+          if (value is Map && value['privacyVersion'] == 2) {
+            safe.add(line);
+          }
         } catch (_) {
           // Historical or malformed unredacted entries are never exported.
         }

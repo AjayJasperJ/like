@@ -22,46 +22,57 @@ class LikeQuery<T> {
   bool _disposed = false;
   bool _refreshScheduled = false;
 
-  LikeQuery(
-      {required this.action,
-      required this.scope,
-      required this.origin,
-      Iterable<String> tags = const [],
-      LikeInvalidationHub? invalidations,
-      Stream<Object?>? sessionChanges,
-      Stream<String>? restoredOrigins})
-      : tags = tags.toSet() {
+  LikeQuery({
+    required this.action,
+    required this.scope,
+    required this.origin,
+    Iterable<String> tags = const [],
+    LikeInvalidationHub? invalidations,
+    Stream<Object?>? sessionChanges,
+    Stream<String>? restoredOrigins,
+  }) : tags = tags.toSet() {
     _subscriptions.add(
-        (invalidations ?? LikeInvalidationHub.shared).stream.listen((event) {
-      if (event.scope == scope() &&
-          event.origin == origin &&
-          event.tags.any(this.tags.contains)) { _scheduleRefresh(); }
-    }));
-    _subscriptions.add((restoredOrigins ??
-            LikeConnectivityManager()
-                .originRestorations
-                .map((event) => event.origin))
-        .listen((restored) {
-      final uri = Uri.tryParse(restored);
-      if (uri != null && uri.hasAuthority && uri.origin == origin) {
-        _scheduleRefresh();
-      }
-    }));
-    if (sessionChanges != null)
-      { _subscriptions.add(sessionChanges.listen((_) {
-        _generation++;
-        _token?.cancel('Session changed');
-        _set(LikeStateResponse.idle());
-      })); }
+      (invalidations ?? LikeInvalidationHub.shared).stream.listen((event) {
+        if (event.scope == scope() &&
+            event.origin == origin &&
+            event.tags.any(this.tags.contains)) {
+          _scheduleRefresh();
+        }
+      }),
+    );
+    _subscriptions.add(
+      (restoredOrigins ??
+              LikeConnectivityManager().originRestorations.map(
+                (event) => event.origin,
+              ))
+          .listen((restored) {
+            final uri = Uri.tryParse(restored);
+            if (uri != null && uri.hasAuthority && uri.origin == origin) {
+              _scheduleRefresh();
+            }
+          }),
+    );
+    if (sessionChanges != null) {
+      _subscriptions.add(
+        sessionChanges.listen((_) {
+          _generation++;
+          _token?.cancel('Session changed');
+          _set(LikeStateResponse.idle());
+        }),
+      );
+    }
   }
 
   /// Emits a snapshot on every new subscription, then subsequent transitions.
   Stream<LikeStateResponse<T>> watch() => Stream.multi((controller) {
-        controller.add(_state);
-        final subscription = _events.stream.listen(controller.add,
-            onError: controller.addError, onDone: controller.close);
-        controller.onCancel = subscription.cancel;
-      });
+    controller.add(_state);
+    final subscription = _events.stream.listen(
+      controller.add,
+      onError: controller.addError,
+      onDone: controller.close,
+    );
+    controller.onCancel = subscription.cancel;
+  });
 
   void _set(LikeStateResponse<T> value) {
     if (_disposed) return;
@@ -86,20 +97,26 @@ class LikeQuery<T> {
     final token = CancelToken();
     _token = token;
     final old = _state.data;
-    _set(old == null
-        ? LikeStateResponse.loading()
-        : LikeStateResponse.refreshing(old));
+    _set(
+      old == null
+          ? LikeStateResponse.loading()
+          : LikeStateResponse.refreshing(old),
+    );
     try {
       final result = await action(token);
-      if (!_disposed && generation == _generation && owner == scope())
-        { _set(result.toStateResponse()); }
+      if (!_disposed && generation == _generation && owner == scope()) {
+        _set(result.toStateResponse());
+      }
     } catch (error) {
       if (!_disposed &&
           generation == _generation &&
           owner == scope() &&
           !token.isCancelled) {
-        _set(LikeStateResponse.error(LikeError(
-            message: 'Query failed', type: LikeApiErrorType.unknown)));
+        _set(
+          LikeStateResponse.error(
+            LikeError(message: 'Query failed', type: LikeApiErrorType.unknown),
+          ),
+        );
       }
     }
   }

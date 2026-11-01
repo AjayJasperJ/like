@@ -4,9 +4,11 @@ class LikeInvalidationEvent {
   final Set<String> tags;
   final String scope;
   final String origin;
-  LikeInvalidationEvent(Iterable<String> tags,
-      {required this.scope, required this.origin})
-      : tags = Set.unmodifiable(tags);
+  LikeInvalidationEvent(
+    Iterable<String> tags, {
+    required this.scope,
+    required this.origin,
+  }) : tags = Set.unmodifiable(tags);
 }
 
 /// Application data events only: no payloads, credentials or diagnostic logging.
@@ -29,9 +31,11 @@ class LikeResourceIndex {
   }
 
   Set<String> matching(LikeInvalidationEvent event) => _resources.entries
-      .where((entry) =>
-          entry.value.origin == event.origin &&
-          entry.value.tags.any(event.tags.contains))
+      .where(
+        (entry) =>
+            entry.value.origin == event.origin &&
+            entry.value.tags.any(event.tags.contains),
+      )
       .map((entry) => entry.key)
       .toSet();
   void clear() => _resources.clear();

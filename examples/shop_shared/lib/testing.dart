@@ -1,5 +1,5 @@
-/// Deterministic repository fixture for adapter and end-to-end UI tests.
-/// Production entry points never import this library.
+// Deterministic repository fixture for adapter and end-to-end UI tests.
+// Production entry points never import this library.
 import 'shop_shared.dart';
 
 final class FixtureShopRepository implements ShopRepository {

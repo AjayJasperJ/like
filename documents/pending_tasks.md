@@ -1,6 +1,6 @@
 # Pending tasks and implementation flow
 
-Status updated: 31 October 2026. This is the implementation checklist, not a claim
+Status updated: 1 November 2026. This is the implementation checklist, not a claim
 that every capability below is missing from LIKE. Existing capabilities need the
 specific hardening or extension described here.
 
@@ -23,22 +23,32 @@ This is a historical validation run, not the status of every later commit.
 
 ## Current increment in review
 
-[PR #3](https://github.com/AjayJasperJ/like/pull/3) implements NET-01 origin
-identity, passive slow API-path detection, conservative LikeLogger redaction and
-expanded browser/native CI. Validation is in progress; these are not all marked
-complete yet. DevTool raw-traffic redaction, account isolation, device-runtime
-integration and the remaining offline/session work stay pending.
+[Core PR #5](https://github.com/AjayJasperJ/like/pull/5) and
+[private DevTool PR #1](https://github.com/AjayJasperJ/like_devtool/pull/1) contain
+the remaining implementation. Do not merge until final checks pass.
 
-Additional acceptance criteria:
+Verified evidence:
 
-- NET-03: repeated slow evidence, recovery, origin isolation, optional throughput
-  estimates, cache/cancellation exclusions and bounded monitor state are tested.
-- PRIVACY-02: debug/release policies redact diagnostic copies without changing
-  application responses; all DevTool/export consumers still need an audit.
-- WEB-01: headless browser HTTP/CORS, cache/ETag persistence, timeout, cancellation,
-  core/model/widget tests and release compilation pass.
-- PLATFORM-01: native VM suites and Linux/macOS/Windows/Android/iOS-simulator builds
-  pass. These are not equivalent to Android/iOS runtime device tests.
+- Core runner 41259034483: 280 native tests, 127 browser tests, 3 server tests and
+  6 state-management integration tests passed. Strict analysis then found issues;
+  their fixes are under final verification.
+- Apps runner 41259034482: Provider, Riverpod and BLoC host/browser flows, release
+  web builds and release test APK builds all passed.
+- DevTool runner 41259905030: strict analysis, host tests, browser privacy/lifecycle
+  tests and release web compilation passed against the explicit core checkout.
+- A minimum-SDK probe established that path_provider 2.1.6 requires Dart 3.10.
+  The declared minimum and dedicated test workflow now target Flutter 3.38.0.
+- A live DummyJSON probe received HTTP 403. It remains a separate live-contract
+  issue under investigation; deterministic app fixtures passed.
+
+The code now implements session-scoped queue/cache identity, durable multipart
+replay, scheduled retry and operation IDs, queue controls, resilient refresh,
+resource invalidation, shared cancellable queries, optimistic layers, pagination,
+redaction and request explanations, synthetic scenarios, release automation and
+optional typed OpenAPI subset generation. Final validation remains in progress.
+
+Android emulator and iOS simulator flow tests have been added; they are not yet
+claimed passing. Native host tests and compilation are separate evidence.
 
 ## Next implementation order
 
@@ -65,8 +75,8 @@ Additional acceptance criteria:
 | 19 | CI-02 | Dependency/release automation | Automated update checks; version/changelog gates; approved release tags publish through configured pub.dev identity. |
 | 20 | GEN-01 | Optional OpenAPI generation | Generate typed service/parser code with explicit cache/mutation policies; keep generation optional and test generated output. |
 
-All rows above remain pending. Finish one independently testable increment before
-marking it complete. Every change should name the trigger, observable behavior,
+Rows are acceptance criteria for final verification. Most are implemented as
+described above; do not mark them complete until the corresponding checks pass. Every change should name the trigger, observable behavior,
 regression test and lifecycle/storage migration impact. Do not mark a whole area
 complete because one example or happy-path test passes.
 
@@ -90,18 +100,21 @@ Dependencies are injected toward the data layer. Results flow back through the s
 boundaries. Redis, if added, lives behind the HTTP API. The concrete LikeClient
 owns network/cache behavior; presentation libraries do not own HTTP policy.
 
-Current state-management differences:
+Current shared-query adapters:
 
-| Behavior | Provider example | Riverpod example | Cubit example |
+| Behavior | Provider | Riverpod | Cubit |
 | --- | --- | --- | --- |
-| Data dependency | PostsRepository | postsRepositoryProvider override | PostsRepository |
-| Loading/errors | PaginatedNotifierState / LIKE helpers | AsyncValue wrapping ApiResult | LikeStateResponse |
-| Mutation refresh | Explicit list reload | Caller invalidates page family | Caller invokes refresh/load |
-| Latest completion wins | Existing LIKE pagination machinery | Provider-family lifecycle | Explicit generation guard |
-| Dispose cancels HTTP end to end | Not guaranteed by the repository contract | Not implemented | Not implemented |
-| Full reconnect/pipeline parity | Uses LIKE state helpers | Pending | Pending |
+| Contract | PostsRepository.watchPage | Same | Same |
+| State | LikeQueryNotifier | StreamProvider | LikeStateResponse stream |
+| Resource invalidation/reconnect | LikeQuery | LikeQuery | LikeQuery |
+| Replacement/disposal | Cancels owned token/query | ref.onDispose closes query | close/replacement closes query |
+| Session isolation | Query generation/scope | Same | Same |
 
-## Target offline mutation flow — pending
+The separate complete public API apps in `examples/` use each state library to
+own immutable ShopState over pure shared application use cases. See
+[examples](../examples/README.md) and [state management](state_management.md).
+
+## Implemented offline mutation flow — final validation pending
 
 ```mermaid
 flowchart TD
@@ -117,8 +130,8 @@ flowchart TD
     Check -->|No| Blocked["Expose blocked action"]
 ```
 
-This target requires the SESSION/SYNC tasks above. Do not present it as current
-behavior. HTTP acknowledgment plus a lost response can still duplicate a mutation
+This flow is implemented by the session and offline interceptors. Legacy
+ownerless queue entries remain blocked for explicit review. HTTP acknowledgment plus a lost response can still duplicate a mutation
 unless the backend honors the same idempotency key.
 
 ## Review and verification flow

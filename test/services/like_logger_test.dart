@@ -129,6 +129,18 @@ void main() {
       await subscription.cancel();
     });
 
+    test('historical unredacted entries are excluded from exports', () async {
+      final file = io.File('${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt');
+      await file.writeAsString('${jsonEncode({'message': 'historical-secret', 'response': {'token': 'secret'}})}\n');
+      expect(await LikeLogger.readLogs(), isEmpty);
+      await LikeLogger.log(level: LikeLogLevel.info, category: 'fixture', message: 'Safe event');
+      final exported = await LikeLogger.readLogs();
+      expect(exported, contains('Safe event'));
+      expect(exported, isNot(contains('historical-secret')));
+      expect(exported, isNot(contains('"token"')));
+      await LikeLogger.clearLogs();
+    });
+
     test('4. log disk error is caught and printed, then restored', () async {
       LikeConstants.apply(LikeConfig(
         projectName: 'shared_logger_project',

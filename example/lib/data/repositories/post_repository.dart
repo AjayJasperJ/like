@@ -42,12 +42,12 @@ final class PostRepository implements PostsRepository {
     CancelToken? cancelToken,
     String? search,
     bool? published,
-  }) =>
-      _api.list(
-          page: page,
-          search: search,
-          published: published,
-          cancelToken: cancelToken);
+  }) => _api.list(
+    page: page,
+    search: search,
+    published: published,
+    cancelToken: cancelToken,
+  );
 
   @override
   Future<ApiResult<ApiPost>> find(int id, {CancelToken? cancelToken}) =>
@@ -57,11 +57,12 @@ final class PostRepository implements PostsRepository {
   LikeQuery<PaginatedPosts> watchPage(int page) {
     final client = LikeClient();
     return LikeQuery(
-        action: (token) => list(page: page, cancelToken: token),
-        scope: () => client.sessionScope.key,
-        origin: client.origin,
-        tags: ['posts'],
-        sessionChanges: client.sessionChanges);
+      action: (token) => list(page: page, cancelToken: token),
+      scope: () => client.sessionScope.key,
+      origin: client.origin,
+      tags: ['posts'],
+      sessionChanges: client.sessionChanges,
+    );
   }
 
   @override
@@ -70,13 +71,12 @@ final class PostRepository implements PostsRepository {
     required String body,
     required bool published,
     required int userId,
-  }) =>
-      _api.create(
-        title: title,
-        body: body,
-        published: published,
-        userId: userId,
-      );
+  }) => _api.create(
+    title: title,
+    body: body,
+    published: published,
+    userId: userId,
+  );
 
   @override
   Future<ApiResult<ApiPost>> replace({
@@ -85,14 +85,13 @@ final class PostRepository implements PostsRepository {
     required String body,
     required bool published,
     required int userId,
-  }) =>
-      _api.replace(
-        id: id,
-        title: title,
-        body: body,
-        published: published,
-        userId: userId,
-      );
+  }) => _api.replace(
+    id: id,
+    title: title,
+    body: body,
+    published: published,
+    userId: userId,
+  );
 
   @override
   Future<ApiResult<ApiPost>> togglePublished(ApiPost post) =>

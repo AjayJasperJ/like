@@ -32,8 +32,9 @@ class LikeMockInterceptor extends Interceptor {
     final matchingRule = rules.firstWhere(
       (rule) {
         if (!rule.isEnabled ||
-            (rule.maxUses > 0 && (_uses[rule.id] ?? 0) >= rule.maxUses))
-          { return false; }
+            (rule.maxUses > 0 && (_uses[rule.id] ?? 0) >= rule.maxUses)) {
+          return false;
+        }
 
         // 1. Match method
         if (rule.method != 'ANY' && rule.method != options.method) {
@@ -144,28 +145,32 @@ class LikeMockInterceptor extends Interceptor {
       options.extra['like.synthetic'] = true;
       _uses[matchingRule.id] = (_uses[matchingRule.id] ?? 0) + 1;
       try {
-        if (options.cancelToken?.isCancelled == true)
-          { throw options.cancelToken!.cancelError!; }
+        if (options.cancelToken?.isCancelled == true) {
+          throw options.cancelToken!.cancelError!;
+        }
         if (matchingRule.delayMs > 0) {
           await Future.any<void>([
             Future<void>.delayed(Duration(milliseconds: matchingRule.delayMs)),
             if (options.cancelToken != null)
-              options.cancelToken!.whenCancel
-                  .then<void>((error) => throw error),
+              options.cancelToken!.whenCancel.then<void>(
+                (error) => throw error,
+              ),
           ]);
         }
         final failure = matchingRule.failure;
         if (failure != LikeMockFailure.none) {
           handler.reject(
-              DioException(
-                  requestOptions: options,
-                  type: failure == LikeMockFailure.offline
-                      ? DioExceptionType.connectionError
-                      : failure == LikeMockFailure.timeout
-                          ? DioExceptionType.receiveTimeout
-                          : DioExceptionType.cancel,
-                  message: 'Synthetic test failure'),
-              true);
+            DioException(
+              requestOptions: options,
+              type: failure == LikeMockFailure.offline
+                  ? DioExceptionType.connectionError
+                  : failure == LikeMockFailure.timeout
+                  ? DioExceptionType.receiveTimeout
+                  : DioExceptionType.cancel,
+              message: 'Synthetic test failure',
+            ),
+            true,
+          );
           return;
         }
       } on DioException catch (error) {
@@ -182,20 +187,26 @@ class LikeMockInterceptor extends Interceptor {
       }
 
       final response = Response(
-          requestOptions: options,
-          data: responseData,
-          statusCode: matchingRule.statusCode,
-          statusMessage: 'MOCKED',
-          headers: Headers.fromMap(matchingRule.responseHeaders
-              .map((key, value) => MapEntry(key, [value]))),
-          extra: Map<String, dynamic>.from(options.extra)..['isMocked'] = true);
+        requestOptions: options,
+        data: responseData,
+        statusCode: matchingRule.statusCode,
+        statusMessage: 'MOCKED',
+        headers: Headers.fromMap(
+          matchingRule.responseHeaders.map(
+            (key, value) => MapEntry(key, [value]),
+          ),
+        ),
+        extra: Map<String, dynamic>.from(options.extra)..['isMocked'] = true,
+      );
       if (!(options.validateStatus(matchingRule.statusCode))) {
         handler.reject(
-            DioException.badResponse(
-                statusCode: matchingRule.statusCode,
-                requestOptions: options,
-                response: response),
-            true);
+          DioException.badResponse(
+            statusCode: matchingRule.statusCode,
+            requestOptions: options,
+            response: response,
+          ),
+          true,
+        );
       } else {
         handler.resolve(response, true);
       }
