@@ -533,6 +533,7 @@ injected fakes for unit tests and controlled adapters/fixtures for transport tes
 
 | Guide | What it covers |
 | --- | --- |
+| [Documentation website](site/README.md) | Build, preview and publish the human/agent guide site |
 | [Architecture and source map](ARCHITECTURE.md) | Responsibilities, implementation paths and tests |
 | [State management](documents/state_management.md) | Provider, Riverpod, Cubit and other integration patterns |
 | [Interceptor pipeline](documents/interceptor_pipeline.md) | Actual request/response ordering |
