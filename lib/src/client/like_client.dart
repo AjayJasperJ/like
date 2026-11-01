@@ -62,7 +62,7 @@ class LikeClient implements LikeHttpClient {
 
   Future<void> invalidateTags(Iterable<String> tags, {String? origin}) async {
     if (tags.isEmpty) return;
-    final target = origin ?? Uri.parse(_dio.options.baseUrl).origin;
+    final target = origin ?? this.origin;
     final event = LikeInvalidationEvent(
       tags,
       scope: _sessionScope.key,
@@ -257,6 +257,11 @@ class LikeClient implements LikeHttpClient {
     return _dio.options.baseUrl;
   }
 
+  String _requestOrigin(String path, LikeRequestConfig? config) {
+    final uri = RequestOptions(baseUrl: _resolveBaseUrl(config), path: path).uri;
+    return uri.hasAuthority ? uri.origin : '';
+  }
+
   Future<LikeApiResult<Response>> _execute({
     required String method,
     required String path,
@@ -274,10 +279,7 @@ class LikeClient implements LikeHttpClient {
     final clock = Stopwatch()..start();
     var origin = '';
     try {
-      origin = RequestOptions(
-        baseUrl: _resolveBaseUrl(requestConfig),
-        path: path,
-      ).uri.origin;
+      origin = _requestOrigin(path, requestConfig);
     } catch (_) {}
     final scope = _sessionScope.key;
     LikeDiagnostics.shared.emit(
@@ -613,8 +615,7 @@ class LikeClient implements LikeHttpClient {
       // so Dio doesn't blindly prepend the instance baseUrl
       extra: {
         ...extra,
-        if (effectiveConnectTimeout != null)
-          'connectTimeout': effectiveConnectTimeout,
+        'connectTimeout': ?effectiveConnectTimeout,
         if (baseUrlOverridden) 'overrideBaseUrl': effectiveBaseUrl,
       },
     );
@@ -915,10 +916,7 @@ class LikeClient implements LikeHttpClient {
       notifySync(path, _extractPayload(body, query));
       await invalidateTags(
         requestConfig?.invalidates ?? const [],
-        origin: RequestOptions(
-          baseUrl: _resolveBaseUrl(requestConfig),
-          path: path,
-        ).uri.origin,
+        origin: _requestOrigin(path, requestConfig),
       );
     }
     return result;
@@ -968,10 +966,7 @@ class LikeClient implements LikeHttpClient {
       notifySync(path, _extractPayload(body, query));
       await invalidateTags(
         requestConfig?.invalidates ?? const [],
-        origin: RequestOptions(
-          baseUrl: _resolveBaseUrl(requestConfig),
-          path: path,
-        ).uri.origin,
+        origin: _requestOrigin(path, requestConfig),
       );
     }
     return result;
@@ -1021,10 +1016,7 @@ class LikeClient implements LikeHttpClient {
       notifySync(path, _extractPayload(body, query));
       await invalidateTags(
         requestConfig?.invalidates ?? const [],
-        origin: RequestOptions(
-          baseUrl: _resolveBaseUrl(requestConfig),
-          path: path,
-        ).uri.origin,
+        origin: _requestOrigin(path, requestConfig),
       );
     }
     return result;
@@ -1074,10 +1066,7 @@ class LikeClient implements LikeHttpClient {
       notifySync(path, _extractPayload(body, query));
       await invalidateTags(
         requestConfig?.invalidates ?? const [],
-        origin: RequestOptions(
-          baseUrl: _resolveBaseUrl(requestConfig),
-          path: path,
-        ).uri.origin,
+        origin: _requestOrigin(path, requestConfig),
       );
     }
     return result;

@@ -21,6 +21,15 @@ def identifier(value):
 def literal(value):
     return "'" + json.dumps(value, ensure_ascii=False)[1:-1].replace("'", r"\'").replace('$', r'\$') + "'"
 
+def canonical(source):
+    # Preserve string contents while ignoring formatter whitespace/comments.
+    pattern = r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|//[^\n]*|/\*.*?\*/|[A-Za-z_][A-Za-z0-9_]*|[0-9]+|[^\s]"
+    tokens = [token for token in re.findall(pattern, source, re.S)
+              if not token.startswith('//') and not token.startswith('/*')]
+    return [token for i, token in enumerate(tokens)
+            if token != ',' or i + 1 == len(tokens) or tokens[i + 1] not in (')', '}')]
+
+
 def generate(spec):
     if not str(spec.get('openapi', '')).startswith('3.0.'):
         raise ValueError('Only the documented OpenAPI 3.0 JSON subset is supported')
@@ -72,7 +81,10 @@ def generate(spec):
             out += ['    ' + key + ': ' + (value + ' == null ? null : ' if nullable else '') + decode(field, value) + ',']
         out += ['  );', '  Map<String, dynamic> toJson() => {']
         for key, field, nullable in fields:
-            out += ['    ' + literal(key) + ': ' + (key + ' == null ? null : ' if nullable else '') + encode(field, key) + ',']
+            expression = encode(field, key)
+            if nullable and (field.get('type') == 'array' or '$ref' in field):
+                expression = expression.replace(key + '.', key + '?.', 1)
+            out += ['    ' + literal(key) + ': ' + expression + ',']
         out += ['  };', '}', '']
     out += ['final class GeneratedApi {', '  final LikeHttpClient client;', '  const GeneratedApi(this.client);']
     used = set()
@@ -133,7 +145,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     output = generate(json.loads(args.spec.read_text()))
     if args.check:
-        if re.sub(r'\s+', '', args.output.read_text()).replace(',)', ')').replace(',}', '}') != re.sub(r'\s+', '', output).replace(',)', ')').replace(',}', '}'): raise SystemExit('Generated bindings are stale')
+        if canonical(args.output.read_text()) != canonical(output): raise SystemExit('Generated bindings are stale')
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(output)

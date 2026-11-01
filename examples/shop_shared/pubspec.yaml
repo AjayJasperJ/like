@@ -2,7 +2,7 @@ name: like_shop_shared
 publish_to: none
 version: 1.0.0
 environment:
-  sdk: '>=3.10.0 <4.0.0'
+  sdk: '>=3.11.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter

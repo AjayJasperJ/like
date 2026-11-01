@@ -151,7 +151,17 @@ void main() {
       },
     );
 
-    test('copyWith retains scoped auth and account identity', () async {
+      test('relative-only clients can acknowledge tagged mutations', () async {
+      final client = LikeClient.scoped(const LikeClientConfig());
+      addTearDown(client.dispose);
+      client.dio.httpClientAdapter = _MockAdapter((options) => Response(
+        requestOptions: options, statusCode: 200, data: {'saved': true}));
+      final result = await client.post('/test', body: {'value': 1},
+        requestConfig: const LikeRequestConfig(invalidates: ['items']));
+      expect(result.isSuccess, isTrue);
+    });
+
+  test('copyWith retains scoped auth and account identity', () async {
       final original = LikeClient.scoped(
         LikeClientConfig(
           baseUrl: 'https://fixture.example',

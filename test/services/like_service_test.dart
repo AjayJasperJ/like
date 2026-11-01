@@ -56,7 +56,7 @@ void main() {
           data: {'id': 1}, statusCode: 200));
         final key = LikeSessionIdentity.forRequest(request);
         await LikeService.putEtag(key, 'etag-fixture');
-        await LikeService.metadataBox.put(key, {'saved': true});
+        await LikeService.metadataBox.put(key, const Duration(days: 1).inMilliseconds);
       }
       await LikeService.invalidateTags({'items'}, owner.key, 'https://a.example');
       expect(await LikeService.fetchResponseFromCache(a), isNull);

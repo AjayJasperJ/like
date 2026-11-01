@@ -45,7 +45,7 @@ void main() {
         interfaceCheck: () async => <ConnectivityResult>[
           ConnectivityResult.wifi,
         ],
-        internetCheck: (_, __) async => true,
+        internetCheck: (_, _) async => true,
         serverCheck: (host, port, _) async {
           expect(host, 'api.example.com');
           expect(port, 443);

@@ -45,8 +45,8 @@ void main() {
     serverChecks = 0;
     manager.debugConfigure(
       interfaceCheck: () async => <ConnectivityResult>[ConnectivityResult.wifi],
-      internetCheck: (_, __) async => true,
-      serverCheck: (_, __, ___) async {
+      internetCheck: (_, _) async => true,
+      serverCheck: (_, _, _) async {
         serverChecks++;
         return false;
       },
@@ -94,8 +94,8 @@ void main() {
     final probe = Completer<bool?>();
     manager.debugConfigure(
       interfaceCheck: () async => <ConnectivityResult>[ConnectivityResult.wifi],
-      internetCheck: (_, __) async => true,
-      serverCheck: (_, __, ___) {
+      internetCheck: (_, _) async => true,
+      serverCheck: (_, _, _) {
         serverChecks++;
         return probe.future;
       },

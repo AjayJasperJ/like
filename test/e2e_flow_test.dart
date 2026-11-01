@@ -149,7 +149,7 @@ class MealApp extends StatelessWidget {
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
-                onSuccess: (data, _, __) => ListView.builder(
+                onSuccess: (data, _, _) => ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: data.meals.length,
                   itemBuilder: (ctx, idx) => Card(

@@ -22,7 +22,7 @@ final class FixtureItem {
     'id': id,
     'title': title,
     'price': price,
-    'note': note == null ? null : note,
+    'note': note,
   };
 }
 

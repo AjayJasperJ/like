@@ -145,7 +145,7 @@ class _ApiToolsScreenState extends State<ApiToolsScreen>
                 ),
               ),
             ),
-            onSuccess: (output, _, __) => Card(
+            onSuccess: (output, _, _) => Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: SelectableText(output),

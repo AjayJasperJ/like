@@ -352,7 +352,7 @@ class LikeEngine {
     }
 
     // Cleanup must not create a second failing future when [run] fails.
-    run.then<void>((_) => cleanup(), onError: (Object _, StackTrace __) {
+    run.then<void>((_) => cleanup(), onError: (Object _, StackTrace _) {
       cleanup();
     });
     return run;
@@ -454,7 +454,7 @@ class LikeEngine {
     }
 
     // Cleanup must not create a second failing future when [run] fails.
-    run.then<void>((_) => cleanup(), onError: (Object _, StackTrace __) {
+    run.then<void>((_) => cleanup(), onError: (Object _, StackTrace _) {
       cleanup();
     });
     return run;

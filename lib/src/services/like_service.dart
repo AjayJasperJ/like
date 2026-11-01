@@ -210,7 +210,7 @@ class LikeService {
       'tags': options.extra['like.cacheTags'] ?? const <String>[],
       'data': data,
       'timestamp': timestamp,
-      if (storageDurationMs != null) 'storageDurationMs': storageDurationMs,
+      'storageDurationMs': ?storageDurationMs,
     });
     _invalidatedKeys.remove(key);
   }

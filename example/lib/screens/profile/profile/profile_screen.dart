@@ -44,7 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ],
           ),
         ),
-        onSuccess: (user, _, __) {
+        onSuccess: (user, _, _) {
           if (user == null) return const SizedBox.shrink();
           return ListView(
             padding: const EdgeInsets.all(24),

@@ -579,7 +579,7 @@ class LikeOfflineSyncInterceptor extends Interceptor {
     // while the original future still propagates to the caller.
     future.then<void>(
       (_) => cleanup(),
-      onError: (Object _, StackTrace __) {
+      onError: (Object _, StackTrace _) {
         cleanup();
       },
     );

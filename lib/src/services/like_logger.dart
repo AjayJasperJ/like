@@ -119,19 +119,19 @@ class LikeLogger {
       message: message,
       details: {
         'success': success,
-        if (requestId != null) 'requestId': requestId,
-        if (statusCode != null) 'statusCode': statusCode,
-        if (method != null) 'method': method,
-        if (requestHeaders != null) 'requestHeaders': requestHeaders,
-        if (responseHeaders != null) 'responseHeaders': responseHeaders,
+        'requestId': ?requestId,
+        'statusCode': ?statusCode,
+        'method': ?method,
+        'requestHeaders': ?requestHeaders,
+        'responseHeaders': ?responseHeaders,
         if (requestBody != null)
           'requestBody': kReleaseMode ? LikeRedaction.omitted : requestBody,
-        if (requestFields != null) 'requestFields': requestFields,
-        if (requestQuery != null) 'requestQuery': requestQuery,
+        'requestFields': ?requestFields,
+        'requestQuery': ?requestQuery,
         if (response != null)
           'response': LikeRedaction.apiPayload(response, release: kReleaseMode),
         if (shouldShrink) 'shrink': true,
-        if (statusText != null) 'status': statusText,
+        'status': ?statusText,
       },
     );
   }
@@ -154,11 +154,11 @@ class LikeLogger {
       message: '${LikeRedaction.endpoint(endpoint)} | STARTED',
       details: {
         'requestId': requestId,
-        if (method != null) 'method': method,
-        if (headers != null) 'headers': headers,
+        'method': ?method,
+        'headers': ?headers,
         if (body != null) 'body': kReleaseMode ? LikeRedaction.omitted : body,
-        if (fields != null) 'fields': fields,
-        if (query != null) 'query': query,
+        'fields': ?fields,
+        'query': ?query,
       },
     );
   }

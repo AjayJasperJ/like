@@ -2,11 +2,14 @@ import copy
 import json
 import unittest
 from pathlib import Path
-from generate import generate
+from generate import generate, canonical
 
 class GenerationTests(unittest.TestCase):
     def setUp(self):
         self.spec = json.loads(Path(__file__).with_name('fixture.json').read_text())
+    def test_formatter_normalization_preserves_string_contents(self):
+        self.assertEqual(canonical("f( 'a b', );"), canonical("f('a b');"))
+        self.assertNotEqual(canonical("f('a b');"), canonical("f('ab');"))
     def test_deterministic_typed_contract(self):
         result = generate(self.spec)
         self.assertEqual(result, generate(copy.deepcopy(self.spec)))

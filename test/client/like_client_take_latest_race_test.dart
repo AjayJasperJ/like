@@ -71,8 +71,8 @@ void main() {
         interfaceCheck: () async => <ConnectivityResult>[
           ConnectivityResult.wifi,
         ],
-        internetCheck: (_, __) async => true,
-        serverCheck: (_, __, ___) async {
+        internetCheck: (_, _) async => true,
+        serverCheck: (_, _, _) async {
           serverChecks++;
           return true;
         },

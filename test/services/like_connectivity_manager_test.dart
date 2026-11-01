@@ -30,7 +30,7 @@ void main() {
     final now = DateTime.utc(2026, 1, 2, 3, 4, 5);
     manager.debugConfigure(
       interfaceCheck: () async => <ConnectivityResult>[ConnectivityResult.wifi],
-      internetCheck: (_, __) async => true,
+      internetCheck: (_, _) async => true,
       serverCheck: (host, port, _) async {
         expect(host, 'example.com');
         expect(port, 443);
@@ -65,8 +65,8 @@ void main() {
         interfaceCalls++;
         return interfaceCompleter.future;
       },
-      internetCheck: (_, __) async => true,
-      serverCheck: (_, __, ___) {
+      internetCheck: (_, _) async => true,
+      serverCheck: (_, _, _) {
         serverCalls++;
         return serverCompleter.future;
       },
@@ -103,8 +103,8 @@ void main() {
     );
     manager.debugConfigure(
       interfaceCheck: () async => <ConnectivityResult>[ConnectivityResult.wifi],
-      internetCheck: (_, __) async => true,
-      serverCheck: (_, __, ___) async {
+      internetCheck: (_, _) async => true,
+      serverCheck: (_, _, _) async {
         serverCalls++;
         return false;
       },
@@ -141,8 +141,8 @@ void main() {
         interfaceCalls++;
         return <ConnectivityResult>[ConnectivityResult.wifi];
       },
-      internetCheck: (_, __) async => true,
-      serverCheck: (_, __, ___) async => false,
+      internetCheck: (_, _) async => true,
+      serverCheck: (_, _, _) async => false,
       isWeb: false,
     );
 
@@ -166,8 +166,8 @@ void main() {
   test('scoped origin state cannot poison primary server state', () async {
     manager.debugConfigure(
       interfaceCheck: () async => <ConnectivityResult>[ConnectivityResult.wifi],
-      internetCheck: (_, __) async => true,
-      serverCheck: (host, _, __) async => host == 'primary.example',
+      internetCheck: (_, _) async => true,
+      serverCheck: (host, _, _) async => host == 'primary.example',
       isWeb: false,
     );
     await manager.init(serverUrl: 'https://primary.example');
@@ -186,8 +186,8 @@ void main() {
     final probe = Completer<bool?>();
     manager.debugConfigure(
       interfaceCheck: () async => <ConnectivityResult>[ConnectivityResult.wifi],
-      internetCheck: (_, __) async => true,
-      serverCheck: (_, __, ___) => probe.future,
+      internetCheck: (_, _) async => true,
+      serverCheck: (_, _, _) => probe.future,
       isWeb: false,
     );
 
@@ -206,11 +206,11 @@ void main() {
     var serverCalls = 0;
     manager.debugConfigure(
       interfaceCheck: () async => <ConnectivityResult>[ConnectivityResult.wifi],
-      internetCheck: (_, __) async {
+      internetCheck: (_, _) async {
         internetCalls++;
         return false;
       },
-      serverCheck: (_, __, ___) async {
+      serverCheck: (_, _, _) async {
         serverCalls++;
         return false;
       },

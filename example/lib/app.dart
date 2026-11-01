@@ -25,7 +25,7 @@ class LikeServerApp extends StatelessWidget {
           themeMode: ThemeMode.system,
           home: Like(
             child: Consumer<AuthProvider>(
-              builder: (_, auth, __) {
+              builder: (_, auth, _) {
                 if (auth.initializing) {
                   return const Scaffold(
                     body: AppLoading(label: 'Restoring session…'),

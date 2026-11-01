@@ -41,7 +41,8 @@ void main() {
     expect(repository.cart, isEmpty);
     await tester.ensureVisible(find.byKey(const Key('receipt')));
     expect(find.text('Demo receipt #42'), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const Key('search')));
+    await tester.scrollUntilVisible(find.byKey(const Key('search')), -300,
+      scrollable: find.byType(Scrollable).first);
     await tester.enterText(find.byKey(const Key('search')), 'missing');
     await tester.tap(find.byKey(const Key('search-button')));
     await tester.pumpAndSettle();

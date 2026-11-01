@@ -268,7 +268,7 @@ class LikeConnectivityManager {
       (_) {
         if (identical(_interfaceFlight, future)) _interfaceFlight = null;
       },
-      onError: (Object _, StackTrace __) {
+      onError: (Object _, StackTrace _) {
         if (identical(_interfaceFlight, future)) _interfaceFlight = null;
       },
     );
@@ -310,7 +310,7 @@ class LikeConnectivityManager {
           _serverFlights.remove(origin);
         }
       },
-      onError: (Object _, StackTrace __) {
+      onError: (Object _, StackTrace _) {
         if (identical(_serverFlights[origin], future)) {
           _serverFlights.remove(origin);
         }
