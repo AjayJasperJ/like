@@ -172,7 +172,8 @@ def build(output, base='/like/', origin='https://ajayjasperj.github.io'):
 <span class="version">v{version}</span><button class="search-open" aria-label="Search documentation">Search documentation <kbd>⌘ K</kbd></button>
 <a class="header-link" href="{base}agents/">For agents ↗</a><a class="header-link" href="{REPO}">GitHub ↗</a>
 <button id="theme" aria-label="Switch color theme">◐</button><button id="menu" aria-controls="sidebar" aria-expanded="false">Menu</button></header>
-<div class="layout"><nav id="sidebar" aria-label="Documentation">{''.join(nav)}<div class="nav-bottom">Built for Flutter.<br>Readable by people and agents.</div></nav>
+<button id="nav-backdrop" aria-label="Close navigation" tabindex="-1" hidden></button>
+<div class="layout"><nav id="sidebar" aria-label="Documentation"><button id="nav-close" type="button">Close menu</button>{''.join(nav)}<div class="nav-bottom">Built for Flutter.<br>Readable by people and agents.</div></nav>
 <main id="main"><div class="eyebrow">{html.escape(group)} <span> / {index + 1:02d}</span></div>
 <div class="page-tools"><a href="{base}markdown/{slug}.md">View Markdown</a><button id="copy-page" data-url="{base}markdown/{slug}.md">Copy page</button></div>
 <article>{body}</article><div class="pager">{pager}</div><footer>LIKE {version} · <a href="{REPO}/blob/{ref}/{src}">Source {ref[:7]}</a> · <a href="{base}llms.txt">llms.txt</a><br>This page describes source behavior; publication and CI status are separate.</footer></main>
