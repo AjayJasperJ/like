@@ -14,6 +14,10 @@ class LikeToastConfig {
   /// Callback triggered when internet connection is lost.
   final void Function(String message)? disconnected;
 
+  /// Callback triggered when an API origin transitions to slow network quality.
+  /// Repeated slow samples are suppressed until that origin recovers.
+  final void Function(String message)? slowInternet;
+
   /// Callback triggered during background queue synchronization.
   final void Function(String message, double progress)? resync;
 
@@ -29,6 +33,7 @@ class LikeToastConfig {
   const LikeToastConfig({
     this.connected,
     this.disconnected,
+    this.slowInternet,
     this.resync,
     this.actionQueued,
     this.cacheUse,
@@ -467,15 +472,19 @@ class LikeConfig {
     this.connCheckHost = 'google.com',
     this.supportWeb = false,
     this.interceptors = const [],
-  })  : verifySSL = verifySSL ?? !kDebugMode,
-        boxApiCache = boxApiCache ??
-            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_api_cache',
-        boxOfflineQueue = boxOfflineQueue ??
-            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_offline_queue',
-        boxCacheMetadata = boxCacheMetadata ??
-            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_cache_metadata',
-        boxEtags = boxEtags ??
-            '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_etags';
+  }) : verifySSL = verifySSL ?? !kDebugMode,
+       boxApiCache =
+           boxApiCache ??
+           '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_api_cache',
+       boxOfflineQueue =
+           boxOfflineQueue ??
+           '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_offline_queue',
+       boxCacheMetadata =
+           boxCacheMetadata ??
+           '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_cache_metadata',
+       boxEtags =
+           boxEtags ??
+           '${projectName.toLowerCase().replaceAll(RegExp(r"[^a-z0-9_]"), "_")}_etags';
 
   LikeConfig copyWith({
     String? projectName,
@@ -588,7 +597,8 @@ class LikeConfig {
       cacheOnException: cacheOnException ?? this.cacheOnException,
       maxAutoRetries: maxAutoRetries ?? this.maxAutoRetries,
       retryDelays: retryDelays ?? this.retryDelays,
-      automaticConnectivityChecksEnabled: automaticConnectivityChecksEnabled ??
+      automaticConnectivityChecksEnabled:
+          automaticConnectivityChecksEnabled ??
           this.automaticConnectivityChecksEnabled,
       automaticFailureCheckCooldown:
           automaticFailureCheckCooldown ?? this.automaticFailureCheckCooldown,
@@ -623,9 +633,11 @@ class LikeConfig {
       minImageCacheMB: minImageCacheMB ?? this.minImageCacheMB,
       boxApiCache:
           boxApiCache ?? (projectName != null ? null : this.boxApiCache),
-      boxOfflineQueue: boxOfflineQueue ??
+      boxOfflineQueue:
+          boxOfflineQueue ??
           (projectName != null ? null : this.boxOfflineQueue),
-      boxCacheMetadata: boxCacheMetadata ??
+      boxCacheMetadata:
+          boxCacheMetadata ??
           (projectName != null ? null : this.boxCacheMetadata),
       boxEtags: boxEtags ?? (projectName != null ? null : this.boxEtags),
       connCheckHost: connCheckHost ?? this.connCheckHost,

@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:like/src/core/like_auth_config.dart';
 import 'package:like/src/core/like_config.dart';
 import 'package:like/src/core/like_constants.dart';
+import 'package:like/src/diagnostics/like_network_quality.dart';
 import 'package:like/src/interceptors/like_auth_interceptor.dart';
 import 'package:like/src/services/like_service.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
@@ -18,6 +20,9 @@ class Like extends StatefulWidget {
 
   /// Whether to automatically trigger connectivity notifications when connection status changes.
   final bool showConnectivityToasts;
+
+  /// Whether slow API-path transitions trigger notifications.
+  final bool showSlowInternetToasts;
 
   /// Optional notification/toast callback hooks configuration.
   final LikeToastConfig? toastConfig;
@@ -38,6 +43,7 @@ class Like extends StatefulWidget {
     super.key,
     required this.child,
     this.showConnectivityToasts = true,
+    this.showSlowInternetToasts = true,
     this.authConfig,
     this.toastConfig,
     this.devTool,
@@ -49,10 +55,39 @@ class Like extends StatefulWidget {
 
 class _LikeState extends State<Like> {
   StreamSubscription<bool>? _subscription;
+  StreamSubscription<LikeNetworkQualitySample>? _qualitySubscription;
+  final Set<String> _slowOrigins = {};
+
+  void _onQuality(LikeNetworkQualitySample sample) {
+    if (!mounted) return;
+    if (sample.quality != LikeNetworkQuality.slow) {
+      _slowOrigins.remove(sample.origin);
+      return;
+    }
+    if (!_slowOrigins.add(sample.origin)) return;
+    if (_slowOrigins.length > 100) {
+      _slowOrigins.remove(_slowOrigins.first);
+    }
+    if (!widget.showSlowInternetToasts) return;
+    const message = 'Slow Internet Connection';
+    final callback = LikeConstants.current.toastConfig?.slowInternet;
+    if (callback != null) {
+      callback(message);
+    } else if (ScaffoldMessenger.maybeOf(context) != null) {
+      LikeUtils.showToast(
+        message: message,
+        type: LikeToastStyle.warning,
+        context: context,
+      );
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _qualitySubscription = LikeNetworkQualityMonitor.shared.stream.listen(
+      _onQuality,
+    );
     _initialize();
   }
 
@@ -93,6 +128,7 @@ class _LikeState extends State<Like> {
       // descendants can read it during their first frame.
       final engineConfig = LikeConstants.current;
       await LikeService.init(config: engineConfig);
+      if (!mounted) return;
 
       if (widget.showConnectivityToasts) {
         _subscription = LikeConnectivityManager().connectionChange.listen((
@@ -135,6 +171,8 @@ class _LikeState extends State<Like> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _qualitySubscription?.cancel();
+    _slowOrigins.clear();
     super.dispose();
   }
 

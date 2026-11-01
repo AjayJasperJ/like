@@ -23,6 +23,31 @@ and local mapping failures are excluded. Timeouts can contribute slow evidence.
 This does not replace connectivity state: a slow API path can still be online.
 The feature reports quality; it does not silently change timeouts or replay mutations.
 
+### Slow-internet notification hook
+
+Use the same toast configuration as connectivity and synchronization:
+
+```dart
+LikeConfig(
+  toastConfig: LikeToastConfig(
+    connected: (message) => showAppToast(message),
+    disconnected: (message) => showAppToast(message),
+    slowInternet: (message) => showAppToast(message),
+    resync: (message, progress) => showSyncProgress(message, progress),
+  ),
+);
+```
+
+The `Like` root listens to the shared passive quality monitor. Each origin fires
+once on entering slow quality; normal measurements rearm its notification.
+A custom `slowInternet` callback replaces the default warning toast. The default
+requires `Like` beneath a `ScaffoldMessenger` (for example inside a MaterialApp
+Scaffold); when wrapping MaterialApp, supply a callback using your app toast or
+messenger key. Without a messenger or callback, no notification is shown. Set
+`Like(showSlowInternetToasts: false, child: app)` to disable slow notifications
+without disabling measurements or connectivity notifications. Custom monitors
+remain caller-owned and do not feed this shared root notification hook.
+
 ## Redaction before diagnostic publication
 
 LikeLogger sanitizes diagnostic details before console, file and log-stream output.
