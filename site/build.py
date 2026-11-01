@@ -1,6 +1,7 @@
 """Build static human/agent documentation from repository-owned Markdown."""
 import argparse
 import html
+import hashlib
 from html.parser import HTMLParser
 import json
 import os
@@ -117,6 +118,7 @@ def build(output, base='/like/', origin='https://ajayjasperj.github.io'):
     if not base.startswith('/') or not base.endswith('/'):
         raise ValueError('Base must start and end with /')
     ref = source_ref()
+    asset_version = hashlib.sha256((SITE / 'assets/style.css').read_bytes() + (SITE / 'assets/app.js').read_bytes()).hexdigest()[:12]
     version = re.search(r'^version:\s*(\S+)', (ROOT / 'pubspec.yaml').read_text(), re.M)[1]
     output = Path(output).resolve()
     if output in (ROOT, SITE) or ROOT.is_relative_to(output):
@@ -165,7 +167,7 @@ def build(output, base='/like/', origin='https://ajayjasperj.github.io'):
 <title>{html.escape(title)} · LIKE Docs</title><meta name="description" content="{html.escape(description, quote=True)}">
 <link rel="canonical" href="{canonical}"><meta name="color-scheme" content="light dark">
 <link rel="icon" href="{base}assets/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="{base}assets/style.css"><script defer src="{base}assets/app.js"></script>
+<link rel="stylesheet" href="{base}assets/style.css?v={asset_version}"><script defer src="{base}assets/app.js?v={asset_version}"></script>
 <link rel="alternate" type="text/markdown" href="{base}markdown/{slug}.md" title="Markdown source">
 </head><body data-base="{base}"><a class="skip" href="#main">Skip to content</a>
 <header><a class="brand" href="{base}"><span class="logo">L<span>↗</span></span><strong>LIKE<span> / docs</span></strong></a>

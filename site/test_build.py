@@ -89,7 +89,7 @@ class DocumentationBuildTest(unittest.TestCase):
     def test_root_base_preview(self):
         with tempfile.TemporaryDirectory() as folder:
             build(folder, base='/')
-            self.assertIn('href="/assets/style.css"', (Path(folder) / 'index.html').read_text())
+            self.assertIn('href="/assets/style.css?v=', (Path(folder) / 'index.html').read_text())
 
     def test_generated_sitemap_and_accessible_shell(self):
         self.assertEqual((self.output / 'sitemap.xml').read_text().count('<loc>'), len(PAGES))
@@ -97,6 +97,8 @@ class DocumentationBuildTest(unittest.TestCase):
         for token in ['Skip to content', 'aria-current="page"', 'aria-controls="sidebar"', 'aria-live="polite"', 'type="text/markdown"', 'rel="canonical"']:
             self.assertIn(token, page)
         self.assertTrue((self.output / '.nojekyll').exists())
+        self.assertIn('assets/app.js?v=', page)
+        self.assertIn('assets/style.css?v=', page)
 
 
 if __name__ == '__main__':
