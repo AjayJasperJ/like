@@ -14,8 +14,8 @@ interface using injectable `LikeHttpClient`, secure token storage and Hive carts
 The three adapters publish immutable snapshots through their own state library.
 
 See each project README for run and release APK commands. The **Public API shop
-apps** action builds all three installable APKs on pull requests, main, manual
-runs and `apps-v*` tags. Download `like-provider-release-apk`,
+apps** action builds all three installable APKs on explicit manual
+runs and `apps-v*` tags; ordinary pushes/PRs no longer start these expensive builds. Download `like-provider-release-apk`,
 `like-riverpod-release-apk`, or `like-bloc-release-apk` from the successful run.
 These are test-signed release builds. Configure a private production keystore
 before submitting an app to an app store.

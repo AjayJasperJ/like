@@ -1,8 +1,9 @@
 # Release and compatibility automation
 
 Dependabot proposes weekly Dart and GitHub Actions updates. Compatible minor and
-patch changes are grouped; breaking upgrades need review. Normal PR workflows
-validate core behavior, browsers, native builds and three public API app builds.
+patch changes are grouped; breaking upgrades need review. Heavy core/browser/native/device checks are manual-only to conserve runner
+minutes. The documentation workflow remains automatic for relevant changes.
+Example APKs build on explicit manual runs or `apps-v*` tags.
 
 `Publish package release` runs only for `v<pubspec-version>` tag pushes. It checks
 the changelog/tag, reruns tests, analysis and publication dry-run, then publishes

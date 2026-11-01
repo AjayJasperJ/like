@@ -27,7 +27,9 @@ are public. The raw Markdown/full-context files are produced by the same build.
 
 ## GitHub Pages deployment
 
-The Documentation site workflow builds/checks PRs and uploads a review artifact.
+The Documentation site workflow builds/checks relevant PRs and uploads a review artifact.
+Heavy package/minimum-SDK/native/device checks are manual-only to conserve runner
+minutes; example APK release tags and package publication tags remain explicit.
 Only main/manual main builds deploy. It uses the standard GitHub Pages artifact
 and OIDC deployment actions; no personal access token is required.
 

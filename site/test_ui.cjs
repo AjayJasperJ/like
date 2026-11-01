@@ -70,7 +70,7 @@ const fs = require('node:fs');
   assert.ok(aliasJson.members.some(m => m.name === 'LikeApiResult.success'));
   // Every guide must reflow without whole-page horizontal scrolling.
   const manifest = await (await page.request.get(origin + '/like/manifest.json')).json();
-  for (const width of [320, 360, 390, 768, 980, 1024, 1280, 1440, 1920]) {
+  for (const width of [320, 360, 390, 768, 980, 1024, 1280, 1440, 1920, 2560]) {
     await page.setViewportSize({width, height: 900});
     for (const guide of manifest.pages) {
       await page.goto(origin + guide.url);
@@ -89,6 +89,15 @@ const fs = require('node:fs');
   await page.goto(origin + '/like/');
   assert.ok(await page.locator('table').evaluate(el => parseFloat(getComputedStyle(el).fontSize)) >= 15);
   await page.screenshot({path: output + '/desktop-readable.png', fullPage: true});
+  await page.setViewportSize({width: 2560, height: 1440});
+  await page.goto(origin + '/like/api/#likeclient');
+  const wide = await page.locator('main').boundingBox();
+  assert.ok(wide.width > 1800, 'Desktop article is still constrained to a fixed reading column');
+  const layout = await page.locator('.layout').boundingBox();
+  assert.ok(layout.x <= 1 && layout.width >= 2558, 'Unused outer desktop gutters remain');
+  await page.screenshot({path: output + '/wide-desktop.png', fullPage: false});
+  await page.setViewportSize({width: 1440, height: 1000});
+  await page.goto(origin + '/like/');
   // Text resizing must preserve usable layout and access to navigation.
   await page.addStyleTag({content: 'html { font-size: 200%; }'});
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);

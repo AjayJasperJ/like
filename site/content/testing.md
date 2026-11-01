@@ -32,7 +32,16 @@ Import `package:like/testing.dart` for exposed cache/registry/queue/pipeline and
 adapter boundaries. Inject `LikeHttpClient` fakes in service tests without booting
 global storage/network; use controlled adapters for real transport-policy tests.
 
-## Automated workflows
+## Workflow controls and runner budget
+
+Heavy Flutter/package/minimum-SDK/native/device workflows are manual-only. They
+do not run on ordinary pushes or pull requests. Use Actions → the workflow →
+Run workflow when you need that validation. Example APK builds also run for
+explicit `apps-v*` release tags. Package publishing remains gated by `v*` tags.
+The documentation workflow is the only routine automatic build, filtered to docs
+and API-source changes, with cancellation of superseded runs.
+
+## Available workflows
 
 - **Package checks:** generator/release metadata, unit/server/example suites, browser tests, analysis, format, publication dry-run.
 - **Minimum Flutter compatibility:** independent minimum SDK resolution and checks.
