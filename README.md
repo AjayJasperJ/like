@@ -19,6 +19,21 @@
 
 ---
 
+## Complete public API examples
+
+The 2.4 implementation requires Dart 3.12 / Flutter 3.44.1 or newer. Three separate
+apps demonstrate clean application boundaries with public DummyJSON APIs:
+[Provider](examples/provider_app), [Riverpod](examples/riverpod_app) and
+[BLoC/Cubit](examples/bloc_app). Each includes browsing, search/paging, details,
+sign in/out, a persistent account-scoped cart and simulated checkout.
+
+See [run/release instructions](examples/README.md),
+[state management](documents/state_management.md),
+[implementation and verification](documents/implementation_report.md) and
+[CI troubleshooting](documents/ci_troubleshooting.md). GitHub Actions builds all
+three release test APKs; `apps-v*` tags can attach them to a release. No internal
+API server is required by these apps.
+
 ## Why LIKE?
 
 | Capability                     | Raw Dio / HTTP             | LIKE                                                           |
@@ -36,39 +51,22 @@
 
 ## Architecture Overview
 
+```mermaid
+flowchart TD
+    UI["Flutter UI"] --> State["Provider, Riverpod or Cubit"]
+    State --> UseCase["Application operations"]
+    UseCase --> Port["Repository contract"]
+    Repo["Repository implementation"] -. implements .-> Port
+    Repo --> Service["Endpoint service"]
+    Service --> Client["LikeHttpClient"]
+    Client --> Cache["Scoped cache and offline queue"]
+    Client --> API["HTTPS API"]
 ```
-┌──────────────────────────────────────────────────────┐
-│                   Reactive UI Layer                   │
-│   LikeBuilder · LikeSliverBuilder · LikeSelector     │
-│   LikeMultiBuilder · LikeWhen                         │
-└────────────────────┬─────────────────────────────────┘
-                     │ observes LikeNotifierState<T>
-┌────────────────────▼─────────────────────────────────┐
-│                  Provider Layer                        │
-│  ChangeNotifier + LikeStateMixin (or StateMixin)       │
-│  fetch · syncWithState · loadOrFetch                   │
-└────────────────────┬─────────────────────────────────┘
-                     │ calls
-┌────────────────────▼─────────────────────────────────┐
-│               Repository Layer                         │
-│  Thin call-sites returning LikeApiResult<T>            │
-└────────────────────┬─────────────────────────────────┘
-                     │ delegates to
-┌────────────────────▼─────────────────────────────────┐
-│                 Service Layer                          │
-│  LikeService · LikeClient · Interceptor chain         │
-└────────┬───────────┬───────────┬────────────┬────────┘
-         │           │           │            │
-    ┌────▼───┐  ┌────▼───┐  ┌───▼────┐  ┌───▼──────┐
-    │ L1 RAM │  │L2 Hive │  │  SWR   │  │ ETag/304 │
-    │ Cache  │  │  Cache │  │Revalid.│  │Validation│
-    └────────┘  └────────┘  └────────┘  └──────────┘
 
-> 🎨 **Interactive Archify Diagrams**:
-> - [System Architecture Diagram](file:///home/ja5p3r/Projects/packages/like/docs/architecture/like_package_architecture.html)
-> - [Network & Resync Sequence Diagram](file:///home/ja5p3r/Projects/packages/like/docs/architecture/like_package_sequence.html)
-> - [Execution & Resilience Workflow Diagram](file:///home/ja5p3r/Projects/packages/like/docs/architecture/like_package_workflow.html)
-```
+The composition root injects repository implementations; presentation code depends
+on contracts. See [the source map](ARCHITECTURE.md) and
+[actual interceptor order](documents/interceptor_pipeline.md).
+
 
 ### Cache Flow — L1 · L2 · SWR · ETag
 

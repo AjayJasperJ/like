@@ -18,7 +18,6 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: python3 tool/check_release.py "$RELEASE_TAG"
-      - uses: dart-lang/setup-dart@v1
       - name: Temporary Flutter SDK
         run: |
           echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/release-flutter" >> "$GITHUB_ENV"
@@ -42,6 +41,8 @@ jobs:
         run: |
           git restore analysis_options.yaml example/analysis_options.yaml
           flutter pub publish --dry-run
+      # Configure short-lived publishing credentials immediately before upload.
+      - uses: dart-lang/setup-dart@v1
       - name: Publish using pub.dev GitHub OIDC
         run: flutter pub publish --force
       - name: Remove temporary SDK and dependencies
