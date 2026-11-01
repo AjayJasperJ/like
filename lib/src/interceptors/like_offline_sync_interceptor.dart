@@ -148,7 +148,9 @@ class LikeOfflineSyncInterceptor extends Interceptor {
 
   Future<void> cancelTask(dynamic key) async {
     final task = _queueBox.get(key);
-    if (task == null) { return; }
+    if (task == null) {
+      return;
+    }
     if (task is! Map || task['scope'] != currentSession().key) {
       throw StateError('Session owner unavailable');
     }
@@ -540,10 +542,10 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         : 'Replay body unavailable';
     task['nextAttemptAt'] = DateTime.now().add(delay).toIso8601String();
     await _lock.synchronized(() async {
-          if (_queueBox.containsKey(key)) {
-            await _queueBox.put(key, task);
-          }
-        });
+      if (_queueBox.containsKey(key)) {
+        await _queueBox.put(key, task);
+      }
+    });
     await LikeLogger.log(
       level: LikeLogLevel.error,
       category: 'offline_sync',

@@ -14,7 +14,7 @@ continues to depend on the repository interface. CancelToken propagates through
 generated operations and failure mapping preserves LIKE result metadata.
 
 Supported: named plain object DTOs; primitive/local-reference/array fields;
-required and nullable fields; GET/POST/PUT/PATCH/DELETE; primitive path/query
+optional non-nullable and required nullable fields; GET/POST/PUT/PATCH/DELETE; primitive path/query
 parameters; one JSON success response; required JSON request bodies. Every
 operation must explicitly set `x-like-policy.withAuth` and either `cacheTags`
 (GET) or `invalidates` (mutations), including an empty tag list when deliberate.
@@ -22,7 +22,9 @@ Path parameter values are URI-encoded.
 
 This is not a complete OpenAPI implementation. External references, unions,
 compositions, arbitrary map schemas, enums, multipart schema generation,
-optional request bodies and multiple success schemas fail with an error. Write
+optional nullable fields without presence wrappers, optional request bodies and
+multiple success schemas fail with an error. Optional fields are omitted when
+unset; required nullable fields retain explicit null values. Write
 these services by hand or use a dedicated full OpenAPI tool. Schema constraints
 such as string length or numeric ranges still require domain validation.
 

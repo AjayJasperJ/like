@@ -57,7 +57,10 @@ void main() {
     await queue.add(task);
     await queue.add({...task}..remove('scope'));
     await interceptor.syncQueue();
-    await expectLater(interceptor.cancelTask(queue.keys.first), throwsStateError);
+    await expectLater(
+      interceptor.cancelTask(queue.keys.first),
+      throwsStateError,
+    );
     expect(queue.length, 2);
     verifyNever(() => adapter.fetch(any(), any(), any()));
     expect(
@@ -149,6 +152,46 @@ void main() {
     expect(task['origin'], 'https://current.example:443');
     expect(task['url'], 'https://current.example:443/api/clients');
     expect(task['method'], 'POST');
+  });
+
+  test('multipart replay survives closing and reopening the durable queue', () async {
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((invocation) async {
+      throw DioException(requestOptions: invocation.positionalArguments.first as RequestOptions,
+        type: DioExceptionType.connectionError);
+    });
+    final form = FormData()
+      ..fields.addAll([const MapEntry('tag', 'a'), const MapEntry('tag', 'b')])
+      ..files.add(MapEntry('file', MultipartFile.fromBytes([1, 2, 3], filename: 'sample.bin')));
+    await expectLater(dio.post<void>('upload', data: form,
+      options: Options(extra: {'offlineSync': true})), throwsA(isA<DioException>()));
+    final persisted = Map<String, dynamic>.from(queue.values.single as Map);
+    final operation = (persisted['headers'] as Map)['Idempotency-Key'];
+    expect(operation, isNotNull);
+    await interceptor.dispose();
+    dio.close(force: true);
+    await queue.close();
+
+    queue = await Hive.openBox<dynamic>('offline_interceptor_test');
+    dio = Dio(BaseOptions(baseUrl: 'https://current.example/api/'));
+    adapter = MockHttpClientAdapter();
+    dio.httpClientAdapter = adapter;
+    interceptor = LikeOfflineSyncInterceptor(dio: dio, queueBox: queue,
+      notifyRefresh: refreshNotifications.add);
+    dio.interceptors.add(interceptor);
+    final sent = <int>[];
+    String? replayOperation;
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((invocation) async {
+      final request = invocation.positionalArguments.first as RequestOptions;
+      replayOperation = request.headers['Idempotency-Key'] as String?;
+      final stream = invocation.positionalArguments[1] as Stream<List<int>>?;
+      if (stream != null) { await for (final bytes in stream) { sent.addAll(bytes); } }
+      return ResponseBody.fromString('{}', 200);
+    });
+    await interceptor.syncQueue();
+    expect(queue, isEmpty);
+    expect(replayOperation, operation);
+    expect(String.fromCharCodes(sent), contains('sample.bin'));
+    expect(sent, containsAllInOrder([1, 2, 3]));
   });
 
   test('keeps separate user actions even when their payloads match', () async {

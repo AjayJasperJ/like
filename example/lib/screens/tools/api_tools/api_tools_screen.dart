@@ -45,14 +45,17 @@ class _ApiToolsScreenState extends State<ApiToolsScreen>
             runSpacing: 8,
             children: [
               FilledButton.tonal(
-                  onPressed: tools.busy ? null : tools.metadata,
-                  child: const Text('Metadata')),
+                onPressed: tools.busy ? null : tools.metadata,
+                child: const Text('Metadata'),
+              ),
               FilledButton.tonal(
-                  onPressed: tools.busy ? null : tools.health,
-                  child: const Text('Health')),
+                onPressed: tools.busy ? null : tools.health,
+                child: const Text('Health'),
+              ),
               FilledButton.tonal(
-                  onPressed: tools.busy ? null : tools.reset,
-                  child: const Text('Reset posts')),
+                onPressed: tools.busy ? null : tools.reset,
+                child: const Text('Reset posts'),
+              ),
               FilledButton.tonal(
                 style: FilledButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
@@ -88,8 +91,9 @@ class _ApiToolsScreenState extends State<ApiToolsScreen>
                 child: TextField(
                   controller: _delay,
                   keyboardType: TextInputType.number,
-                  decoration:
-                      const InputDecoration(labelText: 'Delay milliseconds'),
+                  decoration: const InputDecoration(
+                    labelText: 'Delay milliseconds',
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -119,8 +123,10 @@ class _ApiToolsScreenState extends State<ApiToolsScreen>
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded,
-                            color: Theme.of(context).colorScheme.error),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Client Exception Caught',
@@ -138,7 +144,9 @@ class _ApiToolsScreenState extends State<ApiToolsScreen>
                       Text(
                         'Raw: ${error?.toString()}',
                         style: const TextStyle(
-                            fontSize: 12, fontFamily: 'monospace'),
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ],
                   ],

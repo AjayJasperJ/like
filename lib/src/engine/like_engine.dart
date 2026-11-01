@@ -70,7 +70,7 @@ class LikeEngine {
   final Set<LikeNotifierState<dynamic>> _cancelledResyncStates = {};
   final Map<LikeNotifierState<dynamic>, Timer> _resyncTimers = {};
   final Map<LikeNotifierState<dynamic>, Completer<bool>>
-      _resyncDelayCompleters = {};
+  _resyncDelayCompleters = {};
   final Map<_LikeGranularSyncTask, Future<void>> _granularRuns = {};
   late final String _resyncOwnerScope =
       '${runtimeType}_${identityHashCode(this)}_${_ownerSequence++}';
@@ -103,8 +103,7 @@ class LikeEngine {
     _lifecycleObserver = _LikeLifecycleObserver(_handleAppLifecycleState);
     WidgetsBinding.instance.addObserver(_lifecycleObserver!);
 
-    _restorationSubscription = LikeConnectivityManager()
-        .originRestorations
+    _restorationSubscription = LikeConnectivityManager().originRestorations
         .listen((event) => _handleOriginRestoration(event.origin));
 
     _refreshSubscription = LikeClient().refreshStream.listen((path) {
@@ -123,8 +122,9 @@ class LikeEngine {
             final uri = Uri.tryParse(path);
             cleanPath = uri != null ? uri.path : path.split('?').first;
           } else {
-            final incomingPath =
-                path.contains(':') ? path.split(':').last : path;
+            final incomingPath = path.contains(':')
+                ? path.split(':').last
+                : path;
             cleanPath = incomingPath.split('?').first;
           }
 
@@ -157,8 +157,9 @@ class LikeEngine {
           if (state.endpointPath!.startsWith('http://') ||
               state.endpointPath!.startsWith('https://')) {
             final uri = Uri.tryParse(state.endpointPath!);
-            statePath =
-                uri != null ? uri.path : state.endpointPath!.split('?').first;
+            statePath = uri != null
+                ? uri.path
+                : state.endpointPath!.split('?').first;
           } else {
             statePath = state.endpointPath!.split('?').first;
           }
@@ -171,14 +172,14 @@ class LikeEngine {
               event.payload,
             );
             if (overlap) {
-              final isSuccess = state.value.isSuccess ||
+              final isSuccess =
+                  state.value.isSuccess ||
                   state.value.isRefreshing ||
                   state.value.isStaleWhileRevalidate;
               if (isSuccess) {
-                unawaited(triggerResync(
-                  state,
-                  trigger: LikeResyncTrigger.mutation,
-                ));
+                unawaited(
+                  triggerResync(state, trigger: LikeResyncTrigger.mutation),
+                );
               }
             }
           }
@@ -192,8 +193,9 @@ class LikeEngine {
       if (incomingKey.startsWith('http://') ||
           incomingKey.startsWith('https://')) {
         final uri = Uri.tryParse(incomingKey);
-        cleanIncomingPath =
-            uri != null ? uri.path : incomingKey.split('?').first;
+        cleanIncomingPath = uri != null
+            ? uri.path
+            : incomingKey.split('?').first;
       } else {
         final incomingPath = incomingKey.contains(':')
             ? incomingKey.split(':').last
@@ -204,7 +206,8 @@ class LikeEngine {
       bool handled = false;
 
       for (final binding in _pipelineBindings) {
-        final statePath = binding.getCleanEndpointPath() ??
+        final statePath =
+            binding.getCleanEndpointPath() ??
             binding.getEndpointPath()?.split('?').first;
         if (statePath == null) continue;
 
@@ -315,7 +318,8 @@ class LikeEngine {
       return Future<void>.value();
     }
 
-    final requiresRecoveryState = trigger == LikeResyncTrigger.restoration ||
+    final requiresRecoveryState =
+        trigger == LikeResyncTrigger.restoration ||
         trigger == LikeResyncTrigger.initial ||
         trigger == LikeResyncTrigger.legacyReconnection;
     if (trigger != LikeResyncTrigger.manual && !state.autoResync) {
@@ -341,8 +345,11 @@ class LikeEngine {
     }
 
     _cancelledResyncStates.remove(state);
-    final run =
-        _runStateResync(state, trigger, origin ?? state.canonicalOrigin);
+    final run = _runStateResync(
+      state,
+      trigger,
+      origin ?? state.canonicalOrigin,
+    );
     _resyncRuns[state] = run;
     void cleanup() {
       if (identical(_resyncRuns[state], run)) {
@@ -352,9 +359,12 @@ class LikeEngine {
     }
 
     // Cleanup must not create a second failing future when [run] fails.
-    run.then<void>((_) => cleanup(), onError: (Object _, StackTrace _) {
-      cleanup();
-    });
+    run.then<void>(
+      (_) => cleanup(),
+      onError: (Object _, StackTrace _) {
+        cleanup();
+      },
+    );
     return run;
   }
 
@@ -406,11 +416,13 @@ class LikeEngine {
   void _handleOriginRestoration(String origin) {
     if (!isResyncActive) return;
     for (final state in _registeredStates.toList(growable: false)) {
-      unawaited(triggerResync(
-        state,
-        trigger: LikeResyncTrigger.restoration,
-        origin: origin,
-      ));
+      unawaited(
+        triggerResync(
+          state,
+          trigger: LikeResyncTrigger.restoration,
+          origin: origin,
+        ),
+      );
     }
   }
 
@@ -454,9 +466,12 @@ class LikeEngine {
     }
 
     // Cleanup must not create a second failing future when [run] fails.
-    run.then<void>((_) => cleanup(), onError: (Object _, StackTrace _) {
-      cleanup();
-    });
+    run.then<void>(
+      (_) => cleanup(),
+      onError: (Object _, StackTrace _) {
+        cleanup();
+      },
+    );
     return run;
   }
 
@@ -466,8 +481,9 @@ class LikeEngine {
     String? origin,
   ) async {
     final startedAt = DateTime.now();
-    final maximum =
-        LikeConstants.maxAutoRetries < 1 ? 1 : LikeConstants.maxAutoRetries;
+    final maximum = LikeConstants.maxAutoRetries < 1
+        ? 1
+        : LikeConstants.maxAutoRetries;
     Object? terminalError;
 
     bool canContinue() =>
@@ -636,21 +652,23 @@ class LikeEngine {
     // Auto-wire pipeline binding if the state has a mapper declared.
     if (state.mapper != null) {
       _pipelineBindings.removeWhere((b) => b.state == state);
-      _pipelineBindings.add(_LikePipelineStateBinding(
-        state: state,
-        getEndpointPath: () => state.endpointPath,
-        getCleanEndpointPath: () => state.cleanEndpointPath,
-        getActiveQuery: () => state.activeQuery ?? const {},
-        exactQueryMatch: false,
-        processAndAssign: (rawData) {
-          if (state.value.isLoading || state.value.isRefreshing) return;
-          final mappedData = state.mapper!(rawData);
-          state.value = StateResponse<T>.success(
-            mappedData,
-            isFromCache: false,
-          );
-        },
-      ));
+      _pipelineBindings.add(
+        _LikePipelineStateBinding(
+          state: state,
+          getEndpointPath: () => state.endpointPath,
+          getCleanEndpointPath: () => state.cleanEndpointPath,
+          getActiveQuery: () => state.activeQuery ?? const {},
+          exactQueryMatch: false,
+          processAndAssign: (rawData) {
+            if (state.value.isLoading || state.value.isRefreshing) return;
+            final mappedData = state.mapper!(rawData);
+            state.value = StateResponse<T>.success(
+              mappedData,
+              isFromCache: false,
+            );
+          },
+        ),
+      );
     }
 
     final effectiveAutoResync = (ars?.visibility == true) ? true : autoResync;
@@ -660,13 +678,13 @@ class LikeEngine {
     state.refetchOnFocus = effectiveRefetchOnFocus;
     state.syncPriority = priority;
     state.refreshAction = () => fetch<T>(
-          state: state,
-          ars: const LikeARS(refresh: true),
-          autoResync: effectiveAutoResync,
-          priority: priority,
-          disableRequestCancellation: disableRequestCancellation,
-          action: action,
-        );
+      state: state,
+      ars: const LikeARS(refresh: true),
+      autoResync: effectiveAutoResync,
+      priority: priority,
+      disableRequestCancellation: disableRequestCancellation,
+      action: action,
+    );
 
     final actualArs = ars ?? const LikeARS();
 
@@ -694,14 +712,13 @@ class LikeEngine {
     }
 
     try {
-      final useSilentLoading = ars?.checkAvailability == true &&
+      final useSilentLoading =
+          ars?.checkAvailability == true &&
           previousState.isSuccess &&
           currentData != null;
       if (actualArs.refresh || useSilentLoading) {
         if (currentData != null) {
-          state.value = StateResponse<T>.refreshing(
-            currentData,
-          );
+          state.value = StateResponse<T>.refreshing(currentData);
         }
       } else {
         state.value = StateResponse<T>.loading();
@@ -709,10 +726,7 @@ class LikeEngine {
 
       final result = await runZoned(
         () => action(),
-        zoneValues: {
-          #likeActiveState: state,
-          #likeActiveArs: actualArs,
-        },
+        zoneValues: {#likeActiveState: state, #likeActiveArs: actualArs},
       );
 
       if (!isObsolete()) {
@@ -724,7 +738,8 @@ class LikeEngine {
       final obsolete = isObsolete();
 
       if (isCancel) {
-        final shouldRevertState = !obsolete ||
+        final shouldRevertState =
+            !obsolete ||
             (state.ct == null &&
                 (state.value.isLoading || state.value.isRefreshing));
 

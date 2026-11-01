@@ -258,7 +258,10 @@ class LikeClient implements LikeHttpClient {
   }
 
   String _requestOrigin(String path, LikeRequestConfig? config) {
-    final uri = RequestOptions(baseUrl: _resolveBaseUrl(config), path: path).uri;
+    final uri = RequestOptions(
+      baseUrl: _resolveBaseUrl(config),
+      path: path,
+    ).uri;
     return uri.hasAuthority ? uri.origin : '';
   }
 

@@ -15,11 +15,13 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Report direct dependency SDK requirements
+        run: python3 tool/dependency_floors.py
       - name: Install documented minimum SDK temporarily
         run: |
           echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/minimum-flutter" >> "$GITHUB_ENV"
           echo "PUB_CACHE=$RUNNER_TEMP/minimum-pub" >> "$GITHUB_ENV"
-          git clone --depth 1 --branch 3.41.1 https://github.com/flutter/flutter.git "$RUNNER_TEMP/minimum-flutter"
+          git clone --depth 1 --branch 3.44.1 https://github.com/flutter/flutter.git "$RUNNER_TEMP/minimum-flutter"
           echo "$RUNNER_TEMP/minimum-flutter/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/minimum-flutter/bin/flutter" config --no-analytics
           "$RUNNER_TEMP/minimum-flutter/bin/flutter" --version

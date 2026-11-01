@@ -10,15 +10,12 @@ import 'package:universal_io/io.dart';
 typedef LikeInterfaceCheck = Future<List<ConnectivityResult>> Function();
 
 /// Injectable internet reachability check.
-typedef LikeInternetCheck = Future<bool> Function(
-    String host, Duration timeout);
+typedef LikeInternetCheck =
+    Future<bool> Function(String host, Duration timeout);
 
 /// Injectable origin reachability check.
-typedef LikeServerCheck = Future<bool?> Function(
-  String host,
-  int port,
-  Duration timeout,
-);
+typedef LikeServerCheck =
+    Future<bool?> Function(String host, int port, Duration timeout);
 
 /// Service that monitors interface, internet, and origin-aware server reachability.
 class LikeConnectivityManager {
@@ -120,8 +117,9 @@ class LikeConnectivityManager {
     }
     if (!_isInitialized) {
       _isInitialized = true;
-      _connectivitySubscription =
-          _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+      _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+        _onConnectivityChanged,
+      );
     }
     await checkConnectivity(serverUrl: _serverUrl, force: true);
   }
@@ -236,8 +234,10 @@ class LikeConnectivityManager {
     if (!interface.hasNetworkInterface) {
       serverAvailable = origin == null ? null : false;
     } else if (origin != null) {
-      serverAvailable =
-          await _serverReachability(origin, forceNewFlight: requiresNewFlight);
+      serverAvailable = await _serverReachability(
+        origin,
+        forceNewFlight: requiresNewFlight,
+      );
     }
 
     final timestamp = _clock();
@@ -278,7 +278,8 @@ class LikeConnectivityManager {
   Future<_InterfaceResult> _runInterfaceAndInternet(
     List<ConnectivityResult>? knownResults,
   ) async {
-    final results = knownResults ??
+    final results =
+        knownResults ??
         await (_interfaceCheckOverride?.call() ??
             _connectivity.checkConnectivity());
     _lastResults = results;
@@ -287,19 +288,22 @@ class LikeConnectivityManager {
     if (_isWeb) {
       return const _InterfaceResult(true, true);
     }
-    final reachable = await (_internetCheckOverride?.call(
-          LikeConstants.connCheckHost,
-          Duration(seconds: LikeConstants.connTimeout),
-        ) ??
-        _lookupHost(
-          LikeConstants.connCheckHost,
-          Duration(seconds: LikeConstants.connTimeout),
-        ));
+    final reachable =
+        await (_internetCheckOverride?.call(
+              LikeConstants.connCheckHost,
+              Duration(seconds: LikeConstants.connTimeout),
+            ) ??
+            _lookupHost(
+              LikeConstants.connCheckHost,
+              Duration(seconds: LikeConstants.connTimeout),
+            ));
     return _InterfaceResult(true, reachable);
   }
 
-  Future<bool?> _serverReachability(String origin,
-      {bool forceNewFlight = false}) {
+  Future<bool?> _serverReachability(
+    String origin, {
+    bool forceNewFlight = false,
+  }) {
     final active = _serverFlights[origin];
     if (active != null && !forceNewFlight) return active;
     final future = _runServerReachability(origin);

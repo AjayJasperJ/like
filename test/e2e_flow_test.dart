@@ -58,7 +58,8 @@ class MealResponse {
 
   factory MealResponse.fromJson(Map<String, dynamic> json) {
     return MealResponse(
-      meals: (json['meals'] as List?)
+      meals:
+          (json['meals'] as List?)
               ?.map((e) => Meal.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -69,11 +70,7 @@ class MealResponse {
 // --- 2. Service ---
 class MealService extends BaseApiService {
   Future<ApiResult<Response>> searchMeals(String query) {
-    return get(
-      '/search',
-      query: {'s': query},
-      withAuth: false,
-    );
+    return get('/search', query: {'s': query}, withAuth: false);
   }
 }
 
@@ -83,8 +80,11 @@ class MealRepository {
   MealRepository(this.service);
 
   Future<ApiResult<MealResponse>> searchMeals(String query) {
-    return service.searchMeals(query).mapAsync(
-        (json) => MealResponse.fromJson(json as Map<String, dynamic>));
+    return service
+        .searchMeals(query)
+        .mapAsync(
+          (json) => MealResponse.fromJson(json as Map<String, dynamic>),
+        );
   }
 }
 
@@ -159,9 +159,7 @@ class MealApp extends StatelessWidget {
                     ),
                   ),
                 ),
-                onIdle: () => const Center(
-                  child: Text('Initial State'),
-                ),
+                onIdle: () => const Center(child: Text('Initial State')),
               ),
             ),
           ],
@@ -187,8 +185,8 @@ class _E2EMockInterceptor extends Interceptor {
             statusCode: 200,
             data: {
               'meals': [
-                {'idMeal': '1', 'strMeal': 'Margherita Pizza'}
-              ]
+                {'idMeal': '1', 'strMeal': 'Margherita Pizza'},
+              ],
             },
           ),
         );
@@ -199,8 +197,8 @@ class _E2EMockInterceptor extends Interceptor {
             statusCode: 200,
             data: {
               'meals': [
-                {'idMeal': '2', 'strMeal': 'Spaghetti Carbonara'}
-              ]
+                {'idMeal': '2', 'strMeal': 'Spaghetti Carbonara'},
+              ],
             },
           ),
         );
@@ -215,10 +213,7 @@ class _E2EMockInterceptor extends Interceptor {
       }
     }
     return handler.reject(
-      DioException(
-        requestOptions: options,
-        type: DioExceptionType.badResponse,
-      ),
+      DioException(requestOptions: options, type: DioExceptionType.badResponse),
     );
   }
 }
@@ -249,43 +244,38 @@ void main() {
     LikeClient(dio: mockDio);
 
     await LikeService.init(
-      config: LikeConfig(
-        projectName: 'e2e_test',
-        baseUrl: 'http://test.api',
-      ),
+      config: LikeConfig(projectName: 'e2e_test', baseUrl: 'http://test.api'),
     );
   });
 
   testWidgets(
-      'E2E Flow: Validates UI Updates, API Parsing, and Request Cancellation',
-      (WidgetTester tester) async {
-    final service = MealService();
-    final repository = MealRepository(service);
-    final provider = MealProvider(repository);
+    'E2E Flow: Validates UI Updates, API Parsing, and Request Cancellation',
+    (WidgetTester tester) async {
+      final service = MealService();
+      final repository = MealRepository(service);
+      final provider = MealProvider(repository);
 
-    await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: provider,
-        child: const MealApp(),
-      ),
-    );
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(value: provider, child: const MealApp()),
+      );
 
-    expect(find.text('Initial State'), findsOneWidget);
+      expect(find.text('Initial State'), findsOneWidget);
 
-    // Initiate and join only the Dio operations in the real async zone. Widget
-    // pumping stays in fake async, avoiding cross-zone timers and broad wrappers.
-    await tester.runAsync(() async {
-      final pizza = provider.searchMeals('Pizza');
-      final pasta = provider.searchMeals('Pasta');
-      await Future.wait<void>([pizza, pasta]);
-    });
-    await tester.pump();
+      // Initiate and join only the Dio operations in the real async zone. Widget
+      // pumping stays in fake async, avoiding cross-zone timers and broad wrappers.
+      await tester.runAsync(() async {
+        final pizza = provider.searchMeals('Pizza');
+        final pasta = provider.searchMeals('Pasta');
+        await Future.wait<void>([pizza, pasta]);
+      });
+      await tester.pump();
 
-    expect(find.byKey(const Key('loadingSpinner')), findsNothing);
-    expect(find.text('Spaghetti Carbonara'), findsOneWidget);
-    expect(find.text('Margherita Pizza'), findsNothing);
-    expect(provider.mealsState.isSuccess, true);
-    expect(provider.mealsState.data?.meals.length, 1);
-    expect(provider.mealsState.data?.meals.first.name, 'Spaghetti Carbonara');
-  });
+      expect(find.byKey(const Key('loadingSpinner')), findsNothing);
+      expect(find.text('Spaghetti Carbonara'), findsOneWidget);
+      expect(find.text('Margherita Pizza'), findsNothing);
+      expect(provider.mealsState.isSuccess, true);
+      expect(provider.mealsState.data?.meals.length, 1);
+      expect(provider.mealsState.data?.meals.first.name, 'Spaghetti Carbonara');
+    },
+  );
 }

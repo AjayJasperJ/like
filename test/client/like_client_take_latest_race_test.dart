@@ -88,22 +88,14 @@ void main() {
       final client = LikeClient(dio: dio);
       addTearDown(client.dispose);
 
-      final first = client.get(
-        path,
-        disableCache: true,
-        sessionStale: false,
-      );
+      final first = client.get(path, disableCache: true, sessionStale: false);
       await adapter.waitForExecution(1);
 
       final firstEntry = client.registry.getInFlight(requestKey);
       expect(firstEntry, isNotNull);
       expect(firstEntry!.$2?.isCancelled, isFalse);
 
-      final second = client.get(
-        path,
-        disableCache: true,
-        sessionStale: false,
-      );
+      final second = client.get(path, disableCache: true, sessionStale: false);
       await adapter.waitForExecution(2);
 
       expect(adapter.requests, hasLength(2));

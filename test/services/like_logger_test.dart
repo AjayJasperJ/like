@@ -14,14 +14,14 @@ void main() {
 
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, (methodCall) async {
-    if (simulatePathError) {
-      throw Exception('Simulated path provider error');
-    }
-    if (methodCall.method == 'getApplicationDocumentsDirectory') {
-      return io.Directory.systemTemp.path;
-    }
-    return null;
-  });
+        if (simulatePathError) {
+          throw Exception('Simulated path provider error');
+        }
+        if (methodCall.method == 'getApplicationDocumentsDirectory') {
+          return io.Directory.systemTemp.path;
+        }
+        return null;
+      });
 
   FlutterExceptionHandler? originalOnError;
   bool Function(Object, StackTrace)? originalPlatformOnError;
@@ -40,28 +40,34 @@ void main() {
   });
 
   group('LikeLogger - Initialization and Basic Logging', () {
-    test('1. init handles error when getApplicationDocumentsDirectory fails',
-        () async {
-      simulatePathError = true;
+    test(
+      '1. init handles error when getApplicationDocumentsDirectory fails',
+      () async {
+        simulatePathError = true;
 
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-      ));
+        LikeConstants.apply(
+          LikeConfig(
+            projectName: 'shared_logger_project',
+            enableLogging: true,
+            silentConsole: false,
+            verboseLogging: true,
+          ),
+        );
 
-      await LikeLogger.init();
-      expect(await LikeLogger.readLogs(), isEmpty);
-    });
+        await LikeLogger.init();
+        expect(await LikeLogger.readLogs(), isEmpty);
+      },
+    );
 
     test('2. init initializes correctly and creates the log file', () async {
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-      ));
+      LikeConstants.apply(
+        LikeConfig(
+          projectName: 'shared_logger_project',
+          enableLogging: true,
+          silentConsole: false,
+          verboseLogging: true,
+        ),
+      );
 
       await LikeLogger.init();
 
@@ -74,66 +80,81 @@ void main() {
       expect(await file.exists(), isTrue);
     });
 
-    test('3. log records messages to file and stream, and handles rotation',
-        () async {
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-      ));
+    test(
+      '3. log records messages to file and stream, and handles rotation',
+      () async {
+        LikeConstants.apply(
+          LikeConfig(
+            projectName: 'shared_logger_project',
+            enableLogging: true,
+            silentConsole: false,
+            verboseLogging: true,
+          ),
+        );
 
-      final logs = <String>[];
-      final subscription = LikeLogger.logStream.listen((log) {
-        logs.add(log);
-      });
+        final logs = <String>[];
+        final subscription = LikeLogger.logStream.listen((log) {
+          logs.add(log);
+        });
 
-      await LikeLogger.clearLogs();
+        await LikeLogger.clearLogs();
 
-      await LikeLogger.log(
-        level: LikeLogLevel.info,
-        category: 'test_category',
-        message: 'Hello, Logger!',
-        details: {'key': 'value'},
-      );
+        await LikeLogger.log(
+          level: LikeLogLevel.info,
+          category: 'test_category',
+          message: 'Hello, Logger!',
+          details: {'key': 'value'},
+        );
 
-      await Future.delayed(const Duration(milliseconds: 50));
+        await Future.delayed(const Duration(milliseconds: 50));
 
-      expect(logs.length, 1);
-      final decoded = jsonDecode(logs.first);
-      expect(decoded['category'], 'test_category');
-      expect(decoded['message'], 'Hello, Logger!');
-      expect(decoded['details']['key'], LikeRedaction.omitted);
+        expect(logs.length, 1);
+        final decoded = jsonDecode(logs.first);
+        expect(decoded['category'], 'test_category');
+        expect(decoded['message'], 'Hello, Logger!');
+        expect(decoded['details']['key'], LikeRedaction.omitted);
 
-      final fileContent = await LikeLogger.readLogs();
-      expect(fileContent, contains('Hello, Logger!'));
+        final fileContent = await LikeLogger.readLogs();
+        expect(fileContent, contains('Hello, Logger!'));
 
-      // Test log rotation: write a large file
-      final logFilePath =
-          '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
-      final file = io.File(logFilePath);
-      final largeBytes = Uint8List(5 * 1024 * 1024 + 100);
-      await file.writeAsBytes(largeBytes);
+        // Test log rotation: write a large file
+        final logFilePath =
+            '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
+        final file = io.File(logFilePath);
+        final largeBytes = Uint8List(5 * 1024 * 1024 + 100);
+        await file.writeAsBytes(largeBytes);
 
-      // Log again, which should trigger rotation (truncation)
-      await LikeLogger.log(
-        level: LikeLogLevel.warning,
-        category: 'test_category',
-        message: 'Rotated message',
-      );
+        // Log again, which should trigger rotation (truncation)
+        await LikeLogger.log(
+          level: LikeLogLevel.warning,
+          category: 'test_category',
+          message: 'Rotated message',
+        );
 
-      final rotatedContent = await LikeLogger.readLogs();
-      expect(rotatedContent.length, lessThan(1000));
-      expect(rotatedContent, contains('Rotated message'));
+        final rotatedContent = await LikeLogger.readLogs();
+        expect(rotatedContent.length, lessThan(1000));
+        expect(rotatedContent, contains('Rotated message'));
 
-      await subscription.cancel();
-    });
+        await subscription.cancel();
+      },
+    );
 
     test('historical unredacted entries are excluded from exports', () async {
-      final file = io.File('${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt');
-      await file.writeAsString('${jsonEncode({'message': 'historical-secret', 'response': {'token': 'secret'}})}\n');
+      final file = io.File(
+        '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt',
+      );
+      await file.writeAsString(
+        '${jsonEncode({
+          'message': 'historical-secret',
+          'response': {'token': 'secret'},
+        })}\n',
+      );
       expect(await LikeLogger.readLogs(), isEmpty);
-      await LikeLogger.log(level: LikeLogLevel.info, category: 'fixture', message: 'Safe event');
+      await LikeLogger.log(
+        level: LikeLogLevel.info,
+        category: 'fixture',
+        message: 'Safe event',
+      );
       final exported = await LikeLogger.readLogs();
       expect(exported, contains('Safe event'));
       expect(exported, isNot(contains('historical-secret')));
@@ -142,12 +163,14 @@ void main() {
     });
 
     test('4. log disk error is caught and printed, then restored', () async {
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-      ));
+      LikeConstants.apply(
+        LikeConfig(
+          projectName: 'shared_logger_project',
+          enableLogging: true,
+          silentConsole: false,
+          verboseLogging: true,
+        ),
+      );
 
       final logFilePath =
           '${io.Directory.systemTemp.path}/shared_logger_project_api_log.txt';
@@ -173,13 +196,15 @@ void main() {
     });
 
     test('5. log console output options and styles', () async {
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-        silentSyncLogs: true,
-      ));
+      LikeConstants.apply(
+        LikeConfig(
+          projectName: 'shared_logger_project',
+          enableLogging: true,
+          silentConsole: false,
+          verboseLogging: true,
+          silentSyncLogs: true,
+        ),
+      );
 
       await LikeLogger.log(
         level: LikeLogLevel.info,
@@ -202,13 +227,15 @@ void main() {
     });
 
     test('6. logApi outputs compact and full modes correctly', () async {
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-        compactApiLogs: true,
-      ));
+      LikeConstants.apply(
+        LikeConfig(
+          projectName: 'shared_logger_project',
+          enableLogging: true,
+          silentConsole: false,
+          verboseLogging: true,
+          compactApiLogs: true,
+        ),
+      );
 
       await LikeLogger.logApi(
         '/users',
@@ -218,13 +245,15 @@ void main() {
         method: 'GET',
       );
 
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-        compactApiLogs: false,
-      ));
+      LikeConstants.apply(
+        LikeConfig(
+          projectName: 'shared_logger_project',
+          enableLogging: true,
+          silentConsole: false,
+          verboseLogging: true,
+          compactApiLogs: false,
+        ),
+      );
 
       await LikeLogger.logApi(
         '/users',
@@ -243,33 +272,34 @@ void main() {
     });
 
     test('7. logApiRequest respects silentApiStartLogs config', () async {
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-        silentApiStartLogs: true,
-      ));
+      LikeConstants.apply(
+        LikeConfig(
+          projectName: 'shared_logger_project',
+          enableLogging: true,
+          silentConsole: false,
+          verboseLogging: true,
+          silentApiStartLogs: true,
+        ),
+      );
 
       final logs = <String>[];
       final subscription = LikeLogger.logStream.listen((log) {
         logs.add(log);
       });
 
-      await LikeLogger.logApiRequest(
-        '/users',
-        requestId: 'req_start_1',
-      );
+      await LikeLogger.logApiRequest('/users', requestId: 'req_start_1');
 
       expect(logs, isEmpty);
 
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-        silentApiStartLogs: false,
-      ));
+      LikeConstants.apply(
+        LikeConfig(
+          projectName: 'shared_logger_project',
+          enableLogging: true,
+          silentConsole: false,
+          verboseLogging: true,
+          silentApiStartLogs: false,
+        ),
+      );
 
       await LikeLogger.logApiRequest(
         '/users',
@@ -290,43 +320,46 @@ void main() {
     });
 
     test(
-        '8. initGlobalErrorHandling captures and logs Flutter and platform errors',
-        () async {
-      LikeConstants.apply(LikeConfig(
-        projectName: 'shared_logger_project',
-        enableLogging: true,
-        silentConsole: false,
-        verboseLogging: true,
-      ));
+      '8. initGlobalErrorHandling captures and logs Flutter and platform errors',
+      () async {
+        LikeConstants.apply(
+          LikeConfig(
+            projectName: 'shared_logger_project',
+            enableLogging: true,
+            silentConsole: false,
+            verboseLogging: true,
+          ),
+        );
 
-      final logs = <String>[];
-      final subscription = LikeLogger.logStream.listen((log) {
-        logs.add(log);
-      });
+        final logs = <String>[];
+        final subscription = LikeLogger.logStream.listen((log) {
+          logs.add(log);
+        });
 
-      LikeLogger.initGlobalErrorHandling();
+        LikeLogger.initGlobalErrorHandling();
 
-      final flutterErrorDetails = FlutterErrorDetails(
-        exception: Exception('Test Flutter Exception'),
-        library: 'test_library',
-        context: DiagnosticsNode.message('testing error handler'),
-        stack: StackTrace.current,
-      );
-      FlutterError.onError!(flutterErrorDetails);
+        final flutterErrorDetails = FlutterErrorDetails(
+          exception: Exception('Test Flutter Exception'),
+          library: 'test_library',
+          context: DiagnosticsNode.message('testing error handler'),
+          stack: StackTrace.current,
+        );
+        FlutterError.onError!(flutterErrorDetails);
 
-      final handled = PlatformDispatcher.instance.onError!(
-        Exception('Test Platform Exception'),
-        StackTrace.current,
-      );
-      expect(handled, isTrue);
+        final handled = PlatformDispatcher.instance.onError!(
+          Exception('Test Platform Exception'),
+          StackTrace.current,
+        );
+        expect(handled, isTrue);
 
-      await Future.delayed(const Duration(milliseconds: 50));
-      expect(logs.length, 2);
-      expect(logs[0], contains('Test Flutter Exception'));
-      expect(logs[1], contains('Test Platform Exception'));
+        await Future.delayed(const Duration(milliseconds: 50));
+        expect(logs.length, 2);
+        expect(logs[0], contains('Test Flutter Exception'));
+        expect(logs[1], contains('Test Platform Exception'));
 
-      await subscription.cancel();
-    });
+        await subscription.cancel();
+      },
+    );
 
     test('9. readLogs and clearLogs when file does not exist', () async {
       final logFilePath =

@@ -253,7 +253,8 @@ void main() {
     manager.markServerUnavailable(serverUrl: 'https://restored.example/path');
     manager.markServerAvailable(serverUrl: 'https://restored.example/other');
     manager.markServerAvailable(
-        serverUrl: 'https://restored.example/duplicate');
+      serverUrl: 'https://restored.example/duplicate',
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(restorations, hasLength(1));
@@ -262,26 +263,31 @@ void main() {
     await subscription.cancel();
   });
 
-  test('origin availability isolates origins and controls unknown evidence',
-      () {
-    manager.debugSetStatus(internet: true);
-    manager.markServerUnavailable(serverUrl: 'https://offline.example');
-    manager.markServerAvailable(serverUrl: 'https://online.example');
+  test(
+    'origin availability isolates origins and controls unknown evidence',
+    () {
+      manager.debugSetStatus(internet: true);
+      manager.markServerUnavailable(serverUrl: 'https://offline.example');
+      manager.markServerAvailable(serverUrl: 'https://online.example');
 
-    expect(manager.isOriginAvailable('https://offline.example/path'), isFalse);
-    expect(manager.isOriginAvailable('https://online.example/path'), isTrue);
-    expect(manager.isOriginAvailable('https://unknown.example/path'), isTrue);
-    expect(
-      manager.isOriginAvailable(
-        'https://unknown.example/path',
-        allowUnknown: false,
-      ),
-      isFalse,
-    );
+      expect(
+        manager.isOriginAvailable('https://offline.example/path'),
+        isFalse,
+      );
+      expect(manager.isOriginAvailable('https://online.example/path'), isTrue);
+      expect(manager.isOriginAvailable('https://unknown.example/path'), isTrue);
+      expect(
+        manager.isOriginAvailable(
+          'https://unknown.example/path',
+          allowUnknown: false,
+        ),
+        isFalse,
+      );
 
-    manager.debugSetStatus(internet: false);
-    expect(manager.isOriginAvailable('https://online.example/path'), isFalse);
-  });
+      manager.debugSetStatus(internet: false);
+      expect(manager.isOriginAvailable('https://online.example/path'), isFalse);
+    },
+  );
 
   test('forceCheck remains a backward-compatible wrapper', () async {
     manager.debugConfigure(

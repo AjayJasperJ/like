@@ -62,6 +62,38 @@
           }
         }
       }
+    },
+    "/items": {
+      "post": {
+        "operationId": "createItem",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FixtureItem"
+              }
+            }
+          }
+        },
+        "x-like-policy": {
+          "withAuth": true,
+          "invalidates": [
+            "items"
+          ]
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixtureItem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

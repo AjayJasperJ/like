@@ -10,7 +10,13 @@ final class FixtureShopRepository implements ShopRepository {
     '',
     12.5,
   );
-  static const second = Product(2, 'Fixture laptop', 'Second page product', '', 20);
+  static const second = Product(
+    2,
+    'Fixture laptop',
+    'Second page product',
+    '',
+    20,
+  );
   bool disposed = false;
   bool failNext = false;
   bool signedIn = false;

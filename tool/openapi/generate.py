@@ -70,6 +70,8 @@ def generate(spec):
         fields = []
         for key, field in props.items():
             identifier(key)
+            if key not in required and field.get('nullable', False):
+                raise ValueError('Optional nullable fields require explicit presence wrappers')
             nullable = key not in required or field.get('nullable', False)
             fields.append((key, field, nullable))
         out += ['final class ' + name + ' {']
@@ -84,7 +86,7 @@ def generate(spec):
             expression = encode(field, key)
             if nullable and (field.get('type') == 'array' or '$ref' in field):
                 expression = expression.replace(key + '.', key + '?.', 1)
-            out += ['    ' + literal(key) + ': ' + expression + ',']
+            out += ['    ' + literal(key) + ': ' + ('?' if key not in required else '') + expression + ',']
         out += ['  };', '}', '']
     out += ['final class GeneratedApi {', '  final LikeHttpClient client;', '  const GeneratedApi(this.client);']
     used = set()

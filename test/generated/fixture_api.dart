@@ -22,7 +22,7 @@ final class FixtureItem {
     'id': id,
     'title': title,
     'price': price,
-    'note': note,
+    'note': ?note,
   };
 }
 
@@ -38,6 +38,22 @@ final class GeneratedApi {
       cancelToken: cancelToken,
       withAuth: false,
       requestConfig: const LikeRequestConfig(cacheTags: ['items']),
+    );
+    return result.mapSuccess(
+      (response) =>
+          FixtureItem.fromJson(Map<String, dynamic>.from(response.data as Map)),
+    );
+  }
+  Future<ApiResult<FixtureItem>> createItem({
+    CancelToken? cancelToken,
+    required FixtureItem body,
+  }) async {
+    final result = await client.post(
+      '/items',
+      cancelToken: cancelToken,
+      withAuth: true,
+      requestConfig: const LikeRequestConfig(invalidates: ['items']),
+      body: body.toJson(),
     );
     return result.mapSuccess(
       (response) =>

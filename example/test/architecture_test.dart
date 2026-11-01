@@ -130,11 +130,12 @@ void main() {
     final repository = MockRepository();
     final expected = ApiResult.success(page());
     late CancelToken token;
-    when(() => repository.list(page: 2, cancelToken: any(named: 'cancelToken')))
-        .thenAnswer((invocation) async {
-          token = invocation.namedArguments[#cancelToken] as CancelToken;
-          return expected;
-        });
+    when(
+      () => repository.list(page: 2, cancelToken: any(named: 'cancelToken')),
+    ).thenAnswer((invocation) async {
+      token = invocation.namedArguments[#cancelToken] as CancelToken;
+      return expected;
+    });
     final container = ProviderContainer(
       overrides: [postsRepositoryProvider.overrideWithValue(repository)],
     );
