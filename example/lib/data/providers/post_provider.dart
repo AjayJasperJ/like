@@ -36,6 +36,7 @@ final class PostProvider extends ChangeNotifier with LikeStateMixin {
         page: p,
         search: _search,
         published: _published,
+        cancelToken: page == 1 ? postsState.ct : postsState.loadMoreState.ct,
       ),
     );
   }
@@ -46,6 +47,7 @@ final class PostProvider extends ChangeNotifier with LikeStateMixin {
         page: p,
         search: _search,
         published: _published,
+        cancelToken: postsState.loadMoreState.ct,
       ),
     );
   }
@@ -101,5 +103,11 @@ final class PostProvider extends ChangeNotifier with LikeStateMixin {
       await load(page: pagination.page ?? 1, refresh: true);
     }
     return result;
+  }
+
+  @override
+  void dispose() {
+    postsState.dispose();
+    super.dispose();
   }
 }

@@ -22,3 +22,7 @@ linter:
     - unnecessary_overrides
     - unnecessary_this
     - use_rethrow_when_possible
+
+analyzer:
+  exclude:
+    - examples/**

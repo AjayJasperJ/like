@@ -7,10 +7,9 @@ class SimpleMockSyncTask extends LikeSyncTask {
   bool runCalled = false;
 
   SimpleMockSyncTask({
-    String? endpoint,
-    LikeSyncPriority priority = LikeSyncPriority.normal,
-  })  : _endpoint = endpoint,
-        _priority = priority;
+    this._endpoint,
+    this._priority = LikeSyncPriority.normal,
+  });
 
   @override
   String? get endpoint => _endpoint;

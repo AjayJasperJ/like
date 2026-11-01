@@ -21,28 +21,44 @@ jobs:
       CI: "true"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Configure temporary SDK paths
         run: |
           echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/like-test-flutter" >> "$GITHUB_ENV"
           echo "PUB_CACHE=$RUNNER_TEMP/like-test-pub-cache" >> "$GITHUB_ENV"
       - name: Download temporary Flutter SDK
+        id: sdk
         run: |
           git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_SDK_DIR"
           echo "$FLUTTER_SDK_DIR/bin" >> "$GITHUB_PATH"
           "$FLUTTER_SDK_DIR/bin/flutter" config --no-analytics
           "$FLUTTER_SDK_DIR/bin/flutter" precache --web
           "$FLUTTER_SDK_DIR/bin/flutter" --version
-      - run: flutter pub get
-      - name: Check changed Dart formatting
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      - name: Verify generator and release metadata
         run: |
-          git fetch --depth=1 origin "$BASE_SHA"
+          python3 -m unittest discover -s tool/openapi -p 'test_*.py'
+          python3 tool/openapi/generate.py tool/openapi/fixture.json test/generated/fixture_api.dart --check
+          python3 tool/check_release.py
+      - run: flutter pub get
+        id: dependencies
+        if: ${{ !cancelled() && steps.sdk.outcome == 'success' }}
+      - name: Check changed Dart formatting
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA=$(git rev-parse HEAD^)
+          else
+            git fetch --depth=1 origin "$BASE_SHA"
+          fi
           git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format
-          git diff --exit-code -- '*.dart'
+          git diff -- '*.dart'
       - run: flutter test --coverage
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
       - name: Browser tests in headless Chrome
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
           python3 tool/browser_test_server.py &
           fixture_pid=$!
@@ -53,21 +69,36 @@ jobs:
           done
           flutter test --platform chrome test/portable test/core test/models test/widgets/like_builder_test.dart test/widgets/like_when_test.dart test/widgets/like_sliver_builder_test.dart test/extensions_test.dart test/pagination_test.dart
       - name: Install test server dependencies
+        id: server_dependencies
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         working-directory: server
         run: dart pub get
       - name: Test API server
+        if: ${{ !cancelled() && steps.server_dependencies.outcome == 'success' }}
         working-directory: server
         run: dart test
+      - name: Resolve example dependencies
+        id: example_dependencies
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        working-directory: example
+        run: flutter pub get
       - name: Test state management integrations
+        if: ${{ !cancelled() && steps.example_dependencies.outcome == 'success' }}
         working-directory: example
         run: flutter test --coverage --coverage-path=../coverage/example.lcov.info
       - run: flutter analyze
+        if: ${{ !cancelled() && steps.example_dependencies.outcome == 'success' }}
       - name: Build web example
+        if: ${{ !cancelled() && steps.example_dependencies.outcome == 'success' }}
         working-directory: example
         run: |
           flutter pub get
           flutter build web
+      - name: Require committed Dart formatting
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: git diff --exit-code -- '*.dart'
       - name: Validate package contents
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
           # Flutter setup migrates these files on the runner only.
           git restore -- analysis_options.yaml example/analysis_options.yaml

@@ -39,16 +39,19 @@ strings under this conservative policy.
 This protects the logger's output, not network traffic from an authorized device
 owner, arbitrary application logs, crash-reporting SDKs or existing stored log files.
 Apps must avoid placing secrets in URL paths or unstructured messages. The raw
-LikePipeline is an application data bus, not a sanitized diagnostic stream. A separate
-DevTool/raw-traffic audit remains pending. Do not promise that redaction prevents
+LikePipeline is an application data bus, not a sanitized diagnostic stream. DevTool now consumes payload-free LikeDiagnostics traces; log and storage
+previews apply redaction before display/copy. Historical unversioned log entries
+are excluded by LikeLogger.readLogs; this does not erase old plaintext files. Do not promise that redaction prevents
 hacking or secures a compromised device. Use HTTPS and server-side authorization.
 
 ## Request identity
 
 Deduplication uses the effective absolute URI, matching L1/L2 keys. ETags use the
 same absolute request URI instead of a shared relative path. Old path-based ETags
-are ignored and refreshed by new successful requests. This is origin isolation,
-not account isolation; SESSION-01 remains pending.
+are ignored and refreshed by new successful requests. LikeSessionScope adds an environment/account hash to protected cache and queue
+identities. Switching scopes cancels old work and blocks replay owned by another
+account. Explicitly set the scope after login and reset it on logout; unscoped
+protected operations do not cache or queue.
 
 ## Web support and test coverage
 
@@ -71,3 +74,17 @@ These are distinct levels of evidence: VM tests are not real-device plugin tests
 native builds are not Android/iOS runtime or simulator interaction tests. Device
 integration, additional browsers, web persistence/quota cases and complete platform
 parity remain pending until their tests have been implemented and passed.
+
+
+## Complete public API applications
+
+The Provider, Riverpod and Cubit shops run against DummyJSON without a local
+server. A live contract job verifies public catalog/search/details, login,
+profile, refresh and simulated checkout. A browser-compatible User-Agent is
+needed by the public probe; the initial Python default was rejected with 403.
+This live availability check is separate from deterministic fixture-based tests.
+
+Three app host/browser flow jobs and release-mode web/APK builds are included.
+Android emulator and iOS simulator jobs execute the same complete UI flow via
+integration_test. Read the actual run results before claiming device coverage;
+a compiled binary alone is not a device-runtime test.

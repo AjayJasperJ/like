@@ -12,19 +12,21 @@ storage/bootstrap; it is not the HTTP request entrypoint.
 
 | Order | Interceptor | Condition |
 | --- | --- | --- |
-| 1 | LikeLoggerInterceptor | logApiResponses enabled |
-| 2 | LikeMockInterceptor | Always installed |
-| 3 | LikeEtagInterceptor | Always installed |
-| 4 | LikeCacheInterceptor | Always installed |
-| 5 | LikePipelineInterceptor | Always installed |
-| 6 | LikeConnectivityInterceptor | Always installed |
-| 7 | LikeOfflineSyncInterceptor | offlineSyncEnabled |
-| 8 | LikeRetryInterceptor | Always installed |
-| 9 | LikePerformanceInterceptor | perfTrackingEnabled |
-| 10 | LikeThrottlingInterceptor | Always installed |
-| 11 | LikeNetworkQualityInterceptor | Passive API-path measurements |
-| 12 | LikeAuthInterceptor | Always installed |
-| 13 | Custom interceptors | App-supplied order |
+| 1 | LikeSessionInterceptor | Scope capture and stale-owner rejection |
+| 2 | LikeTraceCaptureInterceptor | Payload-free operation context |
+| 3 | LikeLoggerInterceptor | logApiResponses enabled |
+| 4 | LikeMockInterceptor | Synthetic rules; production guarded |
+| 5 | LikeEtagInterceptor | Always installed |
+| 6 | LikeCacheInterceptor | Always installed |
+| 7 | LikePipelineInterceptor | Always installed |
+| 8 | LikeConnectivityInterceptor | Always installed |
+| 9 | LikeOfflineSyncInterceptor | offlineSyncEnabled |
+| 10 | LikeRetryInterceptor | Always installed |
+| 11 | LikePerformanceInterceptor | perfTrackingEnabled |
+| 12 | LikeThrottlingInterceptor | Always installed |
+| 13 | LikeNetworkQualityInterceptor | Passive API-path measurements |
+| 14 | LikeAuthInterceptor | Always installed |
+| 15 | Custom interceptors | App-supplied order |
 
 This table describes registration, not a guarantee that every handler runs.
 A resolve/reject short-circuit and nested retry can change which handlers execute.

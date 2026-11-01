@@ -45,7 +45,7 @@ void main() {
         interfaceCheck: () async => <ConnectivityResult>[
           ConnectivityResult.wifi,
         ],
-        internetCheck: (_, __) async => true,
+        internetCheck: (_, _) async => true,
         serverCheck: (host, port, _) async {
           expect(host, 'api.example.com');
           expect(port, 443);
@@ -302,40 +302,42 @@ void main() {
       expect(result.data?.data['source'], equals('cache'));
     });
 
-    test('request should propagate verifySSL and sslCertSha256 to Zone context',
-        () async {
-      const path = '/ssl-test';
-      bool? capturedVerifySSL;
-      String? capturedSha;
+    test(
+      'request should propagate verifySSL and sslCertSha256 to Zone context',
+      () async {
+        const path = '/ssl-test';
+        bool? capturedVerifySSL;
+        String? capturedSha;
 
-      when(
-        () => mockDio.request<dynamic>(
-          any(),
-          data: any(named: 'data'),
-          queryParameters: any(named: 'queryParameters'),
-          cancelToken: any(named: 'cancelToken'),
-          options: any(named: 'options'),
-        ),
-      ).thenAnswer((_) async {
-        capturedVerifySSL = Zone.current[#verifySSL] as bool?;
-        capturedSha = Zone.current[#sslCertSha256] as String?;
-        return Response(
-          requestOptions: RequestOptions(path: path),
-          data: {'status': 'ok'},
-          statusCode: 200,
+        when(
+          () => mockDio.request<dynamic>(
+            any(),
+            data: any(named: 'data'),
+            queryParameters: any(named: 'queryParameters'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer((_) async {
+          capturedVerifySSL = Zone.current[#verifySSL] as bool?;
+          capturedSha = Zone.current[#sslCertSha256] as String?;
+          return Response(
+            requestOptions: RequestOptions(path: path),
+            data: {'status': 'ok'},
+            statusCode: 200,
+          );
+        });
+
+        await client.get(
+          path,
+          requestConfig: const LikeRequestConfig(
+            verifySSL: false,
+            sslCertSha256: 'some-sha',
+          ),
         );
-      });
 
-      await client.get(
-        path,
-        requestConfig: const LikeRequestConfig(
-          verifySSL: false,
-          sslCertSha256: 'some-sha',
-        ),
-      );
-
-      expect(capturedVerifySSL, isFalse);
-      expect(capturedSha, equals('some-sha'));
-    });
+        expect(capturedVerifySSL, isFalse);
+        expect(capturedSha, equals('some-sha'));
+      },
+    );
   });
 }

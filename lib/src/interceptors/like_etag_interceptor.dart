@@ -23,7 +23,8 @@ class LikeEtagInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    if (response.requestOptions.method == 'GET') {
+    if (response.requestOptions.method == 'GET' &&
+        response.extra['isMocked'] != true) {
       // Store new ETag on successful 200
       final etag = response.headers.value('etag');
       if (etag != null && response.statusCode == 200) {
@@ -44,8 +45,9 @@ class LikeEtagInterceptor extends Interceptor {
         err.requestOptions.method == 'GET') {
       final key = LikeSessionIdentity.forRequest(err.requestOptions);
 
-      final cached =
-          await LikeService.fetchResponseFromCache(err.requestOptions);
+      final cached = await LikeService.fetchResponseFromCache(
+        err.requestOptions,
+      );
       if (cached != null) {
         cached.extra['isFromCache'] = true;
         cached.extra['isFrom304'] = true;

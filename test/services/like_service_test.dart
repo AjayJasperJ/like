@@ -1,3 +1,4 @@
+import 'package:like/src/core/like_session_scope.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
@@ -24,25 +25,91 @@ void main() {
   });
 
   group('LikeService', () {
-    test('cache preserves strings, JSON-looking strings, bytes and lists', () async {
-      final payloads = <dynamic>['OK', '123', '{"id":1}', <int>[0, 255],
-        <dynamic>[{'id': 1}], null];
-      for (var index = 0; index < payloads.length; index++) {
-        final options = RequestOptions(
-          path: '/payload/$index', baseUrl: 'https://cache.example',
+    test(
+      'cache preserves strings, JSON-looking strings, bytes and lists',
+      () async {
+        final payloads = <dynamic>[
+          'OK',
+          '123',
+          '{"id":1}',
+          <int>[0, 255],
+          <dynamic>[
+            {'id': 1},
+          ],
+          null,
+        ];
+        for (var index = 0; index < payloads.length; index++) {
+          final options = RequestOptions(
+            path: '/payload/$index',
+            baseUrl: 'https://cache.example',
+          );
+          await LikeService.saveResponseToCache(
+            Response<dynamic>(
+              requestOptions: options,
+              data: payloads[index],
+              statusCode: 200,
+            ),
+          );
+          final cached = await LikeService.fetchResponseFromCache(options);
+          expect(cached, isNotNull);
+          expect(cached!.data, equals(payloads[index]));
+        }
+      },
+    );
+
+    test(
+      'tag invalidation removes only the matching account and origin on disk',
+      () async {
+        const owner = LikeSessionScope(accountId: 'owner');
+        const other = LikeSessionScope(accountId: 'other');
+        RequestOptions options(String origin, String scope) => RequestOptions(
+          path: '/items',
+          baseUrl: origin,
+          extra: {
+            LikeSessionIdentity.scopeKey: scope,
+            'like.cacheTags': ['items'],
+          },
         );
-        await LikeService.saveResponseToCache(Response<dynamic>(
-          requestOptions: options, data: payloads[index], statusCode: 200,
-        ));
-        final cached = await LikeService.fetchResponseFromCache(options);
-        expect(cached, isNotNull);
-        expect(cached!.data, equals(payloads[index]));
-      }
-    });
+        final a = options('https://a.example', owner.key);
+        final b = options('https://b.example', owner.key);
+        final c = options('https://a.example', other.key);
+        for (final request in [a, b, c]) {
+          await LikeService.saveResponseToCache(
+            Response(requestOptions: request, data: {'id': 1}, statusCode: 200),
+          );
+          final key = LikeSessionIdentity.forRequest(request);
+          await LikeService.putEtag(key, 'etag-fixture');
+          await LikeService.metadataBox.put(
+            key,
+            const Duration(days: 1).inMilliseconds,
+          );
+        }
+        await LikeService.invalidateTags(
+          {'items'},
+          owner.key,
+          'https://a.example',
+        );
+        expect(await LikeService.fetchResponseFromCache(a), isNull);
+        expect(LikeService.getEtag(LikeSessionIdentity.forRequest(a)), isNull);
+        expect(
+          LikeService.metadataBox.containsKey(
+            LikeSessionIdentity.forRequest(a),
+          ),
+          isFalse,
+        );
+        expect((await LikeService.fetchResponseFromCache(b))!.data, {'id': 1});
+        expect((await LikeService.fetchResponseFromCache(c))!.data, {'id': 1});
+        expect(
+          LikeService.getEtag(LikeSessionIdentity.forRequest(b)),
+          'etag-fixture',
+        );
+      },
+    );
 
     test('legacy JSON cache entries remain readable', () async {
       final options = RequestOptions(
-        path: '/legacy', baseUrl: 'https://cache.example',
+        path: '/legacy',
+        baseUrl: 'https://cache.example',
       );
       await LikeService.cacheBox.put(options.uri.toString(), {
         'timestamp': DateTime.now().toIso8601String(),

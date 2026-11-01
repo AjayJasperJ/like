@@ -1,3 +1,4 @@
+import 'package:like/src/diagnostics/like_request_trace.dart';
 import 'package:like/src/core/like_session_scope.dart';
 import 'package:like/src/diagnostics/like_network_quality.dart';
 // Conditional import: compiler selects the correct SSL implementation.
@@ -64,15 +65,17 @@ class LikeClientFactory {
         sendTimeout: kIsWeb
             ? null
             : (timeout ?? Duration(seconds: LikeConstants.sendTimeout)),
-        headers: {
-          'Accept': LikeConstants.defaultAcceptHeader,
-          ...extraHeaders,
-        },
+        headers: {'Accept': LikeConstants.defaultAcceptHeader, ...extraHeaders},
       ),
     );
 
-    _setupInterceptors(dio, registry, customInterceptors,
-        authConfig: authConfig, currentSession: currentSession);
+    _setupInterceptors(
+      dio,
+      registry,
+      customInterceptors,
+      authConfig: authConfig,
+      currentSession: currentSession,
+    );
 
     // Delegate to the platform-correct SSL implementation:
     //   • Mobile/Desktop → like_ssl_io.dart  (IOHttpClientAdapter)
@@ -95,7 +98,11 @@ class LikeClientFactory {
   }) {
     dio.interceptors.addAll(
       [
-        LikeSessionInterceptor(currentSession ?? () => const LikeSessionScope()),
+        LikeSessionInterceptor(
+          currentSession ?? () => const LikeSessionScope(),
+        ),
+
+        LikeTraceCaptureInterceptor(),
 
         // 0. Logging (Catches all requests)
         if (LikeConstants.logApiResponses) LikeLoggerInterceptor(),

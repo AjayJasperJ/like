@@ -47,20 +47,21 @@ class Meal {
   final String name;
   Meal({required this.id, required this.name});
   factory Meal.fromJson(Map<String, dynamic> json) => Meal(
-        id: json['idMeal'] as String? ?? '',
-        name: json['strMeal'] as String? ?? '',
-      );
+    id: json['idMeal'] as String? ?? '',
+    name: json['strMeal'] as String? ?? '',
+  );
 }
 
 class MealResponse {
   final List<Meal> meals;
   MealResponse({required this.meals});
   factory MealResponse.fromJson(Map<String, dynamic> json) => MealResponse(
-        meals: (json['meals'] as List?)
-                ?.map((e) => Meal.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [],
-      );
+    meals:
+        (json['meals'] as List?)
+            ?.map((e) => Meal.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
 }
 
 class MealService extends BaseApiService {
@@ -69,8 +70,12 @@ class MealService extends BaseApiService {
   }
 
   Future<ApiResult<Response>> addMeal(String name) {
-    return post('/add',
-        body: {'strMeal': name}, withAuth: false, offlineSync: true);
+    return post(
+      '/add',
+      body: {'strMeal': name},
+      withAuth: false,
+      offlineSync: true,
+    );
   }
 }
 
@@ -78,8 +83,11 @@ class MealRepository {
   final MealService service;
   MealRepository(this.service);
   Future<ApiResult<MealResponse>> searchMeals(String query) {
-    return service.searchMeals(query).mapAsync(
-        (json) => MealResponse.fromJson(json as Map<String, dynamic>));
+    return service
+        .searchMeals(query)
+        .mapAsync(
+          (json) => MealResponse.fromJson(json as Map<String, dynamic>),
+        );
   }
 
   Future<ApiResult<bool>> addMeal(String name) {
@@ -156,20 +164,19 @@ class MealApp extends StatelessWidget {
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
-                onSuccess: (data, _, __) => ListView.builder(
+                onSuccess: (data, _, _) => ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: data.meals.length,
                   itemBuilder: (ctx, idx) => Card(
                     child: ListTile(
-                      leading:
-                          const CircleAvatar(child: Icon(Icons.restaurant)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.restaurant),
+                      ),
                       title: Text(data.meals[idx].name),
                     ),
                   ),
                 ),
-                onIdle: () => const Center(
-                  child: Text('Type to search meals'),
-                ),
+                onIdle: () => const Center(child: Text('Type to search meals')),
               ),
             ),
           ],
@@ -187,14 +194,18 @@ class ResilienceMockInterceptor extends Interceptor {
 
   @override
   Future<void> onRequest(
-      RequestOptions options, RequestInterceptorHandler handler) async {
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     requestCount++;
     if (!isOnline) {
-      return handler.reject(DioException(
-        requestOptions: options,
-        type: DioExceptionType.connectionError,
-        error: const SocketException('No Internet'),
-      ));
+      return handler.reject(
+        DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionError,
+          error: const SocketException('No Internet'),
+        ),
+      );
     }
 
     if (options.path == '/search') {
@@ -202,40 +213,66 @@ class ResilienceMockInterceptor extends Interceptor {
       final behavior = mockBehavior?.call(query ?? '') ?? 'success';
 
       if (behavior == 'delay') {
-        return handler.resolve(Response(
-            requestOptions: options, statusCode: 200, data: {'meals': []}));
+        return handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'meals': []},
+          ),
+        );
       } else if (behavior == '404') {
-        return handler.reject(DioException(
+        return handler.reject(
+          DioException(
             requestOptions: options,
             type: DioExceptionType.badResponse,
             response: Response(
-                requestOptions: options, statusCode: 404, data: 'Not Found')));
+              requestOptions: options,
+              statusCode: 404,
+              data: 'Not Found',
+            ),
+          ),
+        );
       } else if (behavior == '500') {
-        return handler.reject(DioException(
+        return handler.reject(
+          DioException(
             requestOptions: options,
             type: DioExceptionType.badResponse,
             response: Response(
-                requestOptions: options,
-                statusCode: 500,
-                data: 'Server Error')));
+              requestOptions: options,
+              statusCode: 500,
+              data: 'Server Error',
+            ),
+          ),
+        );
       } else if (behavior == 'timeout') {
-        return handler.reject(DioException(
-            requestOptions: options, type: DioExceptionType.connectionTimeout));
+        return handler.reject(
+          DioException(
+            requestOptions: options,
+            type: DioExceptionType.connectionTimeout,
+          ),
+        );
       } else {
-        return handler
-            .resolve(Response(requestOptions: options, statusCode: 200, data: {
-          'meals': [
-            {'idMeal': '1', 'strMeal': 'Success Meal'}
-          ]
-        }));
+        return handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'meals': [
+                {'idMeal': '1', 'strMeal': 'Success Meal'},
+              ],
+            },
+          ),
+        );
       }
     } else if (options.path == '/add') {
       return handler.resolve(
-          Response(requestOptions: options, statusCode: 200, data: {}));
+        Response(requestOptions: options, statusCode: 200, data: {}),
+      );
     }
 
-    return handler.reject(DioException(
-        requestOptions: options, type: DioExceptionType.badResponse));
+    return handler.reject(
+      DioException(requestOptions: options, type: DioExceptionType.badResponse),
+    );
   }
 }
 
@@ -272,13 +309,13 @@ void main() {
       serverCheck: (host, port, timeout) async => true,
     );
 
-    final mockDio = Dio(
-      BaseOptions(baseUrl: 'http://test.api'),
-    );
+    final mockDio = Dio(BaseOptions(baseUrl: 'http://test.api'));
     mockDio.interceptors.addAll([
       LikeConnectivityInterceptor(),
       LikeOfflineSyncInterceptor(
-          dio: mockDio, queueBox: Hive.box('offline_queue_test')),
+        dio: mockDio,
+        queueBox: Hive.box('offline_queue_test'),
+      ),
       mockInterceptor,
     ]);
 
@@ -286,8 +323,10 @@ void main() {
     LikeOfflineSyncManager().init();
 
     await LikeService.init(
-      config:
-          LikeConfig(projectName: 'e2e_resilience', baseUrl: 'http://test.api'),
+      config: LikeConfig(
+        projectName: 'e2e_resilience',
+        baseUrl: 'http://test.api',
+      ),
     );
   });
 
@@ -296,11 +335,13 @@ void main() {
   });
 
   group('E2E Resilience Tests', () {
-    testWidgets('Scenario 1: API Errors & UI Reflection (404, 500, Timeout)',
-        (tester) async {
+    testWidgets('Scenario 1: API Errors & UI Reflection (404, 500, Timeout)', (
+      tester,
+    ) async {
       final provider = MealProvider(MealRepository(MealService()));
-      await tester.pumpWidget(ChangeNotifierProvider.value(
-          value: provider, child: const MealApp()));
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(value: provider, child: const MealApp()),
+      );
 
       // Test 404. Await the operation explicitly instead of settling while an
       // indeterminate loading indicator is animating.
@@ -347,11 +388,13 @@ void main() {
       );
     });
 
-    testWidgets('Scenario 2: Deduplication & UI Stability (Rapid fire calls)',
-        (tester) async {
+    testWidgets('Scenario 2: Deduplication & UI Stability (Rapid fire calls)', (
+      tester,
+    ) async {
       final provider = MealProvider(MealRepository(MealService()));
-      await tester.pumpWidget(ChangeNotifierProvider.value(
-          value: provider, child: const MealApp()));
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(value: provider, child: const MealApp()),
+      );
 
       mockInterceptor.mockBehavior = (query) {
         if (query == 'final') return 'success';
@@ -378,8 +421,9 @@ void main() {
       expect(find.text('Success Meal'), findsOneWidget);
     });
 
-    testWidgets('Scenario 3: API Failure Triggers Connectivity Check',
-        (tester) async {
+    testWidgets('Scenario 3: API Failure Triggers Connectivity Check', (
+      tester,
+    ) async {
       final provider = MealProvider(MealRepository(MealService()));
 
       // Initially online
@@ -415,8 +459,9 @@ void main() {
       expect(LikeConnectivityManager().hasConnection, false);
     });
 
-    testWidgets('Scenario 4: Offline / Online Resync (Mass vs Focused)',
-        (tester) async {
+    testWidgets('Scenario 4: Offline / Online Resync (Mass vs Focused)', (
+      tester,
+    ) async {
       // 1. Turn mock internet OFF
       mockInterceptor.isOnline = false;
       LikeConnectivityManager().debugConfigure(
@@ -430,9 +475,9 @@ void main() {
       // Offline queue persistence/replay is covered by the interceptor and
       // manager suites. This E2E case only verifies the restoration bridge,
       // avoiding a durable replay during widget-test teardown.
-      final reconnected = LikeClient()
-          .refreshStream
-          .firstWhere((event) => event == 'reconnected');
+      final reconnected = LikeClient().refreshStream.firstWhere(
+        (event) => event == 'reconnected',
+      );
 
       // 5. Turn mock internet ON
       mockInterceptor.isOnline = true;

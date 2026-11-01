@@ -9,10 +9,7 @@ void main() {
 
   setUp(() async {
     LikeConstants.apply(
-      LikeConfig(
-        projectName: 'auth-config-test',
-        offlineSyncEnabled: false,
-      ),
+      LikeConfig(projectName: 'auth-config-test', offlineSyncEnabled: false),
     );
     await LikeConnectivityManager().reset();
     LikeConnectivityManager().debugSetStatus(internet: true, server: true);
@@ -29,162 +26,228 @@ void main() {
 
   group('Multi-Client Auth Isolation Tests', () {
     test(
-        'Client A and Client B use separate token getters without interference',
-        () async {
-      final clientA = LikeClient.scoped(
-        LikeClientConfig(
-          baseUrl: 'https://api-a.example.com',
-          authConfig: LikeAuthConfig(
-            getToken: () async => 'jwt_token_A',
+      'Client A and Client B use separate token getters without interference',
+      () async {
+        final clientA = LikeClient.scoped(
+          LikeClientConfig(
+            baseUrl: 'https://api-a.example.com',
+            authConfig: LikeAuthConfig(getToken: () async => 'jwt_token_A'),
           ),
+        );
+
+        final clientB = LikeClient.scoped(
+          LikeClientConfig(
+            baseUrl: 'https://api-b.example.com',
+            authConfig: LikeAuthConfig(getToken: () async => 'jwt_token_B'),
+          ),
+        );
+
+        final adapterA = _MockAdapter((options) {
+          return Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'header': options.headers['Authorization']},
+          );
+        });
+
+        final adapterB = _MockAdapter((options) {
+          return Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'header': options.headers['Authorization']},
+          );
+        });
+
+        clientA.dio.httpClientAdapter = adapterA;
+        clientB.dio.httpClientAdapter = adapterB;
+
+        final resA = await clientA.get('/profile', withAuth: true);
+        final resB = await clientB.get('/profile', withAuth: true);
+
+        expect(
+          ((resA.data?.data as Map)['data'] as Map)['header'],
+          equals('Bearer jwt_token_A'),
+        );
+        expect(
+          ((resB.data?.data as Map)['data'] as Map)['header'],
+          equals('Bearer jwt_token_B'),
+        );
+      },
+    );
+
+    test(
+      'Client A and Client B handle simultaneous 401 token refresh in isolation',
+      () async {
+        int refreshCountA = 0;
+        int refreshCountB = 0;
+
+        final clientA = LikeClient.scoped(
+          LikeClientConfig(
+            baseUrl: 'https://api-a.example.com',
+            authConfig: LikeAuthConfig(
+              getToken: () async => 'expired_token_A',
+              refreshToken: () async {
+                refreshCountA++;
+                await Future<void>.delayed(const Duration(milliseconds: 50));
+                return 'new_token_A';
+              },
+            ),
+          ),
+        );
+
+        final clientB = LikeClient.scoped(
+          LikeClientConfig(
+            baseUrl: 'https://api-b.example.com',
+            authConfig: LikeAuthConfig(
+              getToken: () async => 'expired_token_B',
+              refreshToken: () async {
+                refreshCountB++;
+                await Future<void>.delayed(const Duration(milliseconds: 50));
+                return 'new_token_B';
+              },
+            ),
+          ),
+        );
+
+        clientA.dio.httpClientAdapter = _MockAdapter((options) {
+          if (options.headers['Authorization'] == 'Bearer new_token_A') {
+            return Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: 'OK_A',
+            );
+          }
+          return Response(
+            requestOptions: options,
+            statusCode: 401,
+            data: 'Unauthorized',
+          );
+        });
+
+        clientB.dio.httpClientAdapter = _MockAdapter((options) {
+          if (options.headers['Authorization'] == 'Bearer new_token_B') {
+            return Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: 'OK_B',
+            );
+          }
+          return Response(
+            requestOptions: options,
+            statusCode: 401,
+            data: 'Unauthorized',
+          );
+        });
+
+        final results = await Future.wait([
+          clientA.get('/resource', withAuth: true),
+          clientB.get('/resource', withAuth: true),
+        ]);
+
+        expect((results[0].data?.data as Map)['data'], equals('OK_A'));
+        expect((results[1].data?.data as Map)['data'], equals('OK_B'));
+        expect(refreshCountA, equals(1));
+        expect(refreshCountB, equals(1));
+      },
+    );
+
+    test('relative-only clients can acknowledge tagged mutations', () async {
+      final client = LikeClient.scoped(const LikeClientConfig());
+      addTearDown(client.dispose);
+      client.dio.httpClientAdapter = _MockAdapter(
+        (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {'saved': true},
         ),
       );
+      final result = await client.post(
+        '/test',
+        body: {'value': 1},
+        requestConfig: const LikeRequestConfig(invalidates: ['items']),
+      );
+      expect(result.isSuccess, isTrue);
+    });
 
-      final clientB = LikeClient.scoped(
+    test('copyWith retains scoped auth and account identity', () async {
+      final original = LikeClient.scoped(
         LikeClientConfig(
-          baseUrl: 'https://api-b.example.com',
-          authConfig: LikeAuthConfig(
-            getToken: () async => 'jwt_token_B',
+          baseUrl: 'https://fixture.example',
+          sessionScope: const LikeSessionScope(
+            environment: 'fixture',
+            accountId: 'account-a',
           ),
+          authConfig: LikeAuthConfig(getToken: () => 'fixture-scoped-token'),
         ),
       );
-
-      final adapterA = _MockAdapter((options) {
+      final copy = original.copyWith();
+      addTearDown(original.dispose);
+      addTearDown(copy.dispose);
+      copy.dio.httpClientAdapter = _MockAdapter((options) {
         return Response(
           requestOptions: options,
           statusCode: 200,
           data: {'header': options.headers['Authorization']},
         );
       });
-
-      final adapterB = _MockAdapter((options) {
-        return Response(
-          requestOptions: options,
-          statusCode: 200,
-          data: {'header': options.headers['Authorization']},
-        );
-      });
-
-      clientA.dio.httpClientAdapter = adapterA;
-      clientB.dio.httpClientAdapter = adapterB;
-
-      final resA = await clientA.get('/profile', withAuth: true);
-      final resB = await clientB.get('/profile', withAuth: true);
-
-      expect(((resA.data?.data as Map)['data'] as Map)['header'],
-          equals('Bearer jwt_token_A'));
-      expect(((resB.data?.data as Map)['data'] as Map)['header'],
-          equals('Bearer jwt_token_B'));
+      final result = await copy.get('/test', withAuth: true);
+      expect(result.isSuccess, isTrue);
+      expect(
+        result.data!.data['data']['header'],
+        'Bearer fixture-scoped-token',
+      );
+      expect(copy.sessionScope.key, original.sessionScope.key);
     });
 
     test(
-        'Client A and Client B handle simultaneous 401 token refresh in isolation',
-        () async {
-      int refreshCountA = 0;
-      int refreshCountB = 0;
+      '3-Tier fallback hierarchy prefers scoped > global > static',
+      () async {
+        LikeAuthInterceptor.getToken = () => 'static_token';
 
-      final clientA = LikeClient.scoped(
-        LikeClientConfig(
-          baseUrl: 'https://api-a.example.com',
-          authConfig: LikeAuthConfig(
-            getToken: () async => 'expired_token_A',
-            refreshToken: () async {
-              refreshCountA++;
-              await Future<void>.delayed(const Duration(milliseconds: 50));
-              return 'new_token_A';
-            },
+        LikeConstants.apply(
+          LikeConfig(
+            projectName: 'test',
+            offlineSyncEnabled: false,
+            authConfig: LikeAuthConfig(getToken: () => 'global_token'),
           ),
-        ),
-      );
+        );
 
-      final clientB = LikeClient.scoped(
-        LikeClientConfig(
-          baseUrl: 'https://api-b.example.com',
-          authConfig: LikeAuthConfig(
-            getToken: () async => 'expired_token_B',
-            refreshToken: () async {
-              refreshCountB++;
-              await Future<void>.delayed(const Duration(milliseconds: 50));
-              return 'new_token_B';
-            },
+        final globalClient = LikeClient.scoped(const LikeClientConfig());
+        final scopedClient = LikeClient.scoped(
+          LikeClientConfig(
+            authConfig: LikeAuthConfig(getToken: () => 'scoped_token'),
           ),
-        ),
-      );
+        );
 
-      clientA.dio.httpClientAdapter = _MockAdapter((options) {
-        if (options.headers['Authorization'] == 'Bearer new_token_A') {
+        globalClient.dio.httpClientAdapter = _MockAdapter((options) {
           return Response(
-              requestOptions: options, statusCode: 200, data: 'OK_A');
-        }
-        return Response(
-            requestOptions: options, statusCode: 401, data: 'Unauthorized');
-      });
-
-      clientB.dio.httpClientAdapter = _MockAdapter((options) {
-        if (options.headers['Authorization'] == 'Bearer new_token_B') {
-          return Response(
-              requestOptions: options, statusCode: 200, data: 'OK_B');
-        }
-        return Response(
-            requestOptions: options, statusCode: 401, data: 'Unauthorized');
-      });
-
-      final results = await Future.wait([
-        clientA.get('/resource', withAuth: true),
-        clientB.get('/resource', withAuth: true),
-      ]);
-
-      expect((results[0].data?.data as Map)['data'], equals('OK_A'));
-      expect((results[1].data?.data as Map)['data'], equals('OK_B'));
-      expect(refreshCountA, equals(1));
-      expect(refreshCountB, equals(1));
-    });
-
-    test('3-Tier fallback hierarchy prefers scoped > global > static',
-        () async {
-      LikeAuthInterceptor.getToken = () => 'static_token';
-
-      LikeConstants.apply(
-        LikeConfig(
-          projectName: 'test',
-          offlineSyncEnabled: false,
-          authConfig: LikeAuthConfig(
-            getToken: () => 'global_token',
-          ),
-        ),
-      );
-
-      final globalClient = LikeClient.scoped(const LikeClientConfig());
-      final scopedClient = LikeClient.scoped(
-        LikeClientConfig(
-          authConfig: LikeAuthConfig(
-            getToken: () => 'scoped_token',
-          ),
-        ),
-      );
-
-      globalClient.dio.httpClientAdapter = _MockAdapter((options) {
-        return Response(
             requestOptions: options,
             statusCode: 200,
-            data: options.headers['Authorization']);
-      });
+            data: options.headers['Authorization'],
+          );
+        });
 
-      scopedClient.dio.httpClientAdapter = _MockAdapter((options) {
-        return Response(
+        scopedClient.dio.httpClientAdapter = _MockAdapter((options) {
+          return Response(
             requestOptions: options,
             statusCode: 200,
-            data: options.headers['Authorization']);
-      });
+            data: options.headers['Authorization'],
+          );
+        });
 
-      final resGlobal = await globalClient.get('/test', withAuth: true);
-      final resScoped = await scopedClient.get('/test', withAuth: true);
+        final resGlobal = await globalClient.get('/test', withAuth: true);
+        final resScoped = await scopedClient.get('/test', withAuth: true);
 
-      expect(
-          (resGlobal.data?.data as Map)['data'], equals('Bearer global_token'));
-      expect(
-          (resScoped.data?.data as Map)['data'], equals('Bearer scoped_token'));
-    });
+        expect(
+          (resGlobal.data?.data as Map)['data'],
+          equals('Bearer global_token'),
+        );
+        expect(
+          (resScoped.data?.data as Map)['data'],
+          equals('Bearer scoped_token'),
+        );
+      },
+    );
   });
 }
 

@@ -51,6 +51,10 @@ class LikeConnectivityInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
+    if (response.extra['isMocked'] == true) {
+      handler.next(response);
+      return;
+    }
     // Every real HTTP response, including 4xx/5xx when Dio accepts them, proves
     // that this request's origin was reachable.
     LikeConnectivityManager().markServerAvailable(
@@ -61,6 +65,10 @@ class LikeConnectivityInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.requestOptions.extra['like.synthetic'] == true) {
+      handler.next(err);
+      return;
+    }
     // Dio routes rejected HTTP status responses through onError. They are still
     // positive reachability evidence and must never launch another probe.
     if (err.response != null) {

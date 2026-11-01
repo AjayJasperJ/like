@@ -15,28 +15,28 @@ class LikeServerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MultiProvider(
-        providers: DependencyInjection.value,
-        child: MaterialApp(
-          title: AppConstants.appName,
-          debugShowCheckedModeBanner: false,
-          navigatorObservers: [likeRouteObserver],
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: ThemeMode.system,
-          home: Like(
-            child: Consumer<AuthProvider>(
-              builder: (_, auth, __) {
-                if (auth.initializing) {
-                  return const Scaffold(
-                    body: AppLoading(label: 'Restoring session…'),
-                  );
-                }
-                return auth.isAuthenticated
-                    ? const HomeScreen()
-                    : const LoginScreen();
-              },
-            ),
-          ),
+    providers: DependencyInjection.value,
+    child: MaterialApp(
+      title: AppConstants.appName,
+      debugShowCheckedModeBanner: false,
+      navigatorObservers: [likeRouteObserver],
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
+      home: Like(
+        child: Consumer<AuthProvider>(
+          builder: (_, auth, _) {
+            if (auth.initializing) {
+              return const Scaffold(
+                body: AppLoading(label: 'Restoring session…'),
+              );
+            }
+            return auth.isAuthenticated
+                ? const HomeScreen()
+                : const LoginScreen();
+          },
         ),
-      );
+      ),
+    ),
+  );
 }

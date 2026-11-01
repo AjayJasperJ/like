@@ -1,0 +1,93 @@
+// Deterministic repository fixture for adapter and end-to-end UI tests.
+// Production entry points never import this library.
+import 'shop_shared.dart';
+import 'package:like/testing.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+final class FixtureShopRepository implements ShopRepository {
+  static const item = Product(
+    1,
+    'Fixture phone',
+    'A deterministic product',
+    '',
+    12.5,
+  );
+  static const second = Product(
+    2,
+    'Fixture laptop',
+    'Second page product',
+    '',
+    20,
+  );
+  bool disposed = false;
+  bool failNext = false;
+  bool signedIn = false;
+  int checkoutCalls = 0;
+  List<CartLine> cart = [];
+  @override
+  Future<Customer?> restore() async =>
+      signedIn ? const Customer(1, 'Demo') : null;
+  @override
+  Future<Customer> login(String username, String password) async {
+    if (username != 'emilys' || password != 'emilyspass') {
+      throw const ShopFailure('Invalid demo credentials.');
+    }
+    signedIn = true;
+    return const Customer(1, 'Demo');
+  }
+
+  @override
+  Future<void> logout() async {
+    signedIn = false;
+    cart = [];
+  }
+
+  @override
+  Future<ProductPage> products({
+    required String search,
+    required int skip,
+  }) async {
+    if (failNext) {
+      failNext = false;
+      throw const ShopFailure('Offline fixture');
+    }
+    return ProductPage(
+      search == 'missing' ? [] : [skip == 0 ? item : second],
+      search == 'missing' ? 0 : 2,
+    );
+  }
+
+  @override
+  Future<Product> product(int id) async => id == 1 ? item : second;
+  @override
+  Future<List<CartLine>> loadCart() async => List.of(cart);
+  @override
+  Future<void> saveCart(List<CartLine> value) async {
+    cart = List.of(value);
+  }
+
+  @override
+  Future<Receipt> checkout(List<CartLine> value) async {
+    if (!signedIn) {
+      throw const ShopFailure('Sign in before checkout.');
+    }
+    checkoutCalls++;
+    final total = value.fold<double>(0, (sum, line) => sum + line.total);
+    cart = [];
+    return Receipt(42, total);
+  }
+
+  @override
+  void dispose() {
+    disposed = true;
+  }
+}
+
+/// Cleanup for the isolated live native repository integration test.
+Future<void> closeLiveShopTestResources() async {
+  LikeOfflineSyncManager().dispose();
+  LikeClient().dispose();
+  LikeConnectivityManager().dispose();
+  await Future<void>.delayed(Duration.zero);
+  await Hive.close();
+}

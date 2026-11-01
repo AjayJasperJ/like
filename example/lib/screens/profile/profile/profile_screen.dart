@@ -34,8 +34,10 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(error.message,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(
+                error.message,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: auth.restoreSession,
@@ -44,7 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ],
           ),
         ),
-        onSuccess: (user, _, __) {
+        onSuccess: (user, _, _) {
           if (user == null) return const SizedBox.shrink();
           return ListView(
             padding: const EdgeInsets.all(24),
@@ -52,8 +54,10 @@ class _ProfileScreenState extends State<ProfileScreen>
               Center(
                 child: CircleAvatar(
                   radius: 46,
-                  child: Text(user.name.substring(0, 1).toUpperCase(),
-                      style: Theme.of(context).textTheme.headlineMedium),
+                  child: Text(
+                    user.name.substring(0, 1).toUpperCase(),
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

@@ -39,8 +39,8 @@ class LikeApiResult<T> {
     this.isFromStaleWhileRevalidate = false,
     this.isResiliencyFallback = false,
     this.isFrom304 = false,
-  })  : error = null,
-        isSuccess = true;
+  }) : error = null,
+       isSuccess = true;
 
   LikeApiResult.error(
     this.error, {
@@ -48,8 +48,8 @@ class LikeApiResult<T> {
     this.isFromStaleWhileRevalidate = false,
     this.isResiliencyFallback = false,
     this.isFrom304 = false,
-  })  : data = null,
-        isSuccess = false;
+  }) : data = null,
+       isSuccess = false;
 
   /// `when()` lets you handle success or error elegantly
   R when<R>({
@@ -70,7 +70,7 @@ class LikeApiResult<T> {
     R Function(LikeError error)? onError,
     required R Function() orElse,
   }) {
-    if (isSuccess && data != null && onSuccess != null) {
+    if (isSuccess && onSuccess != null) {
       return onSuccess(data as T);
     } else if (!isSuccess && onError != null && error != null) {
       return onError(error!);
@@ -81,13 +81,14 @@ class LikeApiResult<T> {
 
   /// Maps the success data to a new type.
   LikeApiResult<R> mapSuccess<R>(R Function(T data) mapper) {
-    if (isSuccess && data != null) {
+    if (isSuccess) {
       try {
         return LikeApiResult.success(
           mapper(data as T),
           isFromCache: isFromCache,
           isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
           isResiliencyFallback: isResiliencyFallback,
+          isFrom304: isFrom304,
         );
       } catch (e) {
         // If mapping fails, consider it an error (parsing error)
@@ -99,6 +100,7 @@ class LikeApiResult<T> {
           isFromCache: isFromCache,
           isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
           isResiliencyFallback: isResiliencyFallback,
+          isFrom304: isFrom304,
         );
       }
     }
@@ -107,6 +109,7 @@ class LikeApiResult<T> {
       isFromCache: isFromCache,
       isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
       isResiliencyFallback: isResiliencyFallback,
+      isFrom304: isFrom304,
     );
   }
 
@@ -115,10 +118,11 @@ class LikeApiResult<T> {
   Future<LikeApiResult<R>> mapSuccessAsync<R>(
     LikeModelFactory<R> mapper,
   ) async {
-    if (isSuccess && data != null) {
+    if (isSuccess) {
       try {
-        final dynamic rawData =
-            data is Response ? (data as Response).data : data;
+        final dynamic rawData = data is Response
+            ? (data as Response).data
+            : data;
 
         final result = await compute<_IsolateMapperParams<R>, R>(
           _isolateMapper,
@@ -130,6 +134,7 @@ class LikeApiResult<T> {
           isFromCache: isFromCache,
           isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
           isResiliencyFallback: isResiliencyFallback,
+          isFrom304: isFrom304,
         );
       } catch (e) {
         return LikeApiResult.error(
@@ -140,6 +145,7 @@ class LikeApiResult<T> {
           isFromCache: isFromCache,
           isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
           isResiliencyFallback: isResiliencyFallback,
+          isFrom304: isFrom304,
         );
       }
     }
@@ -148,12 +154,13 @@ class LikeApiResult<T> {
       isFromCache: isFromCache,
       isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
       isResiliencyFallback: isResiliencyFallback,
+      isFrom304: isFrom304,
     );
   }
 
   /// Converts this result to a [LikeStateResponse].
   LikeStateResponse<T> toStateResponse() {
-    if (isSuccess && data != null) {
+    if (isSuccess) {
       if (isFromStaleWhileRevalidate) {
         return LikeStateResponse.staleWhileRevalidate(
           data as T,
@@ -168,7 +175,8 @@ class LikeApiResult<T> {
         isFrom304: isFrom304,
       );
     } else {
-      final err = error ??
+      final err =
+          error ??
           LikeError(message: 'Unknown error', type: LikeApiErrorType.unknown);
       return LikeStateResponse<T>.error(
         err,

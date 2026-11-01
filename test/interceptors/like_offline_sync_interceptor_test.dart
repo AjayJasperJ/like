@@ -49,39 +49,74 @@ void main() {
   });
 
   test('another session and legacy unowned records never replay', () async {
-    final task = _task(origin: 'https://queued.example:443', path: '/private',
-      url: 'https://queued.example:443/private')..['scope'] = 'other-account';
+    final task = _task(
+      origin: 'https://queued.example:443',
+      path: '/private',
+      url: 'https://queued.example:443/private',
+    )..['scope'] = 'other-account';
     await queue.add(task);
     await queue.add({...task}..remove('scope'));
     await interceptor.syncQueue();
+    await expectLater(
+      interceptor.cancelTask(queue.keys.first),
+      throwsStateError,
+    );
+    expect(queue.length, 2);
     verifyNever(() => adapter.fetch(any(), any(), any()));
-    expect(interceptor.tasks.every((task) => task.status == LikeOfflineTaskStatus.blocked), isTrue);
+    expect(
+      interceptor.tasks.every(
+        (task) => task.status == LikeOfflineTaskStatus.blocked,
+      ),
+      isTrue,
+    );
   });
 
-  test('scheduled replay wakes after a retryable failure without another reconnect', () async {
-    await interceptor.dispose();
-    dio.interceptors.clear();
-    interceptor = LikeOfflineSyncInterceptor(dio: dio, queueBox: queue,
-      autoSchedule: true, notifyRefresh: refreshNotifications.add);
-    dio.interceptors.add(interceptor);
-    var calls = 0;
-    when(() => adapter.fetch(any(), any(), any())).thenAnswer((invocation) async {
-      calls++;
-      if (calls == 1) throw DioException(requestOptions: invocation.positionalArguments.first as RequestOptions,
-        type: DioExceptionType.connectionError);
-      return ResponseBody.fromString('{}', 200);
-    });
-    final empty = interceptor.taskChanges.firstWhere((tasks) => tasks.isEmpty);
-    await queue.add(_task(origin: 'https://queued.example:443', path: '/retry',
-      url: 'https://queued.example:443/retry'));
-    await empty.timeout(const Duration(seconds: 5));
-    expect(calls, 2);
-    expect(queue, isEmpty);
-  });
+  test(
+    'scheduled replay wakes after a retryable failure without another reconnect',
+    () async {
+      await interceptor.dispose();
+      dio.interceptors.clear();
+      interceptor = LikeOfflineSyncInterceptor(
+        dio: dio,
+        queueBox: queue,
+        autoSchedule: true,
+        notifyRefresh: refreshNotifications.add,
+      );
+      dio.interceptors.add(interceptor);
+      var calls = 0;
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        calls++;
+        if (calls == 1) {
+          throw DioException(
+            requestOptions:
+                invocation.positionalArguments.first as RequestOptions,
+            type: DioExceptionType.connectionError,
+          );
+        }
+        return ResponseBody.fromString('{}', 200);
+      });
+      final empty = interceptor.taskChanges.firstWhere(
+        (tasks) => tasks.isEmpty,
+      );
+      await queue.add(
+        _task(
+          origin: 'https://queued.example:443',
+          path: '/retry',
+          url: 'https://queued.example:443/retry',
+        ),
+      );
+      await empty.timeout(const Duration(seconds: 5));
+      expect(calls, 2);
+      expect(queue, isEmpty);
+    },
+  );
 
   test('queues only explicitly eligible mutation network failures', () async {
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((invocation) async {
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+      invocation,
+    ) async {
       final options = invocation.positionalArguments.first as RequestOptions;
       throw DioException(
         requestOptions: options,
@@ -119,9 +154,81 @@ void main() {
     expect(task['method'], 'POST');
   });
 
+  test(
+    'multipart replay survives closing and reopening the durable queue',
+    () async {
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        throw DioException(
+          requestOptions:
+              invocation.positionalArguments.first as RequestOptions,
+          type: DioExceptionType.connectionError,
+        );
+      });
+      final form = FormData()
+        ..fields.addAll([
+          const MapEntry('tag', 'a'),
+          const MapEntry('tag', 'b'),
+        ])
+        ..files.add(
+          MapEntry(
+            'file',
+            MultipartFile.fromBytes([1, 2, 3], filename: 'sample.bin'),
+          ),
+        );
+      await expectLater(
+        dio.post<void>(
+          'upload',
+          data: form,
+          options: Options(extra: {'offlineSync': true}),
+        ),
+        throwsA(isA<DioException>()),
+      );
+      final persisted = Map<String, dynamic>.from(queue.values.single as Map);
+      final operation = (persisted['headers'] as Map)['Idempotency-Key'];
+      expect(operation, isNotNull);
+      await interceptor.dispose();
+      dio.close(force: true);
+      await queue.close();
+
+      queue = await Hive.openBox<dynamic>('offline_interceptor_test');
+      dio = Dio(BaseOptions(baseUrl: 'https://current.example/api/'));
+      adapter = MockHttpClientAdapter();
+      dio.httpClientAdapter = adapter;
+      interceptor = LikeOfflineSyncInterceptor(
+        dio: dio,
+        queueBox: queue,
+        notifyRefresh: refreshNotifications.add,
+      );
+      dio.interceptors.add(interceptor);
+      final sent = <int>[];
+      String? replayOperation;
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        final request = invocation.positionalArguments.first as RequestOptions;
+        replayOperation = request.headers['Idempotency-Key'] as String?;
+        final stream = invocation.positionalArguments[1] as Stream<List<int>>?;
+        if (stream != null) {
+          await for (final bytes in stream) {
+            sent.addAll(bytes);
+          }
+        }
+        return ResponseBody.fromString('{}', 200);
+      });
+      await interceptor.syncQueue();
+      expect(queue, isEmpty);
+      expect(replayOperation, operation);
+      expect(String.fromCharCodes(sent), contains('sample.bin'));
+      expect(sent, containsAllInOrder([1, 2, 3]));
+    },
+  );
+
   test('keeps separate user actions even when their payloads match', () async {
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((invocation) async {
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+      invocation,
+    ) async {
       final options = invocation.positionalArguments.first as RequestOptions;
       throw DioException(
         requestOptions: options,
@@ -147,154 +254,188 @@ void main() {
     expect(queue.length, 2);
   });
 
-  test('replays through the persisted absolute origin and cannot requeue',
-      () async {
-    await queue.add(_task(
-      origin: 'https://queued.example:443',
-      path: '/api/v1/clients',
-      url: 'https://queued.example:443/api/v1/clients',
-    ));
-    RequestOptions? replayOptions;
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((invocation) async {
-      replayOptions = invocation.positionalArguments.first as RequestOptions;
-      return ResponseBody.fromString('{}', 201, headers: <String, List<String>>{
-        Headers.contentTypeHeader: <String>[Headers.jsonContentType],
-      });
-    });
-
-    await interceptor.syncQueue(origin: 'https://queued.example');
-
-    expect(replayOptions?.uri.origin, 'https://queued.example');
-    expect(replayOptions?.uri.path, '/api/v1/clients');
-    expect(replayOptions?.extra['isSyncRequest'], isTrue);
-    expect(replayOptions?.extra['offlineSync'], isFalse);
-    expect(queue, isEmpty);
-  });
-
-  test('deletes and rejects a queue entry whose replay URL changes origin',
-      () async {
-    final key = await queue.add(_task(
-      origin: 'https://queued.example:443',
-      path: '/api/v1/clients',
-      url: 'https://attacker.example/api/v1/clients',
-    ));
-
-    await expectLater(
-      interceptor.syncSingle(key),
-      throwsA(isA<StateError>()),
-    );
-    expect(queue.get(key), isNull);
-    verifyNever(() => adapter.fetch(any(), any(), any()));
-  });
-
-  test('coalesces equal drains and serializes different drain scopes',
-      () async {
-    await queue.add(_task(
-      origin: 'https://one.example:443',
-      path: '/one',
-      url: 'https://one.example:443/one',
-    ));
-    await queue.add(_task(
-      origin: 'https://two.example:443',
-      path: '/two',
-      url: 'https://two.example:443/two',
-    ));
-
-    var active = 0;
-    var maximumActive = 0;
-    final releases = <Completer<void>>[];
-    when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async {
-      active++;
-      if (active > maximumActive) maximumActive = active;
-      final release = Completer<void>();
-      releases.add(release);
-      await release.future;
-      active--;
-      return ResponseBody.fromString('{}', 200, headers: <String, List<String>>{
-        Headers.contentTypeHeader: <String>[Headers.jsonContentType],
-      });
-    });
-
-    final first = interceptor.syncQueue(origin: 'https://one.example');
-    final joined = interceptor.syncQueue(origin: 'https://one.example');
-    final second = interceptor.syncQueue(origin: 'https://two.example');
-    expect(identical(first, joined), isTrue);
-
-    while (releases.isEmpty) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    expect(releases.length, 1);
-    releases.first.complete();
-    while (releases.length < 2) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    expect(maximumActive, 1);
-    releases[1].complete();
-
-    await Future.wait<void>(<Future<void>>[first, joined, second]);
-    expect(queue, isEmpty);
-  });
-
-  test('migrates a legacy entry without a persisted URL to its stored origin',
-      () async {
-    final legacy = _task(
-      origin: 'https://legacy.example:443',
-      path: '/api/v1/clients',
-      url: 'unused',
-    )..remove('url');
-    await queue.add(legacy);
-    RequestOptions? replayOptions;
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((invocation) async {
-      replayOptions = invocation.positionalArguments.first as RequestOptions;
-      return ResponseBody.fromString('{}', 200);
-    });
-
-    await interceptor.syncQueue(origin: 'https://legacy.example');
-
-    expect(replayOptions?.uri.origin, 'https://legacy.example');
-    expect(replayOptions?.uri.path, '/api/v1/clients');
-    expect(queue, isEmpty);
-  });
-
-  test('terminal client errors remain inspectable and can be retried',
-      () async {
-    await queue.add(_task(
-      origin: 'https://queued.example:443',
-      path: '/api/v1/clients',
-      url: 'https://queued.example:443/api/v1/clients',
-    ));
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((_) async => ResponseBody.fromString('{}', 422));
-
-    await expectLater(
-      interceptor.syncQueue(origin: 'https://queued.example'),
-      throwsA(
-        isA<DioException>().having(
-          (error) => error.response?.statusCode,
-          'status code',
-          422,
+  test(
+    'replays through the persisted absolute origin and cannot requeue',
+    () async {
+      await queue.add(
+        _task(
+          origin: 'https://queued.example:443',
+          path: '/api/v1/clients',
+          url: 'https://queued.example:443/api/v1/clients',
         ),
-      ),
-    );
-    expect(queue.length, 1);
-    expect(interceptor.tasks.single.status, LikeOfflineTaskStatus.failed);
-    await interceptor.retryTask(queue.keys.single);
-    expect(interceptor.tasks.single.status, LikeOfflineTaskStatus.pending);
-    await interceptor.cancelTask(queue.keys.single);
-    expect(queue, isEmpty);
-  });
+      );
+      RequestOptions? replayOptions;
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        replayOptions = invocation.positionalArguments.first as RequestOptions;
+        return ResponseBody.fromString(
+          '{}',
+          201,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+          },
+        );
+      });
+
+      await interceptor.syncQueue(origin: 'https://queued.example');
+
+      expect(replayOptions?.uri.origin, 'https://queued.example');
+      expect(replayOptions?.uri.path, '/api/v1/clients');
+      expect(replayOptions?.extra['isSyncRequest'], isTrue);
+      expect(replayOptions?.extra['offlineSync'], isFalse);
+      expect(queue, isEmpty);
+    },
+  );
+
+  test(
+    'deletes and rejects a queue entry whose replay URL changes origin',
+    () async {
+      final key = await queue.add(
+        _task(
+          origin: 'https://queued.example:443',
+          path: '/api/v1/clients',
+          url: 'https://attacker.example/api/v1/clients',
+        ),
+      );
+
+      await expectLater(
+        interceptor.syncSingle(key),
+        throwsA(isA<StateError>()),
+      );
+      expect(queue.get(key), isNull);
+      verifyNever(() => adapter.fetch(any(), any(), any()));
+    },
+  );
+
+  test(
+    'coalesces equal drains and serializes different drain scopes',
+    () async {
+      await queue.add(
+        _task(
+          origin: 'https://one.example:443',
+          path: '/one',
+          url: 'https://one.example:443/one',
+        ),
+      );
+      await queue.add(
+        _task(
+          origin: 'https://two.example:443',
+          path: '/two',
+          url: 'https://two.example:443/two',
+        ),
+      );
+
+      var active = 0;
+      var maximumActive = 0;
+      final releases = <Completer<void>>[];
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async {
+        active++;
+        if (active > maximumActive) maximumActive = active;
+        final release = Completer<void>();
+        releases.add(release);
+        await release.future;
+        active--;
+        return ResponseBody.fromString(
+          '{}',
+          200,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+          },
+        );
+      });
+
+      final first = interceptor.syncQueue(origin: 'https://one.example');
+      final joined = interceptor.syncQueue(origin: 'https://one.example');
+      final second = interceptor.syncQueue(origin: 'https://two.example');
+      expect(identical(first, joined), isTrue);
+
+      while (releases.isEmpty) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(releases.length, 1);
+      releases.first.complete();
+      while (releases.length < 2) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(maximumActive, 1);
+      releases[1].complete();
+
+      await Future.wait<void>(<Future<void>>[first, joined, second]);
+      expect(queue, isEmpty);
+    },
+  );
+
+  test(
+    'migrates a legacy entry without a persisted URL to its stored origin',
+    () async {
+      final legacy = _task(
+        origin: 'https://legacy.example:443',
+        path: '/api/v1/clients',
+        url: 'unused',
+      )..remove('url');
+      await queue.add(legacy);
+      RequestOptions? replayOptions;
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        replayOptions = invocation.positionalArguments.first as RequestOptions;
+        return ResponseBody.fromString('{}', 200);
+      });
+
+      await interceptor.syncQueue(origin: 'https://legacy.example');
+
+      expect(replayOptions?.uri.origin, 'https://legacy.example');
+      expect(replayOptions?.uri.path, '/api/v1/clients');
+      expect(queue, isEmpty);
+    },
+  );
+
+  test(
+    'terminal client errors remain inspectable and can be retried',
+    () async {
+      await queue.add(
+        _task(
+          origin: 'https://queued.example:443',
+          path: '/api/v1/clients',
+          url: 'https://queued.example:443/api/v1/clients',
+        ),
+      );
+      when(
+        () => adapter.fetch(any(), any(), any()),
+      ).thenAnswer((_) async => ResponseBody.fromString('{}', 422));
+
+      await expectLater(
+        interceptor.syncQueue(origin: 'https://queued.example'),
+        throwsA(
+          isA<DioException>().having(
+            (error) => error.response?.statusCode,
+            'status code',
+            422,
+          ),
+        ),
+      );
+      expect(queue.length, 1);
+      expect(interceptor.tasks.single.status, LikeOfflineTaskStatus.failed);
+      await interceptor.retryTask(queue.keys.single);
+      expect(interceptor.tasks.single.status, LikeOfflineTaskStatus.pending);
+      await interceptor.cancelTask(queue.keys.single);
+      expect(queue, isEmpty);
+    },
+  );
 
   test('retryable failures update attempts and next attempt time', () async {
     final before = DateTime.now();
-    await queue.add(_task(
-      origin: 'https://queued.example:443',
-      path: '/api/v1/clients',
-      url: 'https://queued.example:443/api/v1/clients',
-    ));
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((_) async => ResponseBody.fromString('{}', 429));
+    await queue.add(
+      _task(
+        origin: 'https://queued.example:443',
+        path: '/api/v1/clients',
+        url: 'https://queued.example:443/api/v1/clients',
+      ),
+    );
+    when(
+      () => adapter.fetch(any(), any(), any()),
+    ).thenAnswer((_) async => ResponseBody.fromString('{}', 429));
 
     await expectLater(
       interceptor.syncQueue(origin: 'https://queued.example'),
@@ -303,25 +444,31 @@ void main() {
 
     final task = Map<String, dynamic>.from(queue.values.single as Map);
     expect(task['attempts'], 1);
-    expect(DateTime.parse(task['nextAttemptAt'] as String).isAfter(before),
-        isTrue);
+    expect(
+      DateTime.parse(task['nextAttemptAt'] as String).isAfter(before),
+      isTrue,
+    );
     expect(task['lastFailure'], isNotNull);
   });
 
   test('skips exhausted and not-yet-due durable work', () async {
-    final exhausted = _task(
-      origin: 'https://queued.example:443',
-      path: '/exhausted',
-      url: 'https://queued.example:443/exhausted',
-    )
-      ..['attempts'] = 3
-      ..['maxAttempts'] = 3;
-    final delayed = _task(
-      origin: 'https://queued.example:443',
-      path: '/delayed',
-      url: 'https://queued.example:443/delayed',
-    )..['nextAttemptAt'] =
-        DateTime.now().add(const Duration(hours: 1)).toIso8601String();
+    final exhausted =
+        _task(
+            origin: 'https://queued.example:443',
+            path: '/exhausted',
+            url: 'https://queued.example:443/exhausted',
+          )
+          ..['attempts'] = 3
+          ..['maxAttempts'] = 3;
+    final delayed =
+        _task(
+            origin: 'https://queued.example:443',
+            path: '/delayed',
+            url: 'https://queued.example:443/delayed',
+          )
+          ..['nextAttemptAt'] = DateTime.now()
+              .add(const Duration(hours: 1))
+              .toIso8601String();
     await queue.addAll(<Map<String, dynamic>>[exhausted, delayed]);
 
     await interceptor.syncQueue(origin: 'https://queued.example');
@@ -330,37 +477,45 @@ void main() {
     expect(queue.length, 2);
   });
 
-  test('refresh notification failure cannot fail acknowledged replay',
-      () async {
-    dio.interceptors.clear();
-    interceptor = LikeOfflineSyncInterceptor(
-      dio: dio,
-      queueBox: queue,
-      notifyRefresh: (_) => throw StateError('listener failed'),
-    );
-    dio.interceptors.add(interceptor);
-    await queue.add(_task(
-      origin: 'https://queued.example:443',
-      path: '/api/v1/clients',
-      url: 'https://queued.example:443/api/v1/clients',
-    ));
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((_) async => ResponseBody.fromString('{}', 200));
+  test(
+    'refresh notification failure cannot fail acknowledged replay',
+    () async {
+      dio.interceptors.clear();
+      interceptor = LikeOfflineSyncInterceptor(
+        dio: dio,
+        queueBox: queue,
+        notifyRefresh: (_) => throw StateError('listener failed'),
+      );
+      dio.interceptors.add(interceptor);
+      await queue.add(
+        _task(
+          origin: 'https://queued.example:443',
+          path: '/api/v1/clients',
+          url: 'https://queued.example:443/api/v1/clients',
+        ),
+      );
+      when(
+        () => adapter.fetch(any(), any(), any()),
+      ).thenAnswer((_) async => ResponseBody.fromString('{}', 200));
 
-    await interceptor.syncQueue(origin: 'https://queued.example');
+      await interceptor.syncQueue(origin: 'https://queued.example');
 
-    expect(queue, isEmpty);
-  });
+      expect(queue, isEmpty);
+    },
+  );
 
   test('manual cancellation keeps the durable entry pending', () async {
-    await queue.add(_task(
-      origin: 'https://queued.example:443',
-      path: '/api/v1/clients',
-      url: 'https://queued.example:443/api/v1/clients',
-    ));
+    await queue.add(
+      _task(
+        origin: 'https://queued.example:443',
+        path: '/api/v1/clients',
+        url: 'https://queued.example:443/api/v1/clients',
+      ),
+    );
     final started = Completer<void>();
-    when(() => adapter.fetch(any(), any(), any()))
-        .thenAnswer((invocation) async {
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+      invocation,
+    ) async {
       started.complete();
       final cancelFuture =
           invocation.positionalArguments[2] as Future<dynamic>?;

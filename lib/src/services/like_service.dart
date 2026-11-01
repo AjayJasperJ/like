@@ -17,6 +17,7 @@ import 'package:like/src/debug/like_suggestions.dart';
 /// Handles caching, ETags, and the offline queue.
 /// Matches enterprise's NetworkBoxService parity.
 class LikeService {
+  static final Set<String> _invalidatedKeys = {};
   static bool _initialized = false;
 
   /// Initializes the LIKE engine and its persistent storage.
@@ -55,9 +56,10 @@ class LikeService {
 
     // 1. Core Storage
     logDebug('DEBUG: Hive.initFlutter starting');
-    final projectNamespace = LikeConstants.projectName
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    final projectNamespace = LikeConstants.projectName.toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9_]'),
+      '_',
+    );
     await Hive.initFlutter(projectNamespace);
     logDebug('DEBUG: Hive.initFlutter completed');
 
@@ -138,6 +140,7 @@ class LikeService {
   ) async {
     if (!Hive.isBoxOpen(LikeConstants.boxApiCache)) return null;
     final key = LikeSessionIdentity.forRequest(options);
+    if (_invalidatedKeys.contains(key)) return null;
     final entry = cacheBox.get(key);
 
     if (entry != null && entry is Map) {
@@ -145,7 +148,8 @@ class LikeService {
       final timestamp = DateTime.tryParse(timestampStr ?? '');
       if (timestamp == null) return null;
 
-      final storageDurationMs = (entry['storageDurationMs'] as int?) ??
+      final storageDurationMs =
+          (entry['storageDurationMs'] as int?) ??
           (Hive.isBoxOpen(LikeConstants.boxCacheMetadata)
               ? (metadataBox.get(key) as int?)
               : null);
@@ -201,10 +205,40 @@ class LikeService {
 
     await cacheBox.put(key, {
       'formatVersion': 2,
+      'scope': options.extra[LikeSessionIdentity.scopeKey] ?? '',
+      'origin': options.uri.hasAuthority ? options.uri.origin : '',
+      'tags': options.extra['like.cacheTags'] ?? const <String>[],
       'data': data,
       'timestamp': timestamp,
-      if (storageDurationMs != null) 'storageDurationMs': storageDurationMs,
+      'storageDurationMs': ?storageDurationMs,
     });
+    _invalidatedKeys.remove(key);
+  }
+
+  static Future<Set<String>> invalidateTags(
+    Set<String> tags,
+    String scope,
+    String origin,
+  ) async {
+    if (!Hive.isBoxOpen(LikeConstants.boxApiCache)) return {};
+    final keys = <String>{};
+    for (final key in cacheBox.keys) {
+      final entry = cacheBox.get(key);
+      if (entry is Map &&
+          (entry['scope'] ?? '') == scope &&
+          entry['origin'] == origin &&
+          (entry['tags'] as List? ?? const []).any(tags.contains)) {
+        keys.add(key.toString());
+      }
+    }
+    _invalidatedKeys.addAll(keys);
+    await cacheBox.deleteAll(keys);
+    if (Hive.isBoxOpen(LikeConstants.boxCacheMetadata)) {
+      await metadataBox.deleteAll(keys);
+    }
+    if (Hive.isBoxOpen(LikeConstants.boxEtags)) await etagBox.deleteAll(keys);
+    _invalidatedKeys.removeAll(keys);
+    return keys;
   }
 
   /// Global notifier for blocking synchronization events.

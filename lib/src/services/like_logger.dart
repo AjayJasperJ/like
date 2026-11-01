@@ -69,10 +69,14 @@ class LikeLogger {
 
     message = LikeRedaction.message(message);
     final timestampStr = DateTime.now().toIso8601String();
-    final safeDetails = LikeRedaction.sanitize(details,
-            sensitiveKeys: LikeConstants.current.sensitiveHeaders)
-        as Map<String, Object?>?;
+    final safeDetails =
+        LikeRedaction.sanitize(
+              details,
+              sensitiveKeys: LikeConstants.current.sensitiveHeaders,
+            )
+            as Map<String, Object?>?;
     final entry = {
+      'privacyVersion': 2,
       'timestamp': timestampStr,
       'level': level.name,
       'category': category,
@@ -115,19 +119,19 @@ class LikeLogger {
       message: message,
       details: {
         'success': success,
-        if (requestId != null) 'requestId': requestId,
-        if (statusCode != null) 'statusCode': statusCode,
-        if (method != null) 'method': method,
-        if (requestHeaders != null) 'requestHeaders': requestHeaders,
-        if (responseHeaders != null) 'responseHeaders': responseHeaders,
+        'requestId': ?requestId,
+        'statusCode': ?statusCode,
+        'method': ?method,
+        'requestHeaders': ?requestHeaders,
+        'responseHeaders': ?responseHeaders,
         if (requestBody != null)
           'requestBody': kReleaseMode ? LikeRedaction.omitted : requestBody,
-        if (requestFields != null) 'requestFields': requestFields,
-        if (requestQuery != null) 'requestQuery': requestQuery,
+        'requestFields': ?requestFields,
+        'requestQuery': ?requestQuery,
         if (response != null)
           'response': LikeRedaction.apiPayload(response, release: kReleaseMode),
         if (shouldShrink) 'shrink': true,
-        if (statusText != null) 'status': statusText,
+        'status': ?statusText,
       },
     );
   }
@@ -150,11 +154,11 @@ class LikeLogger {
       message: '${LikeRedaction.endpoint(endpoint)} | STARTED',
       details: {
         'requestId': requestId,
-        if (method != null) 'method': method,
-        if (headers != null) 'headers': headers,
+        'method': ?method,
+        'headers': ?headers,
         if (body != null) 'body': kReleaseMode ? LikeRedaction.omitted : body,
-        if (fields != null) 'fields': fields,
-        if (query != null) 'query': query,
+        'fields': ?fields,
+        'query': ?query,
       },
     );
   }
@@ -258,7 +262,19 @@ class LikeLogger {
   static Future<String> readLogs() async {
     await _ensureInitialized();
     if (_logFile != null && await _logFile!.exists()) {
-      return await _logFile!.readAsString();
+      final lines = await _logFile!.readAsLines();
+      final safe = <String>[];
+      for (final line in lines) {
+        try {
+          final value = jsonDecode(line);
+          if (value is Map && value['privacyVersion'] == 2) {
+            safe.add(line);
+          }
+        } catch (_) {
+          // Historical or malformed unredacted entries are never exported.
+        }
+      }
+      return safe.isEmpty ? '' : '${safe.join('\n')}\n';
     }
     return '';
   }

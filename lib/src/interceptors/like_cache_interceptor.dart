@@ -7,8 +7,11 @@ import 'package:like/src/services/like_service.dart';
 class LikeCacheInterceptor extends Interceptor {
   @override
   Future<void> onResponse(
-      Response response, ResponseInterceptorHandler handler) async {
-    if (LikeConstants.cacheEnabled &&
+    Response response,
+    ResponseInterceptorHandler handler,
+  ) async {
+    if (response.extra['isMocked'] != true &&
+        LikeConstants.cacheEnabled &&
         response.requestOptions.method == 'GET' &&
         response.statusCode == 200 &&
         response.requestOptions.extra['disableCache'] != true) {

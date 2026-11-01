@@ -18,3 +18,5 @@ export 'src/services/like_sync_manager.dart';
 
 export 'package:dio/dio.dart'
     show HttpClientAdapter, RequestOptions, ResponseBody, Options;
+
+export 'src/services/like_offline_sync_manager.dart';

@@ -26,10 +26,11 @@ example. The bundled test server still uses SQLite; Redis is not implemented her
 LikeBaseApiService accepts LikeHttpClient while retaining the default LikeClient
 for existing callers. Injected clients are caller-owned: a service never disposes
 a shared client. Endpoint parsing stays in services; repositories expose business
-operations; presentation adapters own loading and lifecycle state. The Cubit ignores
-outdated results and results completing after close. This does not cancel transport.
-The Riverpod example disposes its observer automatically, but repository work is
-not transport-cancelled on disposal. Use CancelToken in operations requiring that.
+operations; presentation adapters own loading and lifecycle state. Provider query,
+Riverpod stream and Cubit adapters share LikeQuery cancellation, generation guards,
+resource invalidation and reconnect subscriptions. Replacing/disposing an owner
+cancels its HTTP token and releases subscriptions. The Riverpod page FutureProvider
+also forwards and cancels its repository token.
 
 ## Public testing surface
 
@@ -68,3 +69,19 @@ The original offline/session/retry roadmap remains separate from this integratio
 
 See [pending tasks and flow updates](documents/pending_tasks.md) for completed
 increments, remaining work, acceptance criteria and current versus target flows.
+
+
+## Complete public API projects
+
+The independent `examples/provider_app`, `examples/riverpod_app` and
+`examples/bloc_app` projects each own immutable ShopState through their state
+library. `examples/shop_shared/lib/src/domain` defines repository contracts and
+values; `data` implements HTTP/storage; `application` implements user operations;
+`presentation` renders state and dispatches actions. Repository and SessionStore
+interfaces allow deterministic replacements without initializing a backend.
+
+Each app includes host/Chrome UI tests and an integration_test flow entry point.
+The native device script also runs the production repository against the public
+API with actual secure storage and Hive. See the
+[implementation report](documents/implementation_report.md) for the source/test
+mapping, public API behavior, supported scope and release setup.

@@ -46,8 +46,12 @@ import 'package:like/src/core/like_data_unpacker.dart';
 /// );
 /// ```
 class LikeRequestConfig {
+  final List<String> cacheTags;
+  final List<String> invalidates;
+
   /// Stable server-supported key for one mutation across manual retries.
   final String? idempotencyKey;
+
   /// Overrides the target server URL for this single request only.
   ///
   /// If both [baseUrl] and [namedBaseUrl] are supplied, [baseUrl] takes
@@ -200,6 +204,8 @@ class LikeRequestConfig {
   final List<int>? retryDelays;
 
   const LikeRequestConfig({
+    this.cacheTags = const [],
+    this.invalidates = const [],
     this.idempotencyKey,
     this.baseUrl,
     this.namedBaseUrl,

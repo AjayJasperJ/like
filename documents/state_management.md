@@ -94,10 +94,9 @@ try {
 }
 ```
 
-The page family is autoDispose. That releases Riverpod's observer state; it does
-not cancel the repository's underlying HTTP operation in this example.
-Propagate a CancelToken through service/repository methods when actual transport
-cancellation is required, then cancel it through ref.onDispose.
+The page family owns a CancelToken and cancels transport through ref.onDispose.
+Use postsQueryProvider for shared tag invalidation and reconnect refresh. It owns
+a LikeQuery subscription and disposes it with the provider.
 
 Source: [Riverpod integration](../example/lib/data/riverpod/posts_providers.dart).
 
@@ -117,9 +116,10 @@ PostsCubit emits LikeStateResponse<PaginatedPosts>. Render it with BlocBuilder;
 inspect snapshot.state, snapshot.data and snapshot.error. Trigger load() from
 initialization or user actions rather than the builder.
 
-The Cubit assigns a generation to each load. A newer load wins if completions
-arrive out of order, and closed Cubits ignore late results. These guards suppress
-stale emissions; they do not abort the network request.
+The Cubit assigns a generation to each load and owns a LikeQuery. Replacing a
+load or closing the Cubit disposes the old query, cancels its transport and
+unsubscribes from invalidation/reconnect events. Closed or superseded owners
+ignore late completions.
 
 For event-based Bloc, inject the same PostsRepository and call it from a load
 event handler. Choose sequential, concurrent or restartable event processing
@@ -232,3 +232,33 @@ See [ARCHITECTURE.md](../ARCHITECTURE.md) for the source map and
 Track cancellation propagation, reconnect/pipeline parity and additional adapters
 in [pending tasks and flow updates](pending_tasks.md). Documentation of a pattern
 does not imply that a dedicated adapter or test suite is implemented.
+
+
+## Shared reactive queries and complete public API apps
+
+`PostsQueryProvider`, `postsQueryProvider` and `PostsCubit` consume the same
+`PostsRepository.watchPage` / `LikeQuery` contract. A query publishes a current
+snapshot followed by transitions; explicit refresh, matching scope/origin/tag
+invalidation and origin restoration share one cancellation/generation policy.
+Session changes cancel old work and clear the query snapshot before the next
+account loads. Dispose account-owned state when switching accounts.
+
+`LikeOptimisticStore` layers optimistic reducers over the acknowledged base.
+Commit reconciles a server result; rollback removes only the failed layer.
+Settled layers drain in order, so an older rollback cannot overwrite a newer
+successful mutation. Merge server entities by stable IDs rather than replacing
+an unrelated snapshot. Disposal cancels owned mutation tokens.
+
+`LikePagedQuery` stores pages separately from the item-ID-deduplicated view,
+retains failed page/cursor information for retry, treats a null terminal cursor
+as completion, and cancels old work on refresh/disposal.
+
+The three separate apps under [examples](../examples/README.md) use Provider,
+Riverpod and Cubit to own immutable `ShopState`. All consume the same pure
+application use cases and injected repository contract. No state library enters
+the domain or HTTP service. Each app includes a full widget flow test and an
+integration-test entry point for emulator/simulator execution.
+
+In Riverpod 3, capture the repository in `build` before registering cleanup.
+Calling `ref.read` from an onDispose callback is rejected by Riverpod; dispose
+captured resources directly. The app disposal test covers this regression.

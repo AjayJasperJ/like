@@ -1,0 +1,125 @@
+name: Public API shop apps
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['apps-v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shop-apps-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [provider, riverpod, bloc]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Temporary SDK
+        run: |
+          echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/shop-flutter" >> "$GITHUB_ENV"
+          echo "PUB_CACHE=$RUNNER_TEMP/shop-pub-cache" >> "$GITHUB_ENV"
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/shop-flutter"
+          echo "$RUNNER_TEMP/shop-flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/shop-flutter/bin/flutter" config --no-analytics
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Generate standard platform wrappers
+        working-directory: examples/${{ matrix.state }}_app
+        run: |
+          flutter create --platforms=android,ios,web --org dev.like.examples .
+          rm -f test/widget_test.dart
+          python3 ../../tool/configure_shop_platforms.py .
+          flutter pub get
+      - name: Format and analyze shared and adapter code
+        working-directory: examples/${{ matrix.state }}_app
+        run: |
+          dart format lib test ../shop_shared/lib ../shop_shared/test
+          flutter analyze
+      - name: Verify shared domain and data code
+        working-directory: examples/shop_shared
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+          flutter test --platform chrome
+      - name: Native host flow tests
+        working-directory: examples/${{ matrix.state }}_app
+        run: flutter test --coverage
+      - name: Chrome flow tests
+        working-directory: examples/${{ matrix.state }}_app
+        run: flutter test --platform chrome
+      - name: Build release web
+        working-directory: examples/${{ matrix.state }}_app
+        run: flutter build web --release
+      - name: Build installable release test APK
+        working-directory: examples/${{ matrix.state }}_app
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: like-${{ matrix.state }}-release-apk
+          path: examples/${{ matrix.state }}_app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: like-${{ matrix.state }}-web
+          path: examples/${{ matrix.state }}_app/build/web
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: like-${{ matrix.state }}-generated-source
+          path: |
+            examples/${{ matrix.state }}_app/android
+            examples/${{ matrix.state }}_app/ios
+            examples/${{ matrix.state }}_app/web
+            examples/${{ matrix.state }}_app/lib
+            examples/${{ matrix.state }}_app/test
+            examples/shop_shared/lib
+          retention-days: 1
+      - name: Remove SDK and package cache
+        if: always()
+        run: rm -rf -- "$FLUTTER_SDK_DIR" "$PUB_CACHE"
+  public-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Public API live contract smoke test
+        run: python3 tool/public_api_smoke.py
+  release:
+    if: startsWith(github.ref, 'refs/tags/apps-v')
+    needs: [verify, public-contract]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: like-*-release-apk
+          path: apk-artifacts
+      - name: Prepare distinct APK assets
+        run: |
+          mkdir release-apks
+          for state in provider riverpod bloc; do
+            cp "apk-artifacts/like-$state-release-apk/app-release.apk" "release-apks/like-$state.apk"
+          done
+      - name: Attach evaluated apps to the tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --title "LIKE public API apps $RELEASE_TAG" --notes-file examples/RELEASE_NOTES.md
+          fi
+          gh release upload "$RELEASE_TAG" release-apks/*.apk --clobber
