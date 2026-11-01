@@ -78,12 +78,14 @@ ul, ol { padding-left: 26px; }
 li { margin: 9px 0; }
 code { font: .875rem/1.8 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; background: var(--code); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
 pre { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: auto; max-width: 100%; padding: 22px; margin: 24px 0; position: relative; tab-size: 2; }
-pre code { font-size: .875rem; line-height: 1.9; background: none; padding: 0; white-space: pre; overflow-wrap: normal; }
-pre .copy-code { position: sticky; float: right; top: 0; right: 0; background: var(--bg); color: var(--muted); border: 1px solid var(--line); font-size: .8125rem; min-height: 36px; border-radius: 6px; padding: 4px 10px; margin: -8px -10px 8px 12px; }
+pre code { display: block; font-size: .875rem; line-height: 1.9; background: none; padding: 0; white-space: pre; overflow-wrap: normal; }
+pre .copy-code { position: sticky; display: block; top: 0; right: 0; background: var(--bg); color: var(--muted); border: 1px solid var(--line); font-size: .8125rem; min-height: 36px; border-radius: 6px; padding: 4px 10px; margin: 0 0 14px auto; }
 table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; border: 1px solid var(--line); border-radius: 9px; font-size: .9375rem; margin: 26px 0; width: 100%; line-height: 1.75; }
 thead { background: var(--panel); text-align: left; }
 th, td { border-bottom: 1px solid var(--line); padding: 14px 16px; vertical-align: top; min-width: 140px; }
 th { font-size: .875rem; color: var(--muted); font-weight: 650; }
+th, td { overflow-wrap: normal; word-break: normal; }
+th:first-child, td:first-child { min-width: 180px; }
 td:last-child { width: 100%; }
 tr:last-child td { border-bottom: 0; }
 blockquote { margin: 24px 0; padding: 4px 20px; border-left: 3px solid var(--blue); background: var(--panel); }
