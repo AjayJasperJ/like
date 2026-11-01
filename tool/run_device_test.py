@@ -21,7 +21,12 @@ def screenshot():
         print('Failure screenshot unavailable', flush=True)
 
 print('Running ' + platform + ' ' + Path.cwd().name + ' ' + test_file, flush=True)
-process = subprocess.Popen(['flutter', 'test', test_file, '-d', device, '--reporter', 'expanded'], start_new_session=True)
+log_path = output / (platform + '-' + Path.cwd().name + '-' + Path(test_file).stem + '.log')
+log_file = log_path.open('w')
+process = subprocess.Popen(
+    ['flutter', 'test', test_file, '-d', device, '--reporter', 'expanded', '--verbose'],
+    stdout=log_file, stderr=subprocess.STDOUT, start_new_session=True,
+)
 
 def stop():
     if process.poll() is not None:
@@ -40,10 +45,14 @@ try:
 except subprocess.TimeoutExpired:
     screenshot()
     stop()
+    log_file.close()
+    print(log_path.read_text()[-24000:], flush=True)
     raise SystemExit('Native test exceeded its ten-minute startup/execution limit')
 except KeyboardInterrupt:
     stop()
     raise
+log_file.close()
+print(log_path.read_text()[-24000:], flush=True)
 if result:
     screenshot()
 raise SystemExit(result)
