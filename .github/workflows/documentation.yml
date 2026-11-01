@@ -23,6 +23,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    outputs:
+      pages_artifact: ${{ steps.pages-name.outputs.name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -74,10 +76,14 @@ jobs:
           path: site/_build
           include-hidden-files: true
           retention-days: 7
+      - name: Name this build artifact
+        id: pages-name
+        run: echo "name=github-pages-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v4
         with:
+          name: ${{ steps.pages-name.outputs.name }}
           path: site/_build
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -96,3 +102,5 @@ jobs:
       - name: Deploy documentation
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ needs.build.outputs.pages_artifact }}
