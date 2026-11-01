@@ -14,6 +14,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   like:
     path: ../
+    version: 2.4.0
   provider: ^6.1.5+1
   flutter_riverpod: ^3.0.0
   flutter_bloc: ^9.1.1
