@@ -73,6 +73,8 @@ class Card<T> extends StatelessWidget {
         api = exported_api(ROOT)
         symbols = {s['name']: s for s in api['symbols']}
         self.assertIn('LikeBuilder', symbols)
+        self.assertIn('LikeStateMixin', symbols)
+        self.assertIn('LikeVisibilityMixin', symbols)
         self.assertIn('LikeStateResponseBuilderSliver', symbols)
         self.assertIn('LikeCacheImage', symbols)
         self.assertNotIn('LikeSyncTask', symbols)  # Only LikeSyncPriority is exported.
@@ -104,6 +106,22 @@ class Card<T> extends StatelessWidget {
         self.assertIn('/blob/abc/', markdown)
         self.assertGreater(len(api['symbols']), 90)
         json.dumps(api)
+
+    def test_aliases_expose_underlying_constructors_methods_and_fields(self):
+        api = exported_api(ROOT)
+        symbols = {item['name']: item for item in api['symbols']}
+        for alias, target in [('ApiResult', 'LikeApiResult'), ('NotifierState', 'LikeNotifierState'), ('StateResponse', 'LikeStateResponse'), ('States', 'LikeState'), ('ARS', 'LikeARS'), ('BaseApiService', 'LikeBaseApiService'), ('StateMixin', 'LikeStateMixin'), ('StateEngine', 'LikeEngine'), ('Pagination', 'PaginationTool')]:
+            self.assertEqual(symbols[alias]['resolved_from'], target)
+            self.assertEqual([m['name'] for m in symbols[alias]['members']], [m['name'] for m in symbols[target]['members']])
+            self.assertTrue(symbols[alias]['members'], alias)
+        self.assertTrue(symbols['LikeModelFactory']['function_typedef'])
+        self.assertIsNone(symbols['LikeModelFactory']['alias_target'])
+        markdown, _ = render_reference(ROOT, 'abc', 'https://github.com/AjayJasperJ/like')
+        alias_section = markdown.split('### ApiResult', 1)[1].split('</section>', 1)[0]
+        self.assertIn('Alias of [LikeApiResult]', alias_section)
+        self.assertIn('LikeApiResult.success', alias_section)
+        self.assertIn('isSuccess', alias_section)
+        self.assertIn('| Parameter |', alias_section)
 
     def test_implicit_constructor_is_labelled_and_private_only_is_not_exposed(self):
         items = parse_library('class Implicit {} class PrivateOnly { PrivateOnly._(); }', 'lib/test.dart')

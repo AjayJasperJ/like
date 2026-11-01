@@ -43,6 +43,8 @@ def node_name(node, data):
     named = node.child_by_field_name('name')
     if named:
         return content(named, data)
+    if node.type == 'mixin_declaration':
+        return content(next(c for c in node.named_children if c.type == 'identifier'), data)
     if node.type == 'type_alias':
         return content(next(c for c in node.named_children if c.type in ('type_identifier', 'identifier')), data)
     if node.type in ('constant_constructor_signature', 'constructor_signature', 'factory_constructor_signature'):
@@ -180,7 +182,12 @@ def parse_library(source, path):
             records.append(record)
             continue
         if node.type == 'type_alias':
-            records.append({'name': name, 'kind': 'typedef', 'signature': content(node, data),
+            declaration = content(node, data)
+            callback = any(c.type == 'function_type' for c in node.named_children)
+            target = re.search(r'=\s*([A-Za-z_]\w*)', declaration)
+            records.append({'name': name, 'kind': 'typedef', 'signature': declaration,
+                            'alias_target': target[1] if target and not callback else None,
+                            'function_typedef': callback,
                             'description': docs, 'members': [], 'source': path, 'line': node.start_point.row + 1})
             continue
         if body is None:
@@ -263,6 +270,18 @@ def exported_api(root):
         item = dict(value)
         item['entrypoints'] = (["package:like/like.dart"] if name in core else []) + (["package:like/testing.dart"] if name in testing else [])
         records.append(item)
+    by_name = {item['name']: item for item in records}
+    def resolve_alias(item, seen=()):
+        target_name = item.get('alias_target')
+        if not target_name or target_name in seen or target_name not in by_name:
+            return
+        target = by_name[target_name]
+        resolve_alias(target, seen + (item['name'],))
+        item['resolved_from'] = target.get('resolved_from', target_name)
+        item['resolved_kind'] = target.get('resolved_kind', target['kind'])
+        item['members'] = [dict(member, source=member.get('source', target['source'])) for member in target['members']]
+    for item in records:
+        resolve_alias(item)
     return {'symbols': records, 'external_exports': [{'library': x[0], 'show': list(x[1]), 'hide': list(x[2])} for x in sorted(external)]}
 
 
@@ -297,6 +316,14 @@ def render_reference(root, ref, repo):
                   'Import: `' + ('package:like/like.dart' if 'package:like/like.dart' in item['entrypoints'] else 'package:like/testing.dart') + '`.', '',
                   '<details markdown="1">', f'<summary>Read {name} constructors, members and parameters</summary>', '',
                   '```dart', item['signature'], '```', '', item['description'], '']
+        if item.get('resolved_from'):
+            target = item['resolved_from']
+            lines += [f'**Alias of [{target}](#{target.lower()}).** Its constructors and members are included below.', '',
+                      'Signatures retain the underlying declaration names and generic parameters; the alias declaration above shows any type arguments.', '']
+        elif item.get('function_typedef'):
+            lines += ['**Callback typedef:** this defines a function signature, not a class. It has no constructors or instance methods.', '']
+        elif item.get('alias_target'):
+            lines += [f'Underlying type: `{item["alias_target"]}`. It is not defined in the exported package surface; see its owning library.', '']
         members = item.get('members', [])
         if item['kind'] == 'function':
             members = [item]

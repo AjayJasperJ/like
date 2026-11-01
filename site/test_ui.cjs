@@ -58,6 +58,16 @@ const fs = require('node:fs');
   assert.ok(!api.symbols.some(s => s.name === '_LikeState'));
   await page.goto(origin + '/like/api/#likebuilder');
   assert.equal(await builder.locator('details').getAttribute('open'), '');
+  await page.goto(origin + '/like/api/');
+  const alias = page.locator('[data-api-symbol="ApiResult"]');
+  await alias.locator('summary').click();
+  assert.match(await alias.innerText(), /Alias of LikeApiResult/);
+  assert.match(await alias.innerText(), /LikeApiResult.success/);
+  assert.match(await alias.innerText(), /isSuccess/);
+  assert.ok(await alias.locator('table').count() > 0);
+  const aliasJson = await (await page.request.get(origin + '/like/api-data/apiresult.json')).json();
+  assert.equal(aliasJson.resolved_from, 'LikeApiResult');
+  assert.ok(aliasJson.members.some(m => m.name === 'LikeApiResult.success'));
   // Every guide must reflow without whole-page horizontal scrolling.
   const manifest = await (await page.request.get(origin + '/like/manifest.json')).json();
   for (const width of [320, 360, 390, 768, 980, 1024, 1280, 1440, 1920]) {
