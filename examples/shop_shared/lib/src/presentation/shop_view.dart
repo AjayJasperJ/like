@@ -29,6 +29,11 @@ class _ShopViewState extends State<ShopView> {
     super.dispose();
   }
 
+  Future<void> _searchProducts(String value) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await widget.actions.search(value);
+  }
+
   Future<void> _login() async {
     final accepted = await showDialog<bool>(
       context: context,
@@ -117,7 +122,7 @@ class _ShopViewState extends State<ShopView> {
                     key: const Key('retry'),
                     onPressed: state.busy
                         ? null
-                        : () => actions.search(state.search),
+                        : () => _searchProducts(state.search),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -139,21 +144,21 @@ class _ShopViewState extends State<ShopView> {
                             decoration: const InputDecoration(
                               labelText: 'Search products',
                             ),
-                            onSubmitted: state.busy ? null : actions.search,
+                            onSubmitted: state.busy ? null : _searchProducts,
                           ),
                         ),
                         IconButton(
                           key: const Key('search-button'),
                           onPressed: state.busy
                               ? null
-                              : () => actions.search(_search.text),
+                              : () => _searchProducts(_search.text),
                           icon: const Icon(Icons.search),
                         ),
                         IconButton(
                           key: const Key('refresh'),
                           onPressed: state.busy
                               ? null
-                              : () => actions.search(state.search),
+                              : () => _searchProducts(state.search),
                           icon: const Icon(Icons.refresh),
                         ),
                       ],

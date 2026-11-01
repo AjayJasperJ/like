@@ -11,7 +11,7 @@ for state in provider riverpod bloc; do
     python3 ../../tool/configure_shop_platforms.py .
   fi
   flutter pub get
-  flutter test integration_test/flow_test.dart -d "$device_id"
+  python3 ../../tool/run_device_test.py "$device_id" "$platform" integration_test/flow_test.dart
 done
 cd "$repo_root/examples/provider_app"
-flutter test integration_test/live_api_test.dart -d "$device_id"
+python3 ../../tool/run_device_test.py "$device_id" "$platform" integration_test/live_api_test.dart
