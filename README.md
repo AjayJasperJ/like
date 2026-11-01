@@ -1,662 +1,553 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/AjayJasperJ/like_docs/refs/heads/main/assets/banner.png" alt="LIKE — Link Intelligent Kernel Engine" width="100%"/>
-</p>
+# LIKE — Link Intelligent Kernel Engine
 
-<h1 align="center">LIKE — Link Intelligent Kernel Engine</h1>
+[![pub.dev](https://img.shields.io/pub/v/like.svg)](https://pub.dev/packages/like)
+[![Package checks](https://github.com/AjayJasperJ/like/actions/workflows/ci.yml/badge.svg)](https://github.com/AjayJasperJ/like/actions/workflows/ci.yml)
+[![Device flows](https://github.com/AjayJasperJ/like/actions/workflows/device-flows.yml/badge.svg)](https://github.com/AjayJasperJ/like/actions/workflows/device-flows.yml)
+[![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-<p align="center">
-  <a href="https://pub.dev/packages/like"><img src="https://img.shields.io/pub/v/like.svg?label=pub.dev&color=blue" alt="pub.dev"/></a>
-  <a href="https://pub.dev/packages/like"><img src="https://img.shields.io/pub/likes/like?label=likes&color=pink" alt="likes"/></a>
-  <a href="https://pub.dev/packages/like/score"><img src="https://img.shields.io/pub/points/like?label=pub%20points&color=brightgreen" alt="pub points"/></a>
-  <a href="https://pub.dev/packages/like"><img src="https://img.shields.io/pub/popularity/like?label=popularity" alt="popularity"/></a>
-  <a href="https://github.com/AjayJasperJ/like_docs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"/></a>
-  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/platform-Flutter-02569B?logo=flutter" alt="Flutter"/></a>
-</p>
+Flutter networking, caching and state coordination built on Dio. Use LIKE behind
+an injectable service and repository, then present the results with Provider,
+Riverpod, BLoC/Cubit or Flutter's own state primitives.
 
-<p align="center">
-  <strong>Enterprise-grade, offline-first networking for Flutter — built on Dio with reactive state, managed media caching, smart sync, and zero-boilerplate UI bindings.</strong>
-</p>
+LIKE renders API-driven Flutter interfaces. Rendering arbitrary HTML, CSS and
+JavaScript requires a WebView or browser engine.
 
----
+## Contents
 
-## Complete public API examples
+- [Latest updates](#latest-updates)
+- [Features](#features)
+- [Installation](#installation)
+- [1. Initialization](#1-initialization)
+- [2. Services and repositories](#2-services-and-repositories)
+- [3. State management and UI](#3-state-management-and-ui)
+- [4. Authentication and session ownership](#4-authentication-and-session-ownership)
+- [5. Cache and mutation flows](#5-cache-and-mutation-flows)
+- [6. Connectivity and notifications](#6-connectivity-and-notifications)
+- [7. Diagnostics and development tools](#7-diagnostics-and-development-tools)
+- [8. Media, uploads and WebSockets](#8-media-uploads-and-websockets)
+- [Complete example apps](#complete-example-apps)
+- [Platform support and testing](#platform-support-and-testing)
+- [Documentation and contributing](#documentation-and-contributing)
 
-The 2.4 implementation requires Dart 3.12 / Flutter 3.44.1 or newer. Three separate
-apps demonstrate clean application boundaries with public DummyJSON APIs:
-[Provider](examples/provider_app), [Riverpod](examples/riverpod_app) and
-[BLoC/Cubit](examples/bloc_app). Each includes browsing, search/paging, details,
-sign in/out, a persistent account-scoped cart and simulated checkout.
+## Latest updates
 
-See [run/release instructions](examples/README.md),
-[state management](documents/state_management.md),
-[implementation and verification](documents/implementation_report.md) and
-[CI troubleshooting](documents/ci_troubleshooting.md). GitHub Actions builds all
-three release test APKs; `apps-v*` tags can attach them to a release. No internal
-API server is required by these apps.
+The repository's **2.4.0** update adds:
 
-## Why LIKE?
+- Account/environment scopes for requests, caches and queued mutations.
+- Durable multipart replay, scheduled retries, stable operation IDs and queue controls.
+- Shared cancellable queries, resource-tag invalidation, optimistic updates and pagination.
+- Passive slow API-path detection and bounded, payload-free request traces.
+- Conservative diagnostic redaction and reproducible synthetic failure scenarios.
+- Three separate public-API shops using Provider, Riverpod and BLoC/Cubit.
+- Browser tests, native builds, Android/iOS device flows, minimum-SDK checks and release automation.
+- Optional typed code generation for a documented OpenAPI 3.0 JSON subset.
 
-| Capability                     | Raw Dio / HTTP             | LIKE                                                           |
-| :----------------------------- | :------------------------- | :------------------------------------------------------------- |
-| **Cache**                | Manual or none             | L1 RAM → L2 Hive disk → SWR → ETag/304                      |
-| **State machine**        | Hand-rolled booleans       | `LikeNotifierState` — loading / refreshing / SWR / error    |
-| **Cross-screen sync**    | Global event buses         | Zero-config`LikePipeline` — mutations fan-out automatically |
-| **Request cancellation** | `CancelToken` per screen | Auto-rotation & disposal via`fetch`                          |
-| **JSON parsing**         | Main thread → jank        | Isolate parsing for payloads > 100 KB                          |
-| **Image cache**          | Manual setup               | Managed disk cache, URL normalization, LRU pruning             |
-| **Offline mutations**    | Crash or custom queues     | Persistent Hive queue, auth-aware replay on reconnect          |
-| **Duplicate requests**   | Wasted bandwidth           | In-flight deduplication via`LikeRequestRegistry`             |
+See the [changelog](CHANGELOG.md) for fixes and migration details. A repository
+version is not proof that the matching version has been published to pub.dev.
 
----
+The slow-connection notification API includes `LikeToastConfig.slowInternet`
+and the independent `Like.showSlowInternetToasts` toggle.
 
-## Architecture Overview
+## Features
+
+| Area | Included behavior |
+| --- | --- |
+| HTTP | GET, POST, PUT, PATCH, DELETE and multipart through injectable `LikeHttpClient` |
+| Request policy | Cancellation, in-flight deduplication, scoped clients and per-request overrides |
+| Response handling | `LikeApiResult<T>`, typed mapping, custom envelope unpackers and structured `LikeError` |
+| Caching | L1 memory, persistent Hive cache, stale-while-revalidate and ETag/304 validation |
+| Cache coordination | Scope/origin isolation, resource tags and explicit invalidation |
+| Authentication | Token/API-key providers, shared refresh and deliberate logout callbacks |
+| Offline actions | Opt-in persistence, owner checks, durable payloads, bounded retry and manual recovery |
+| Reactive queries | Snapshots/streams, cancellation, stale-result guards and reconnect refresh |
+| UI state | Loading, success, refreshing, stale data, error, exception and idle states |
+| Mutations and lists | Layered optimistic reconciliation/rollback; deduplicated pages and failed-page retry |
+| Connectivity | Interface/internet/server diagnostics and passive per-origin quality measurements |
+| Diagnostics | Sanitized logs, request source/timing/status/retry traces and debug mock scenarios |
+| Media and realtime | Managed image cache, image widget and WebSocket lifecycle/pipeline integration |
+| Testing | Public testing entry point, injectable transport and complete example flow tests |
+
+## Installation
+
+The 2.4.0 source requires **Flutter 3.44.1 / Dart 3.12 or newer**.
+
+For the latest published version:
+
+```sh
+flutter pub add like
+```
+
+Check the published version before following newer APIs. To evaluate the merged
+2.4.0 source before publication, pin this repository revision instead:
+
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  like:
+    git:
+      url: https://github.com/AjayJasperJ/like.git
+      ref: 34c31c2b8b93a7c5587a0883e6cd4da9421ece8a
+```
+
+Then run `flutter pub get` and import:
+
+```dart
+import 'package:like/like.dart';
+```
+
+Android apps need Internet permission in the release manifest. Browser deployments
+need an API that permits their origin through CORS. Keep TLS verification enabled
+in production; browser certificate handling is controlled by the browser.
+
+## 1. Initialization
+
+Initialize storage and networking before issuing requests. The optional `Like`
+root coordinates notification hooks and a developer-tool wrapper.
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:like/like.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LikeService.init(
+    config: LikeConfig(
+      projectName: 'my_app',
+      baseUrl: 'https://dummyjson.com',
+    ),
+  );
+  runApp(
+    const Like(
+      showConnectivityToasts: false,
+      child: MaterialApp(home: Scaffold(body: Text('LIKE is ready'))),
+    ),
+  );
+}
+```
+
+Use a stable `projectName` to namespace application storage. To configure a custom
+response envelope, set `LikeConfig.unpacker` to `DefaultLikeUnpacker` or your own
+`LikeUnpacker`. Plain public JSON APIs do not require a custom envelope.
+
+## 2. Services and repositories
+
+Keep endpoint mapping in a service and application operations behind a repository
+contract. Pass `CancelToken` through every boundary.
+
+```dart
+class Product {
+  final int id;
+  final String title;
+  const Product(this.id, this.title);
+
+  factory Product.fromJson(dynamic json) =>
+      Product(json['id'] as int, json['title'] as String);
+}
+
+class ProductService {
+  final LikeHttpClient http;
+  const ProductService(this.http);
+
+  Future<LikeApiResult<Product>> getProduct(int id, CancelToken token) =>
+      http.get('/products/$id', cancelToken: token).mapSync(Product.fromJson);
+}
+
+abstract interface class ProductRepository {
+  Future<LikeApiResult<Product>> getProduct(int id, CancelToken token);
+}
+
+class ApiProductRepository implements ProductRepository {
+  final ProductService service;
+  const ApiProductRepository(this.service);
+
+  @override
+  Future<LikeApiResult<Product>> getProduct(int id, CancelToken token) =>
+      service.getProduct(id, token);
+}
+
+// Compose once, outside widget build methods.
+final repository = ApiProductRepository(ProductService(LikeClient()));
+```
+
+`LikeApiResult` represents expected API failures as values. Inspect `isSuccess`,
+`data` and `error`; a failed result does not automatically become a Riverpod
+`AsyncError` or a thrown exception. Use `mapSync` for synchronous mapping and
+`mapAsync` for supported isolate-based mapping. `LikeBaseApiService` also provides
+an injectable base service if you prefer inheritance.
+
+For separate API modules, create `LikeClient.scoped(LikeClientConfig(...))` with
+its own base URL/auth policy. The creator owns disposal of scoped clients.
+Use `LikeRequestConfig` for a one-call timeout, origin, tags or policy override.
+
+## 3. State management and UI
 
 ```mermaid
 flowchart TD
     UI["Flutter UI"] --> State["Provider, Riverpod or Cubit"]
-    State --> UseCase["Application operations"]
-    UseCase --> Port["Repository contract"]
-    Repo["Repository implementation"] -. implements .-> Port
-    Repo --> Service["Endpoint service"]
+    State --> Repository["Repository contract"]
+    Repository --> Service["Endpoint service"]
     Service --> Client["LikeHttpClient"]
-    Client --> Cache["Scoped cache and offline queue"]
-    Client --> API["HTTPS API"]
+    Client --> API["HTTP API"]
+    Client --> Cache["Memory and persistent cache"]
 ```
 
-The composition root injects repository implementations; presentation code depends
-on contracts. See [the source map](ARCHITECTURE.md) and
-[actual interceptor order](documents/interceptor_pipeline.md).
+Services and repositories do not import presentation libraries. Inject the
+repository into the state owner so tests can replace it with a fake.
 
-
-### Cache Flow — L1 · L2 · SWR · ETag
-
-| Layer                | Store                               | Hit Behaviour                                        |
-| :------------------- | :---------------------------------- | :--------------------------------------------------- |
-| **L1**         | In-memory (`LikeRequestRegistry`) | Instant return, no I/O                               |
-| **L2**         | Hive box (disk-persistent)          | Sub-ms retrieval across restarts                     |
-| **SWR**        | L2 data + background refetch        | Returns stale data immediately, silently revalidates |
-| **ETag / 304** | HTTP conditional request            | Saves bandwidth; server confirms freshness           |
-
----
-
-## 1. Initialization
-
-### Root Widget (Recommended)
-
-Wrap your `MaterialApp` once. LIKE bootstraps Hive, connectivity, auth interceptors, and toast listeners in a single call.
+For a shared reactive query over the repository above:
 
 ```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await LikeService.init(
-    config: LikeConfig(
-      baseUrl: 'https://api.example.com',
-    ),
-  );
-  runApp(
-    Like(
-      getToken:     () async => 'current_session_token',
-      refreshToken: () async => 'new_session_token',
-      devTool: (child) => LikeDevTool(child: child), // optional debug overlay
-      child: const MyApp(),
-    ),
-  );
-}
-```
+final client = LikeClient();
+final query = LikeQuery<Product>(
+  action: (token) => repository.getProduct(1, token),
+  scope: () => client.sessionScope.key,
+  origin: client.origin,
+  tags: const ['products'],
+  sessionChanges: client.sessionChanges,
+);
 
-### Manual Initialization — `LikeService.init()`
-
-Use this when you need fine-grained control (e.g. late splash-screen init).
-
-```dart
-WidgetsBinding.instance.addPostFrameCallback((_) async {
-  await LikeService.init(
-    config: LikeConfig(
-      baseUrl: 'https://api.example.com',
-      unpacker: const DefaultLikeUnpacker(
-        dataKey:    'data',
-        messageKey: 'message',
-        statusKey:  'status',
-      ),
-    ),
-  );
+final subscription = query.watch().listen((state) {
+  // Publish/render state using your chosen state-management library.
 });
+await query.refresh();
+
+// When the owning feature closes:
+await subscription.cancel();
+await query.dispose();
 ```
 
----
+A new subscription receives the current snapshot. Refresh cancels superseded
+work; session changes clear stale state. Matching resource invalidations and
+origin restorations schedule refreshes. Dispose owned queries and subscriptions.
 
-## 2. Service Layer
+| Presentation style | Building blocks | Working source |
+| --- | --- | --- |
+| Provider / ChangeNotifier | `LikeStateMixin`, `LikeNotifierState`, `LikeBuilder` | [Provider shop](examples/provider_app) |
+| Riverpod | Repository providers, Notifier or query streams with `ref.onDispose` | [Riverpod shop](examples/riverpod_app) |
+| BLoC / Cubit | Immutable state snapshots and explicit subscription/close ownership | [BLoC shop](examples/bloc_app) |
+| Flutter primitives | `StreamBuilder`, `ValueListenableBuilder`, `LikeWhen` | [State-management guide](documents/state_management.md) |
 
-Services return `LikeApiResult<T>` — a pure data wrapper with zero UI coupling.
+Existing notifier-based UI helpers remain available:
 
-```dart
-class UserService {
-  Future<LikeApiResult<User>> getUser(String id) async {
-    return LikeClient().get('/users/$id').mapAsync(User.fromJson);
-  }
+- `LikeBuilder` and `LikeSliverBuilder`: render a notifier's lifecycle states.
+- `LikeSelector` and `LikeSelectorSliver`: select part of a provider's state.
+- `LikeMultiBuilder` and `LikeMultiSliverBuilder`: combine multiple states.
+- `LikeWhen`: render an existing `LikeStateResponse` snapshot.
+- `updateNotifier`: configurable action feedback and haptics.
+- `likeWhenNotifier`: manually controlled side effects without built-in toast feedback.
 
-  Future<LikeApiResult<List<Post>>> getUserPosts(String id) async {
-    return LikeClient()
-        .get('/users/$id/posts')
-        .mapAsync((json) => (json as List).map(Post.fromJson).toList());
-  }
-}
-```
+Use `LikeOptimisticStore` for overlapping optimistic writes with reconciliation
+and rollback. Use `LikePagedQuery` for separate page storage, identity-based item
+deduplication, cancellation and retrying a failed page. See
+[architecture](ARCHITECTURE.md) and [state-management examples](documents/state_management.md).
 
----
+## 4. Authentication and session ownership
 
-## 3. Repository Layer
-
-Repositories are thin call-sites that forward to the service and own any query-building logic.
-
-```dart
-class UserRepository {
-  final _service = UserService();
-
-  Future<LikeApiResult<User>> getUser(String id, {ARS? ars}) =>
-      _service.getUser(id);
-
-  Future<LikeApiResult<List<Post>>> getUserPosts(String id, {ARS? ars}) =>
-      _service.getUserPosts(id);
-}
-```
-
----
-
-## 4. Provider Layer
-
-### Recommended — `LikeNotifierState<T>` + `fetch`
-
-`LikeNotifierState<T>` is a **reactive `ChangeNotifier`**. Any mutation (`.clear()`, etc.) instantly drives all observing `LikeBuilder` widgets without a manual `notifyListeners()` call.
+Provide token access and refresh functions through `LikeAuthConfig`, supplied to
+`LikeConfig`, a scoped client, or the `Like` root. The application stores tokens
+and defines logout behavior; do not hard-code credentials in configuration.
 
 ```dart
-class UserNotifier extends ChangeNotifier with LikeStateMixin {
-  final _repo = UserRepository();
-
-  final userState = LikeNotifierState<User>(
-    // mapper enables zero-config pipeline sync across all screens
-    mapper: (json) => User.fromJson(json as Map<String, dynamic>),
-  );
-
-  Future<void> fetchUser(String id, {ARS? ars}) async {
-    await fetch<User>(
-      state:      userState,
-      ars:        ars,
-      autoResync: true,
-      action:     (ct, actionArs) => _repo.getUser(id, ars: actionArs),
-    );
-  }
-
-  @override
-  void dispose() {
-    super.dispose(); // auto-cancels tokens and pipeline listeners
-  }
-}
-```
-
-**Pipeline sync:** when `mapper` is set, `fetch()` binds the endpoint + query to `userState` via Zone injection. Any `POST`/`PUT`/`DELETE` on that endpoint broadcasts a `LikePipeline` event that updates every screen observing the same state — with no extra code at the call site.
-
-### Classic — `StateMixin` + `fetch`
-
-```dart
-class PostNotifier extends ChangeNotifier with StateMixin {
-  final _repo = PostRepository();
-
-  final postsState = LikeNotifierState<List<Post>>(
-    initialValue: LikeStateResponse.idle(),
-  );
-
-  Future<void> fetchPosts({ARS? ars}) async {
-    await fetch<List<Post>>(
-      state: postsState,
-      ars: ars,
-      action: (ct, actionArs) => _repo.getPosts(ars: actionArs),
-    );
-  }
-}
-```
-
-**State transitions in `fetcher`:**
-
-- `ars.refresh == false` → `LikeStateResponse.loading()` (clean slate)
-- `ars.refresh == true` + existing data → `LikeStateResponse.refreshing(currentData)` — sticky data stays visible
-
----
-
-## 5. Reactive UI
-
-### `LikeBuilder<T>`
-
-Primary widget — subscribes directly to `LikeNotifierState` as a `Listenable`.
-
-```dart
-LikeBuilder<User>(
-  observe:   () => userNotifier.userState,
-  onSuccess: (user, isRefreshing, isFromSWR) => Stack(
-    children: [
-      UserProfileView(user: user),
-      if (isRefreshing) const LinearProgressIndicator(),
-    ],
-  ),
-  onLoading: () => const ShimmerLoader(),
-  onError:   (error) => ErrorView(message: error.message),
-);
-```
-
-**Rendering guarantees (v1.2.1+):**
-
-| State                    | Renders                                                           |
-| :----------------------- | :---------------------------------------------------------------- |
-| `loading`              | Always`onLoading` — no sticky-data leak                        |
-| `refreshing`           | `onSuccess(data, isRefreshing: true)` — keeps old data visible |
-| `staleWhileRevalidate` | `onSuccess(data, isFromSWR: true)`                              |
-| `success`              | `onSuccess(data, false, false)`                                 |
-| `error`                | `onError`                                                       |
-| `exception`            | `onException`                                                   |
-| `idle`                 | `onIdle`                                                        |
-
-### `LikeSliverBuilder<T>`
-
-Same semantics as `LikeBuilder` but returns `List<Widget>` slivers for `CustomScrollView`.
-
-```dart
-LikeSliverBuilder<List<Todo>>(
-  observe:   () => todoNotifier.todosState,
-  onSuccess: (todos, isRefreshing, isFromSWR) => [
-    SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (ctx, i) => TodoTile(todo: todos[i]),
-        childCount: todos.length,
-      ),
-    ),
-  ],
-  onLoading: () => [const SliverFillRemaining(child: ShimmerLoader())],
-);
-```
-
-### `LikeSelector` & `LikeSelectorSliver`
-
-Rebuilds only when a specific slice of state changes — ideal for shared complex models.
-
-```dart
-LikeSelector<UserNotifier, User>(
-  selector:  (context, notifier) => notifier.userState,
-  onSuccess: (user, isRefreshing, isFromSWR) => ProfileCard(user: user),
-);
-```
-
-### `LikeMultiBuilder` & `LikeMultiSliverBuilder`
-
-Aggregate multiple states into one unified widget.
-
-```dart
-LikeMultiBuilder(
-  observes: [
-    () => userNotifier.userState,
-    () => postNotifier.postsState,
-  ],
-  onSuccess: (results, isRefreshing, isFromSWR) {
-    final user  = results[0] as User;
-    final posts = results[1] as List<Post>;
-    return UserDashboard(user: user, posts: posts);
-  },
-  onLoading: () => const Center(child: CircularProgressIndicator()),
-  onError:   (error) => ErrorView(message: error.message),
-);
-```
-
-1. `LikeWhen<T>`
-
-Pattern-matching shorthand for simple state-to-widget mapping — useful inside `build()` when you already hold a `LikeStateResponse<T>` snapshot.
-
-```dart
-LikeWhen<User>(
-  state:     userNotifier.userState.value,
-  onSuccess: (user) => Text(user.name),
-  onLoading: () => const CircularProgressIndicator(),
-  onError:   (err) => Text(err.message),
-);
-```
-
----
-
-## Update Notifiers
-
-LIKE ships two complementary helpers for reacting to `LikeStateResponse` outcomes **outside** the widget tree — typically inside `onPressed` handlers, form submit callbacks, or post-fetch side-effects.
-
-### `updateNotifier` — Full feedback (toasts + haptics)
-
-Use for primary user-triggered actions where you want automatic UI feedback out of the box.
-
-```dart
-await updateNotifier<User>(
-  response: userNotifier.userState.value,
-  context:  context,
-
-  // Lifecycle callbacks
-  onInit:      (state)   async => debugPrint('Starting: $state'),
-  onSuccess:   (user)    async => Navigator.pushNamed(context, '/profile'),
-  onError:     (error)   async => debugPrint('API error: ${error.message}'),
-  onException: (message) async => debugPrint('Exception: $message'),
-
-  // Toast control (all independently toggleable)
-  disableLoadingToast:   true,   // silent during load (default)
-  disableSuccessToast:   false,  // shows green toast on success
-  disableErrorToast:     false,  // shows warning toast on error
-  disableExceptionToast: false,  // shows red toast on exception
-  disableCancelledToast: true,   // silent on Dio cancel (default)
-
-  // Haptics — light on success, medium on error, heavy on exception
-  enableHaptics: true,
-
-  // Override any toast message per-state
-  messageOverrides: {
-    LikeState.success:   'Profile updated!',
-    LikeState.error:     'Could not save changes.',
+// tokenStore is your application's secure session store.
+final auth = LikeAuthConfig(
+  getToken: () => tokenStore.readAccessToken(),
+  refreshToken: () => tokenStore.refreshAndSaveAccessToken(),
+  onLogout: ({int? statusCode, bool force = false}) async {
+    await tokenStore.clear();
+    LikeClient().setSessionScope(const LikeSessionScope());
   },
 );
 ```
 
-**Built-in behaviour by state:**
-
-| State                    | Toast                     | Haptic | Callback                 |
-| :----------------------- | :------------------------ | :----- | :----------------------- |
-| `loading`              | Optional loading toast    | —     | `onInit`               |
-| `success`              | ✅ Green (if enabled)     | Light  | `onSuccess(data)`      |
-| `refreshing` / `SWR` | —                        | —     | `onSuccess(data)`      |
-| `error`                | ⚠️ Warning (if enabled) | Medium | `onError(LikeError)`   |
-| `exception`            | ❌ Red (if enabled)       | Heavy  | `onException(message)` |
-
----
-
-### `likeWhenNotifier` — Raw control (no toasts, no haptics)
-
-Use when you want full manual control over side-effects — e.g. showing your own bottom sheet, triggering analytics, or navigating without any automatic toast.
+After login, identify the account independently of its rotating access token:
 
 ```dart
-await likeWhenNotifier<List<Todo>>(
-  response: todoNotifier.todosState.value,
+final client = LikeClient();
+client.setSessionScope(
+  const LikeSessionScope(environment: 'production', accountId: 'customer-42'),
+);
+final profile = await client.get('/auth/me', withAuth: true);
 
-  onInit:      (state)   async => myLoadingOverlay.show(),
-  onSuccess:   (todos)   async {
-    myLoadingOverlay.hide();
-    setState(() => _todos = todos);
-  },
-  onError:     (error)   async {
-    myLoadingOverlay.hide();
-    showCustomErrorSheet(error.message);
-  },
-  onException: (message) async => logger.error(message),
+// After clearing credentials on logout:
+client.setSessionScope(const LikeSessionScope());
+```
+
+Scope changes cancel old work and prevent another account's queued operations
+from replaying. Protected anonymous operations do not cache or queue. Set
+`withAuth: true` explicitly on protected requests; supplying auth callbacks alone
+does not make every endpoint authenticated.
+
+## 5. Cache and mutation flows
+
+| Layer/policy | Behavior |
+| --- | --- |
+| L1 | Reuse memory responses within the request registry |
+| L2 | Persist supported response payloads in Hive |
+| SWR | Serve eligible stale data while refreshing in the background |
+| ETag/304 | Revalidate using server freshness metadata |
+| Resource tags | Invalidate related cached reads and active query observers |
+
+Reads can opt into SWR and resource tags:
+
+```dart
+final products = await LikeClient().get(
+  '/products',
+  staleWhileRevalidate: true,
+  requestConfig: LikeRequestConfig(cacheTags: const ['products']),
 );
 ```
 
-**Key differences from `updateNotifier`:**
-
-|                                   | `updateNotifier`       | `likeWhenNotifier`             |
-| :-------------------------------- | :----------------------- | :------------------------------- |
-| Toasts                            | Auto-managed, toggleable | None                             |
-| Haptics                           | Auto by state            | None                             |
-| `refreshing` / `SWR` callback | Fires`onSuccess`       | Silent (skipped)                 |
-| Use case                          | Primary actions          | Analytics, navigation, custom UI |
-
----
-
-## Image Cache
-
-`AppCacheManager` uses `flutter_cache_manager` to store downloaded image bytes
-unchanged. It updates access times on cache hits, applies configurable LRU
-pruning, and supports explicit clearing through `clearAll()`.
-
-The cache namespace now ends in `_universalImageCache_v2`. This intentionally
-isolates cache entries written by releases that used a different on-disk format,
-so legacy data is never interpreted as an image. The platform temporary-file
-lifecycle can remove the abandoned old namespace normally.
-
-### `LikeCacheImage`
-
-Drop-in widget that strips query tokens for consistent cache hits.
+Successful mutations can invalidate the same resource:
 
 ```dart
-LikeCacheImage(
-  imageUrl:    'https://example.com/avatar.png?token=xyz',
-  fit:          BoxFit.cover,
-  width:        100,
-  height:       100,
-  placeholder:  (ctx, url) => const ShimmerLoader(),
-  errorWidget:  (ctx, url, err) => const Icon(Icons.broken_image),
+final result = await LikeClient().post(
+  '/products/add',
+  body: {'title': 'Demo product'},
+  requestConfig: LikeRequestConfig(invalidates: const ['products']),
 );
 ```
 
-### LRU Pruning Defaults
+Cache use depends on configured policies, freshness, scope and request options.
+Offline/error fallback policies are configurable; they are not a guarantee that
+all failed requests return cached data. See the actual
+[interceptor order](documents/interceptor_pipeline.md).
 
-| Config                 | Default      | Description                  |
-| :--------------------- | :----------- | :--------------------------- |
-| `maxImageCacheMB`    | `500.0 MB` | Pruning triggered above this |
-| `minImageCacheMB`    | `400.0 MB` | Pruning target floor         |
-| `imageStalePeriod`   | `90 days`  | Retention threshold          |
-| `maxImageCacheItems` | `5 000`    | Max unique cached images     |
-
----
-
-## Network Mocking System
-
-A persistent, Hive-backed mocking engine for intercepting API calls in dev / staging — no separate mock server needed.
+### Offline mutations are opt-in
 
 ```dart
-final mockCtrl = MockController();
-await mockCtrl.init();
-
-await mockCtrl.addRule(
-  MockRule(
-    id:           'mock_profile',
-    name:         'Get User Profile',
-    pathPattern:  '/users/profile',
-    method:       'GET',
-    statusCode:   200,
-    responseBody: jsonEncode({'status': 200, 'data': {'id': '1', 'name': 'Jane'}}),
-  ),
+final result = await LikeClient().post(
+  '/orders',
+  body: {'productId': 42, 'quantity': 1},
+  withAuth: true,
+  offlineSync: true,
+  requestConfig: LikeRequestConfig(invalidates: const ['orders']),
 );
-
-await mockCtrl.setEngineEnabled(true);
 ```
 
-Rules persist across restarts and can be toggled at runtime, making it safe to ship mock data in staging builds without any conditional compilation.
+A queued action is pending work, **not a confirmed server success**. Treat its
+`offlineQueued` error/state separately in your UI.
 
----
-
-## Customizing Response Unpacking
-
-Tell LIKE how your API envelope is structured:
-
-```dart
-LikeConfig(
-  unpacker: const DefaultLikeUnpacker(
-    dataKey:    'data',    // Where the payload lives
-    messageKey: 'message', // Error / success message key
-    statusKey:  'status',  // Business status-code key
-  ),
-)
+```mermaid
+flowchart TD
+    Send["Send owned mutation"] --> Outcome{"Result"}
+    Outcome -->|Acknowledged| Done["Invalidate affected resources"]
+    Outcome -->|Eligible transport failure| Queue["Persist action and operation ID"]
+    Outcome -->|Permanent failure| Failure["Report failure"]
+    Queue --> Wake["Startup, scheduled retry or reconnect"]
+    Wake --> Owner{"Owner and payload valid?"}
+    Owner -->|Yes| Send
+    Owner -->|No| Block["Expose blocked operation"]
 ```
 
-> [!IMPORTANT]
-> Without `unpacker`, LIKE cannot extract `message` or `status` from custom envelopes, which results in generic "Unknown Error" states.
+Inspect `client.offlineTasks`, observe `client.offlineQueue?.taskChanges`, and use
+`retryTask(key)` / `cancelTask(key)` on the queue for user-driven recovery. Failed
+and blocked entries remain inspectable. Legacy ownerless entries require review.
+Retries use bounded attempts, backoff and applicable `Retry-After` metadata.
 
-Custom envelopes (e.g. nested `result.body.payload`) can be handled by implementing the `LikeUnpacker` interface.
+Stable `Idempotency-Key` values survive replay, but preventing duplicate server
+writes requires backend support for that key. The default durable multipart
+snapshot limit is 10 MiB; larger uploads need an application-owned codec/storage
+policy. Scheduling works while the process is running; this is not a guaranteed
+OS background-job service after termination.
 
----
+## 6. Connectivity and notifications
 
-## Connectivity Diagnostics
+Connectivity diagnostics distinguish an interface being available, wider Internet
+reachability and availability of a particular API origin. Use
+`client.checkServerReachability(force: true)` for an explicit client-origin check.
+An HTTP error response still establishes that its server is reachable.
 
-Run an explicit check through the global manager or through a client. Client checks use that client's active base origin, including scoped clients:
+Configure existing notifications through `LikeConfig.toastConfig` or the `Like`
+root's `toastConfig`:
 
 ```dart
-final globalResult = await LikeConnectivityManager().checkConnectivity(
-  serverUrl: 'https://api.example.com/v1',
-  force: true,
+final notifications = LikeToastConfig(
+  connected: (message) => showAppToast(message),
+  disconnected: (message) => showAppToast(message),
+  resync: (message, progress) => showSyncProgress(message, progress),
+  actionQueued: (message) => showAppToast(message),
+  cacheUse: (message) => showAppToast(message),
+  swrUse: (message) => showAppToast(message),
 );
-
-final clientResult = await LikeClient().checkServerReachability(force: true);
-
-if (!clientResult.hasNetworkInterface) {
-  // No usable Wi-Fi, mobile, Ethernet, or other network interface.
-} else if (!clientResult.isInternetReachable) {
-  // The wider internet could not be reached.
-} else if (clientResult.isServerAvailable == false) {
-  // This specific API origin could not be reached.
-}
-
-print(clientResult.origin); // https://api.example.com:443
-print(clientResult.reason); // LikeConnectivityCheckReason.manualServer
-print(clientResult.timestamp);
-print(clientResult.hasConnection); // Legacy-compatible combined status.
 ```
 
-Results report interface availability, internet reachability, nullable server availability, the canonical origin, reason, timestamp, and the combined `hasConnection`/`isOnline` status. Origins are isolated by lower-case scheme and host plus effective port; paths, queries, fragments, and credentials are ignored. A response from a scoped client or request-level origin override therefore cannot mutate the primary server status.
+The functions above are application callbacks. A custom callback replaces LIKE's
+built-in feedback for its event. Configure callbacks when wrapping MaterialApp,
+using your app's messenger key or toast service; default ScaffoldMessenger
+notifications require a suitable ancestor context.
 
-After retries are exhausted, LIKE starts a fire-and-forget diagnostic only for ambiguous no-response transport failures: connection errors; connection, send, and receive timeouts; and socket-backed unknown errors. The exact original Dio error is forwarded immediately. HTTP responses of every status are positive origin reachability evidence and do not trigger a check. Cancellation (including take-latest), bad certificates, transform/local mapping failures, synthetic preflight-offline failures, and `OFFLINE_QUEUED` results are also excluded.
+### Slow API-path detection
 
-Automatic checks are single-flight globally for interface/internet work and per canonical origin for server work. They have a per-origin cooldown, while explicit checks bypass the cooldown and still join equivalent in-flight work. Configure this behavior during initialization:
+Subscribe to `LikeNetworkQualityMonitor.shared.stream` and cancel the subscription
+when its owner closes. The default monitor classifies an origin as slow after two
+consecutive requests taking at least two seconds, timing out, or transferring a
+large response below 32 KiB/s. Cached responses and cancellations are excluded.
 
-```dart
-LikeConfig(
-  baseUrl: 'https://api.example.com',
-  automaticConnectivityChecksEnabled: true,
-  automaticFailureCheckCooldown: const Duration(seconds: 3),
-)
-```
+This uses real request measurements and performs no extra speed-test downloads.
+Server processing time can affect the result: it measures the API path, not
+calibrated device-wide bandwidth. See [thresholds and configuration](documents/network_privacy_platforms.md).
 
-## Web Platform Compatibility
-
-LIKE is designed to be fully platform-agnostic, supporting **Android, iOS, Web, Windows, macOS, and Linux**.
-
-* **SSL Isolation**: Uses conditional exports to transparently handle certificate pinning (`verifySSL` and `sslCertSha256`) on native platforms while cleanly stubbing it out for the browser.
-* **Storage Guard**: When running on Flutter Web, the database/file caching layer automatically falls back to `NonStoringObjectProvider` to avoid native SQLite and filesystem dependencies.
-* **HTTP Adapters & Timeouts**: Adapts request timeout configurations dynamically on the Web (disabling `sendTimeout` when no body is present to eliminate Dio console warnings).
-* **Connectivity Safety**: Browser diagnostics never use DNS lookups or raw sockets. A no-response browser error does not establish global internet loss, and origin availability remains unknown (`null`) until real HTTP evidence is available.
-
----
-
-## Enterprise Error & Exception Handling
-
-LIKE converts all backend response failures and client exceptions into a unified `LikeError` model.
-
-### 1. Granular HTTP Mappings
-
-Every standard HTTP code is translated into a user-friendly message and categorised into a `LikeApiErrorType` case:
-
-* **3xx Redirections**: 300, 301, 302, 304, 307, 308 (mapped as `badRequest`).
-* **4xx Client Errors**: 400 (`badRequest`), 401 (`unauthorized`), 402 (`forbidden`), 403 (`forbidden`), 404 (`notFound`), 405 (`methodNotAllowed`), 406 (`badRequest`), 407 (`unauthorized`), 408 (`timeout`), 409 (`conflict`), 410 (`gone`), 411/412/414/415/416/417/418/421/422/424/425/426/428/431 (`badRequest`), 423/451 (`forbidden`), 429 (`rateLimit`).
-* **5xx Server Errors**: 500 (`server`), 501/505/507/508 (`server`), 502/503 (`serverUnavailable`), 504 (`timeout`), 511 (`unauthorized`).
-
-### 2. High-Resilience Exception Traps
-
-`LikeErrorHandler.handle()` catches and maps raw system exceptions before they crash the application or result in generic "Unknown" errors:
-
-* **`SocketException`**: Inspects device connectivity via `LikeConnectivityManager` to return a precise offline message or server outage report.
-* **`TimeoutException`**: Standardizes request/response timeout intervals.
-* **`HttpException`**: Decodes low-level network protocol issues.
-* **`TypeError`**: Identifies type mismatches during JSON mapping or model serialization/deserialization.
-* **`AssertionError`**: Gracefully converts assertion violations.
-
----
-
-## Offline Sync Queue
-
-All `POST` / `PUT` / `DELETE` mutations are persisted in a Hive box when the network is unavailable and auto-replayed in chronological order on reconnect.
-
-**Auth-aware replay (v1.2.0+):** Before replaying each queued request, a fresh auth token is fetched via `LikeAuthInterceptor.getToken`. This prevents 401 errors for long-lived offline sessions (tokens typically live 15–60 min).
-
-> [!NOTE]
-> `workmanager` is no longer a dependency. Sync is driven entirely by `LikeConnectivityManager` reacting to foreground connectivity changes — making LIKE fully platform-agnostic: Android, iOS, Web, macOS, Windows, Linux.
-
----
-
-## Zero-Config Pipeline Synchronization
-
-1. A successful `GET` inside `fetch()` binds the endpoint path + query to `LikeNotifierState` via Zone injection.
-2. Any write (`POST` / `PUT` / `DELETE`) on that endpoint broadcasts a `LikePipeline` event.
-3. Path + query overlap is verified — if matched, every screen observing that state updates instantly.
-4. An in-flight race guard suppresses duplicate updates while the state is actively loading or refreshing.
-
----
-
-## WebSocket Support
-
-`LikeWebSocketClient` brings structured, real-time push updates to the LIKE engine. It manages connection lifecycles, heartbeats, auth tokens, and feeds push events straight into the reactive pipeline.
-
-### Key Capabilities
-
-* **Sequential Execution Lock**: Connection state changes (`connect`, `disconnect`, `dispose`) and message transmissions are serialized using a `synchronized` lock to prevent overlapping race conditions.
-* **Auto-Reconnect & Heartbeats**: Automatically schedules reconnection upon network failure and handles background ping-pong keepalives.
-* **Auth Token Sync**: Dynamically resolves the latest authorization token via `getToken` before initiating any connection attempt.
-* **Pipeline Synchronization**: If an incoming payload contains a `path` (endpoint) and `data` (payload), the client simulates an HTTP response and emits it directly to `LikePipeline`. Any active `LikeNotifierState` observing that endpoint path automatically parses the data and updates the UI in real-time.
-
-### Usage
+Configure the matching toast callback alongside the connectivity hooks:
 
 ```dart
-final wsClient = LikeWebSocketClient(
-  url: 'wss://api.example.com/ws',
-  getToken: () async => 'current_session_token',
-  pingInterval: const Duration(seconds: 30),
-  reconnectInterval: const Duration(seconds: 5),
+final notifications = LikeToastConfig(
+  slowInternet: (message) => showAppToast(message),
 );
-
-// Connect to the socket
-await wsClient.connect();
-
-// Send messages securely
-await wsClient.send({'type': 'subscribe', 'channel': 'chats'});
-
-// Listen to raw messages directly
-wsClient.messages.listen((message) {
-  debugPrint('Received message: $message');
-});
-
-// Clean up when done
-await wsClient.dispose();
 ```
 
----
+The root notifies once when an origin enters slow quality, suppresses repeated
+slow samples and rearms after that origin recovers. A custom callback replaces
+the default warning. Set `Like(showSlowInternetToasts: false, child: app)` to
+disable slow notifications without disabling measurements. The default toast
+requires a ScaffoldMessenger ancestor; when wrapping MaterialApp, supply your
+app's callback. Custom monitor instances remain caller-owned.
 
-## Logging
+## 7. Diagnostics and development tools
 
-`LikeLoggerInterceptor` prints structured request/response details — query parameters, headers, and multipart form data — to the developer console. Sensitive headers (e.g. `Authorization`) are masked automatically.
+`LikeDiagnostics` provides bounded request traces containing source, status,
+timing, retry counts and auth-replay metadata without request/response payloads.
+`LikeLogger` sanitizes diagnostic copies before publication; release request and
+response bodies are omitted. Sensitive nested fields are redacted, and opaque
+strings are conservatively omitted. Application responses remain usable.
 
-### Compact API Logs (`compactApiLogs`)
+Redaction does not encrypt caches or hide data from someone controlling the
+device. The raw `LikePipeline` is an application data bus, not a safe export
+stream. Unversioned historical logs are filtered from exports, not erased from
+the filesystem. See [privacy behavior](documents/network_privacy_platforms.md).
 
-When `compactApiLogs: true` is set in `LikeConfig`, successful network requests are printed as clean, single-line summaries to avoid cluttering the developer terminal:
+The optional [DevTool companion](https://github.com/AjayJasperJ/like_devtool)
+provides request inspection, safe previews, queue recovery controls and synthetic
+scenarios. Access depends on that repository's permissions; it is not bundled
+into the core dependency. Integrate a compatible version only in development.
+
+`MockController`, `MockRule` and `LikeMockScenario` support persisted synthetic
+responses, latency, bounded uses, failures and recovery presets. For example:
 
 ```dart
-LikeConfig(
-  baseUrl: 'https://api.example.com',
-  compactApiLogs: true, // Output clean single-line logs for 2xx responses
-)
+await LikeMockScenario.failureThenSuccess('/products', status: 429).install();
 ```
 
-**Log Output Format:**
-- **Success (Compact)**: `[10:15:30][api] /api/posts [200] : SUCCESS`
-- **Errors / Exceptions**: Automatically expanded with full diagnostic details and tracebacks for rapid debugging.
+Scenario installation is disabled in release builds. Use synthetic data and
+`exportSafe()` when sharing scenarios; do not include real credentials.
 
----
+Optional typed generation is documented in [OpenAPI generation](documents/openapi_generation.md).
+Unsupported schema shapes are rejected; this is not a complete OpenAPI implementation.
 
-## Connect & Contribute
+## 8. Media, uploads and WebSockets
 
-|                         |                                                                                           |
-| :---------------------- | :---------------------------------------------------------------------------------------- |
-| 📦**pub.dev**     | [pub.dev/packages/like](https://pub.dev/packages/like)                                     |
-| 📖**Docs / Wiki** | [github.com/AjayJasperJ/like_docs](https://github.com/AjayJasperJ/like_docs)               |
-| 🐛**Issues**      | [github.com/AjayJasperJ/like_docs/issues](https://github.com/AjayJasperJ/like_docs/issues) |
-| 💻**GitHub**      | [@AjayJasperJ](https://github.com/AjayJasperJ)                                             |
-| 💼**LinkedIn**    | [Ajay Jasper J](https://in.linkedin.com/in/ajay-jasper-j-8563852b4)                        |
-| 📸**Instagram**   | [@ajayjasper.j](https://www.instagram.com/ajayjasper.j)                                    |
-| ✉️**Email**     | [ajayjasperj@outlook.com](mailto:ajayjasperj@outlook.com)                                  |
+- **Images:** `LikeCacheImage` supplies placeholders/error widgets over managed
+  caching. `AppCacheManager` stores image bytes unchanged and supports pruning
+  and explicit clearing. These caches are not encrypted. Review URL normalization
+  before using account-sensitive image URLs.
+- **Multipart:** `client.multipart(...)` supports form fields/files; native file
+  paths are not available on web. Use browser-compatible file bytes and an
+  explicit replay policy for uploads that must survive offline recovery.
+- **WebSockets:** `LikeWebSocketClient` provides serialized lifecycle operations,
+  reconnect, heartbeats, auth resolution, message streams and pipeline integration.
+  Browser handshake restrictions still apply. Cancel owned subscriptions and
+  dispose the socket client when the feature closes.
 
-### Contributing
+## Complete example apps
 
-Bug reports, pull requests, and feature discussions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. This project follows standard Dart/Flutter conventions and is covered by a suite of unit tests in `test/`.
+| App | State owner | Source |
+| --- | --- | --- |
+| Provider shop | ChangeNotifier / Provider | [examples/provider_app](examples/provider_app) |
+| Riverpod shop | Riverpod Notifier | [examples/riverpod_app](examples/riverpod_app) |
+| BLoC shop | Cubit / BlocBuilder | [examples/bloc_app](examples/bloc_app) |
 
----
+All three use [DummyJSON](https://dummyjson.com) without an internal server or
+secret API key. The public demo account is **emilys / emilyspass**.
 
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/AjayJasperJ">Ajay Jasper J</a> · MIT License
-</p>
+Browse → search/paging → product details → sign in → persistent account-scoped
+cart → quantity changes → simulated checkout/receipt → sign out.
+
+Each app includes restore/refresh, retry, slow-connection hints and safe
+diagnostics. Tokens use secure storage; carts use Hive. DummyJSON writes are
+simulated: checkout does not charge money or create a real purchase.
+
+```sh
+cd examples/provider_app # or riverpod_app / bloc_app
+flutter pub get
+flutter run
+flutter run -d chrome
+flutter test
+flutter build web --release
+flutter build apk --release
+```
+
+The [Public API shop apps workflow](.github/workflows/shop-apps.yml) uploads
+`like-provider-release-apk`, `like-riverpod-release-apk` and
+`like-bloc-release-apk`, plus web builds. Download artifacts from a successful
+[Actions run](https://github.com/AjayJasperJ/like/actions/workflows/shop-apps.yml).
+APKs are retained for seven days and use test signing for evaluation. Production
+store builds need your own protected signing configuration.
+
+An `apps-v*` tag publishes the three APK assets to a GitHub release after its
+checks pass. Package publication uses a separate `v<version>` workflow and
+requires the owner to configure pub.dev automated publishing. Merging a PR does
+not publish a package or create a tagged release. See [release setup](documents/releases.md).
+
+The legacy [example/](example) app and [server/](server) remain available for
+additional integration demonstrations; they are not required by the three shops.
+
+## Platform support and testing
+
+| Target | Repository verification |
+| --- | --- |
+| Web | Headless Chrome HTTP/model/widget flows, browser storage tests and release compilation |
+| Android | Native build, emulator UI flows and live production-repository integration |
+| iOS | Simulator build, isolated UI flows and live production-repository integration |
+| Linux / macOS / Windows | Host VM tests and native example compilation |
+
+These levels are different: compilation does not prove every plugin works on a
+physical device, and Chrome coverage does not establish Safari/Firefox parity.
+Browser CORS, TLS, storage quotas and background timer limits still apply.
+Native certificate pinning cannot override browser certificate policy.
+
+CI tests minimum Flutter 3.44.1 separately from current stable. Device jobs use
+bounded startup recovery only before tests connect; assertion failures are not
+retried. Temporary downloaded SDKs/dependency caches are cleaned at completion,
+with one-hour job limits and disposable hosted runners.
+
+For local core validation:
+
+```sh
+flutter pub get
+flutter test
+cd server && dart pub get && cd ..
+cd example && flutter pub get && cd ..
+flutter analyze
+```
+
+Root analysis includes the legacy server tests: resolve dependencies in `server/`
+and `example/` first, as CI does. Full browser HTTP tests also require the local
+fixture from `tool/browser_test_server.py`; follow
+[the package workflow](.github/workflows/ci.yml) for the complete command sequence.
+
+Import `package:like/testing.dart` in tests to access transport adapters, cache,
+queue, registry and pipeline boundaries without private `src/` imports. Prefer
+injected fakes for unit tests and controlled adapters/fixtures for transport tests.
+
+## Documentation and contributing
+
+| Guide | What it covers |
+| --- | --- |
+| [Architecture and source map](ARCHITECTURE.md) | Responsibilities, implementation paths and tests |
+| [State management](documents/state_management.md) | Provider, Riverpod, Cubit and other integration patterns |
+| [Interceptor pipeline](documents/interceptor_pipeline.md) | Actual request/response ordering |
+| [Multiple clients](documents/multi_client_support.md) | Scoped clients and per-request policies |
+| [Privacy and platforms](documents/network_privacy_platforms.md) | Redaction, quality measurements and platform constraints |
+| [OpenAPI generation](documents/openapi_generation.md) | Supported schema subset and generated policies |
+| [CI troubleshooting](documents/ci_troubleshooting.md) | Diagnosed runner failures and verification |
+| [Releases](documents/releases.md) | Publishing identity, versions and APK artifacts |
+| [Implementation report](documents/implementation_report.md) | Implementation/evidence map and boundaries |
+
+Redis belongs behind your HTTP API if your backend needs it; it is not a mobile
+state-management layer or a bundled LIKE backend dependency. GetX, MobX and Redux
+integration patterns are documented, but dedicated example apps/adapters are
+currently provided for Provider, Riverpod and Cubit.
+
+Report reproducible bugs in [this repository's issues](https://github.com/AjayJasperJ/like/issues).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and
+[LICENSE](LICENSE) for the MIT license.

@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Durable multipart replay, scheduled bounded retries, operation IDs and queue controls.
 - Shared query invalidation, cancellation, optimistic layers and cursor pagination.
 - Passive slow API-path detection and payload-free request explanation traces.
+- LikeToastConfig.slowInternet transition hook and independent slow-toast toggle.
 - Conservative diagnostic redaction, synthetic failure scenarios and optional typed OpenAPI generation.
 - Separate Provider, Riverpod and BLoC public API shops with browser flow tests and release test APK builds.
 - Native/browser compatibility checks, dependency updates and gated OIDC release workflow.
