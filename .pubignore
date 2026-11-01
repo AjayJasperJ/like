@@ -17,3 +17,6 @@ example/.agent/
 usage/
 documents/
 docs/
+
+# Separate runnable applications are maintained in git, not shipped in the package archive.
+examples/

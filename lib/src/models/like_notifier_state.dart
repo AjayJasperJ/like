@@ -143,6 +143,7 @@ typedef NotifierState<T> = LikeNotifierState<T>;
 /// separating the 1st page / initial state from the load-more (pagination) state.
 class PaginatedNotifierState<T> extends NotifierState<List<T>> {
   final LikeEngine _ownedEngine = LikeEngine();
+
   /// Internal pagination state tracker.
   Pagination<T> _pagination;
   Pagination<T> get pagination => _pagination;

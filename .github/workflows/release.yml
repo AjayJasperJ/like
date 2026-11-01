@@ -1,0 +1,45 @@
+name: Publish package release
+on:
+  push:
+    tags: ['v[0-9]*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+    environment: pub-dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release identity
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 tool/check_release.py "$RELEASE_TAG"
+      - uses: dart-lang/setup-dart@v1
+      - name: Temporary Flutter SDK
+        run: |
+          echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/release-flutter" >> "$GITHUB_ENV"
+          echo "PUB_CACHE=$RUNNER_TEMP/release-pub" >> "$GITHUB_ENV"
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/release-flutter"
+          echo "$RUNNER_TEMP/release-flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/release-flutter/bin/flutter" config --no-analytics
+      - run: flutter pub get
+      - run: flutter test
+      - name: Analyze package and legacy example
+        run: |
+          cd example
+          flutter pub get
+          cd ..
+          flutter analyze
+      - name: Validate archive
+        run: |
+          git restore analysis_options.yaml example/analysis_options.yaml
+          flutter pub publish --dry-run
+      - name: Publish using pub.dev GitHub OIDC
+        run: flutter pub publish --force
+      - name: Remove temporary SDK and dependencies
+        if: always()
+        run: rm -rf -- "$FLUTTER_SDK_DIR" "$PUB_CACHE"

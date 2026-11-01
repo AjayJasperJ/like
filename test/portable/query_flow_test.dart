@@ -3,18 +3,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:like/like.dart';
 
 void main() {
-  test('invalidation and reconnect refresh matching active queries only', () async {
+  test('invalidation and reconnect refresh matching active queries only',
+      () async {
     final hub = LikeInvalidationHub();
     final restored = StreamController<String>.broadcast();
     var calls = 0;
-    final query = LikeQuery<int>(action: (_) async => LikeApiResult.success(++calls),
-      scope: () => 'account', origin: 'https://api.example', tags: ['posts'],
-      invalidations: hub, restoredOrigins: restored.stream);
+    final query = LikeQuery<int>(
+        action: (_) async => LikeApiResult.success(++calls),
+        scope: () => 'account',
+        origin: 'https://api.example',
+        tags: ['posts'],
+        invalidations: hub,
+        restoredOrigins: restored.stream);
     await query.refresh();
     expect(query.state.data, 1);
-    hub.emit(LikeInvalidationEvent(['posts'], scope: 'other', origin: 'https://api.example'));
+    hub.emit(LikeInvalidationEvent(['posts'],
+        scope: 'other', origin: 'https://api.example'));
     final updated = query.watch().firstWhere((state) => state.data == 2);
-    hub.emit(LikeInvalidationEvent(['posts'], scope: 'account', origin: 'https://api.example'));
+    hub.emit(LikeInvalidationEvent(['posts'],
+        scope: 'account', origin: 'https://api.example'));
     await updated.timeout(const Duration(seconds: 2));
     expect(calls, 2);
     final reconnected = query.watch().firstWhere((state) => state.data == 3);
@@ -28,12 +35,16 @@ void main() {
   test('query replacement cancels transport and ignores stale data', () async {
     final pending = <Completer<LikeApiResult<int>>>[];
     final tokens = <CancelToken>[];
-    final query = LikeQuery<int>(action: (token) {
-      tokens.add(token);
-      final result = Completer<LikeApiResult<int>>();
-      pending.add(result);
-      return result.future;
-    }, scope: () => 'a', origin: 'https://api.example', restoredOrigins: const Stream.empty());
+    final query = LikeQuery<int>(
+        action: (token) {
+          tokens.add(token);
+          final result = Completer<LikeApiResult<int>>();
+          pending.add(result);
+          return result.future;
+        },
+        scope: () => 'a',
+        origin: 'https://api.example',
+        restoredOrigins: const Stream.empty());
     final old = query.refresh();
     final current = query.refresh();
     expect(tokens.first.isCancelled, isTrue);
@@ -60,15 +71,20 @@ void main() {
     store.dispose();
   });
 
-  test('cursor pagination deduplicates IDs and stops at a null terminal cursor', () async {
+  test('cursor pagination deduplicates IDs and stops at a null terminal cursor',
+      () async {
     var calls = 0;
-    final query = LikePagedQuery<int>(identity: (item) => item, pageSize: 2,
-      action: (page, cursor, token) async {
-        calls++;
-        return LikeApiResult.success(PaginationTool<int>(cursorBased: true,
-          listData: page == 1 ? [1, 2] : [2, 3], cursor: cursor,
-          nextCursor: page == 1 ? 'next' : null));
-      });
+    final query = LikePagedQuery<int>(
+        identity: (item) => item,
+        pageSize: 2,
+        action: (page, cursor, token) async {
+          calls++;
+          return LikeApiResult.success(PaginationTool<int>(
+              cursorBased: true,
+              listData: page == 1 ? [1, 2] : [2, 3],
+              cursor: cursor,
+              nextCursor: page == 1 ? 'next' : null));
+        });
     await query.loadNext();
     await query.loadNext();
     await query.loadNext();
@@ -78,14 +94,19 @@ void main() {
     query.dispose();
   });
 
-  test('failed page retry retains previous pages and refresh cancels old work', () async {
+  test('failed page retry retains previous pages and refresh cancels old work',
+      () async {
     var fail = true;
-    final query = LikePagedQuery<int>(identity: (item) => item, pageSize: 2,
-      action: (page, cursor, token) async {
-        if (page == 2 && fail) return LikeApiResult.error(LikeError(message: 'retry', type: LikeApiErrorType.network));
-        return LikeApiResult.success(PaginationTool<int>(listData: page == 1 ? [1, 2] : [2, 3],
-          totalContent: 4));
-      });
+    final query = LikePagedQuery<int>(
+        identity: (item) => item,
+        pageSize: 2,
+        action: (page, cursor, token) async {
+          if (page == 2 && fail)
+            { return LikeApiResult.error(
+                LikeError(message: 'retry', type: LikeApiErrorType.network)); }
+          return LikeApiResult.success(PaginationTool<int>(
+              listData: page == 1 ? [1, 2] : [2, 3], totalContent: 4));
+        });
     await query.loadNext();
     await query.loadNext();
     expect(query.value.items, [1, 2]);
@@ -100,7 +121,8 @@ void main() {
   test('void success and 304 provenance survive result transformations', () {
     final result = LikeApiResult<void>.success(null, isFrom304: true);
     expect(result.toStateResponse().state, LikeState.success);
-    final mapped = LikeApiResult<int>.success(1, isFrom304: true).mapSuccess((value) => value + 1);
+    final mapped = LikeApiResult<int>.success(1, isFrom304: true)
+        .mapSuccess((value) => value + 1);
     expect(mapped.isFrom304, isTrue);
   });
 }

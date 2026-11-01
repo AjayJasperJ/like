@@ -23,7 +23,8 @@ class LikeEtagInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    if (response.requestOptions.method == 'GET' && response.extra['isMocked'] != true) {
+    if (response.requestOptions.method == 'GET' &&
+        response.extra['isMocked'] != true) {
       // Store new ETag on successful 200
       final etag = response.headers.value('etag');
       if (etag != null && response.statusCode == 200) {

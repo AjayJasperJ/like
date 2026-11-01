@@ -67,7 +67,8 @@ class PaginationTool<T> {
   /// Selects a strategy based only on metadata supplied by the API.
   bool get hasMore {
     if (hasNextOverride != null) return hasNextOverride!;
-    if (cursorBased || cursor != null || nextCursor != null) return hasMoreByCursor;
+    if (cursorBased || cursor != null || nextCursor != null)
+      { return hasMoreByCursor; }
     if (totalContent != null) return hasMoreByTotal;
     if (totalPages != null) return hasMoreByPages;
     if (listData != null && contentLimit != null) return hasMoreByList;
@@ -132,7 +133,10 @@ class PaginationTool<T> {
       hasPreviousOverride: hasPrevious,
       cursor: cursor ?? this.cursor,
       nextCursor: nextCursor,
-      cursorBased: cursorBased || cursor != null || this.cursor != null || this.nextCursor != null,
+      cursorBased: cursorBased ||
+          cursor != null ||
+          this.cursor != null ||
+          this.nextCursor != null,
       listData: data,
     );
   }

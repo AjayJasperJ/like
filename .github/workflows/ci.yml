@@ -21,6 +21,8 @@ jobs:
       CI: "true"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Configure temporary SDK paths
         run: |
           echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/like-test-flutter" >> "$GITHUB_ENV"
@@ -32,13 +34,21 @@ jobs:
           "$FLUTTER_SDK_DIR/bin/flutter" config --no-analytics
           "$FLUTTER_SDK_DIR/bin/flutter" precache --web
           "$FLUTTER_SDK_DIR/bin/flutter" --version
+      - name: Verify generator and release metadata
+        run: |
+          python3 -m unittest discover -s tool/openapi -p 'test_*.py'
+          python3 tool/openapi/generate.py tool/openapi/fixture.json test/generated/fixture_api.dart --check
+          python3 tool/check_release.py
       - run: flutter pub get
       - name: Check changed Dart formatting
-        if: github.event_name == 'pull_request'
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          git fetch --depth=1 origin "$BASE_SHA"
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA=$(git rev-parse HEAD^)
+          else
+            git fetch --depth=1 origin "$BASE_SHA"
+          fi
           git diff --name-only -z --diff-filter=ACM "$BASE_SHA" HEAD -- '*.dart' | xargs -0 -r dart format
           git diff -- '*.dart'
       - run: flutter test --coverage
@@ -67,6 +77,8 @@ jobs:
         run: |
           flutter pub get
           flutter build web
+      - name: Require committed Dart formatting
+        run: git diff --exit-code -- '*.dart'
       - name: Validate package contents
         run: |
           # Flutter setup migrates these files on the runner only.

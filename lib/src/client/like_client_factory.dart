@@ -96,7 +96,8 @@ class LikeClientFactory {
   }) {
     dio.interceptors.addAll(
       [
-        LikeSessionInterceptor(currentSession ?? () => const LikeSessionScope()),
+        LikeSessionInterceptor(
+            currentSession ?? () => const LikeSessionScope()),
 
         LikeTraceCaptureInterceptor(),
 

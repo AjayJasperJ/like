@@ -4,8 +4,10 @@ import '../models/api_models.dart';
 import '../repositories/post_repository.dart';
 
 final class PostsCubit extends Cubit<LikeStateResponse<PaginatedPosts>> {
-  PostsCubit(PostsRepository repository, {LikeQuery<PaginatedPosts> Function(int)? watch})
-      : _watch = watch ?? repository.watchPage, super(LikeStateResponse.idle());
+  PostsCubit(PostsRepository repository,
+      {LikeQuery<PaginatedPosts> Function(int)? watch})
+      : _watch = watch ?? repository.watchPage,
+        super(LikeStateResponse.idle());
   final LikeQuery<PaginatedPosts> Function(int) _watch;
   LikeQuery<PaginatedPosts>? _query;
   StreamSubscription<LikeStateResponse<PaginatedPosts>>? _subscription;
@@ -20,11 +22,14 @@ final class PostsCubit extends Cubit<LikeStateResponse<PaginatedPosts>> {
     _query = query;
     emit(LikeStateResponse.loading());
     _subscription = query.watch().listen((state) {
-      if (!isClosed && generation == _generation && identical(state, query.state)) emit(state);
+      if (!isClosed &&
+          generation == _generation &&
+          identical(state, query.state)) { emit(state); }
     });
     await query.refresh();
     if (!isClosed && generation == _generation) emit(query.state);
   }
+
   @override
   Future<void> close() async {
     _generation++;

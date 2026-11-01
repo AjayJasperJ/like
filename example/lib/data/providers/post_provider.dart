@@ -104,10 +104,10 @@ final class PostProvider extends ChangeNotifier with LikeStateMixin {
     }
     return result;
   }
+
   @override
   void dispose() {
     postsState.dispose();
     super.dispose();
   }
-
 }

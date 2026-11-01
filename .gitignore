@@ -53,3 +53,15 @@ server/*.db-wal
 .roomodes
 example/.agent/
 usage/
+
+# Python test tools
+__pycache__/
+*.pyc
+# Generated native local paths and build state
+examples/**/android/local.properties
+examples/**/android/.gradle/
+examples/**/ios/Flutter/Generated.xcconfig
+examples/**/ios/Flutter/flutter_export_environment.sh
+examples/**/ios/Flutter/ephemeral/
+examples/**/ios/Pods/
+examples/**/ios/.symlinks/

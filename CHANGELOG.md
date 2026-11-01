@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-11-01
+
+### Added
+- Explicit account/environment scopes for cache identities and offline operations.
+- Durable multipart replay, scheduled bounded retries, operation IDs and queue controls.
+- Shared query invalidation, cancellation, optimistic layers and cursor pagination.
+- Passive slow API-path detection and payload-free request explanation traces.
+- Conservative diagnostic redaction, synthetic failure scenarios and optional typed OpenAPI generation.
+- Separate Provider, Riverpod and BLoC public API shops with browser flow tests and release test APK builds.
+- Native/browser compatibility checks, dependency updates and gated OIDC release workflow.
+
+### Fixed
+- Origin isolation, cached payload types, registry disposal and stale-session response publication.
+- Relative-URL cache indexing, throwing refresh hooks and Riverpod disposal cleanup.
+- Browser filesystem guards, IndexedDB cleanup and deterministic WebSocket reconnect tests.
+
+### Migration
+- Explicitly set LikeSessionScope for protected account data. Unscoped protected requests do not cache or queue.
+- Legacy ownerless offline operations remain blocked for review; idempotency requires backend support.
+- Redaction affects diagnostic copies only. Application data and image caches are not encrypted by this package.
+- Public demo checkout is simulated; release APKs are test-signed evaluation builds.
+
 ## [2.3.0] - 2026-09-27
 
 ### Added

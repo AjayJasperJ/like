@@ -109,7 +109,7 @@ class LikeApiResult<T> {
       isFromCache: isFromCache,
       isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
       isResiliencyFallback: isResiliencyFallback,
-          isFrom304: isFrom304,
+      isFrom304: isFrom304,
     );
   }
 
@@ -153,7 +153,7 @@ class LikeApiResult<T> {
       isFromCache: isFromCache,
       isFromStaleWhileRevalidate: isFromStaleWhileRevalidate,
       isResiliencyFallback: isResiliencyFallback,
-          isFrom304: isFrom304,
+      isFrom304: isFrom304,
     );
   }
 

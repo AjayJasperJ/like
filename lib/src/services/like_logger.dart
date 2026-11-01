@@ -73,6 +73,7 @@ class LikeLogger {
             sensitiveKeys: LikeConstants.current.sensitiveHeaders)
         as Map<String, Object?>?;
     final entry = {
+      'privacyVersion': 2,
       'timestamp': timestampStr,
       'level': level.name,
       'category': category,
@@ -258,7 +259,17 @@ class LikeLogger {
   static Future<String> readLogs() async {
     await _ensureInitialized();
     if (_logFile != null && await _logFile!.exists()) {
-      return await _logFile!.readAsString();
+      final lines = await _logFile!.readAsLines();
+      final safe = <String>[];
+      for (final line in lines) {
+        try {
+          final value = jsonDecode(line);
+          if (value is Map && value['privacyVersion'] == 2) { safe.add(line); }
+        } catch (_) {
+          // Historical or malformed unredacted entries are never exported.
+        }
+      }
+      return safe.isEmpty ? '' : '${safe.join('\n')}\n';
     }
     return '';
   }

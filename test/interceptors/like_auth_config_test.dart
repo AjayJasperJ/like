@@ -140,6 +140,24 @@ void main() {
       expect(refreshCountB, equals(1));
     });
 
+    test('copyWith retains scoped auth and account identity', () async {
+      final original = LikeClient.scoped(LikeClientConfig(
+        baseUrl: 'https://fixture.example',
+        sessionScope: const LikeSessionScope(environment: 'fixture', accountId: 'account-a'),
+        authConfig: LikeAuthConfig(getToken: () => 'fixture-scoped-token')));
+      final copy = original.copyWith();
+      addTearDown(original.dispose);
+      addTearDown(copy.dispose);
+      copy.dio.httpClientAdapter = _MockAdapter((options) {
+        return Response(requestOptions: options, statusCode: 200,
+          data: {'header': options.headers['Authorization']});
+      });
+      final result = await copy.get('/test', withAuth: true);
+      expect(result.isSuccess, isTrue);
+      expect(result.data!.data['data']['header'], 'Bearer fixture-scoped-token');
+      expect(copy.sessionScope.key, original.sessionScope.key);
+    });
+
     test('3-Tier fallback hierarchy prefers scoped > global > static',
         () async {
       LikeAuthInterceptor.getToken = () => 'static_token';

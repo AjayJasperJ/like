@@ -43,18 +43,25 @@ final class PostRepository implements PostsRepository {
     String? search,
     bool? published,
   }) =>
-      _api.list(page: page, search: search, published: published, cancelToken: cancelToken);
+      _api.list(
+          page: page,
+          search: search,
+          published: published,
+          cancelToken: cancelToken);
 
   @override
-  Future<ApiResult<ApiPost>> find(int id, {CancelToken? cancelToken}) => _api.find(id, cancelToken: cancelToken);
+  Future<ApiResult<ApiPost>> find(int id, {CancelToken? cancelToken}) =>
+      _api.find(id, cancelToken: cancelToken);
 
   @override
   LikeQuery<PaginatedPosts> watchPage(int page) {
     final client = LikeClient();
-    return LikeQuery(action: (token) => list(page: page, cancelToken: token),
-      scope: () => client.sessionScope.key,
-      origin: Uri.parse(client.dio.options.baseUrl).origin, tags: ['posts'],
-      sessionChanges: client.sessionChanges);
+    return LikeQuery(
+        action: (token) => list(page: page, cancelToken: token),
+        scope: () => client.sessionScope.key,
+        origin: client.origin,
+        tags: ['posts'],
+        sessionChanges: client.sessionChanges);
   }
 
   @override

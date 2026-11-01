@@ -14,19 +14,26 @@ class LikeMockInterceptor extends Interceptor {
     RequestInterceptorHandler handler,
   ) async {
     final mockCtrl = MockController();
-    if (kReleaseMode || !LikeConstants.mockEnabled || !mockCtrl.isEngineEnabled.value) {
+    if (kReleaseMode ||
+        !LikeConstants.mockEnabled ||
+        !mockCtrl.isEngineEnabled.value) {
       return handler.next(options);
     }
 
     final rules = mockCtrl.rules.value;
-    if (!identical(_rulesIdentity, rules)) { _uses.clear(); _rulesIdentity = rules; }
+    if (!identical(_rulesIdentity, rules)) {
+      _uses.clear();
+      _rulesIdentity = rules;
+    }
     if (rules.isEmpty) {
       return handler.next(options);
     }
 
     final matchingRule = rules.firstWhere(
       (rule) {
-        if (!rule.isEnabled || (rule.maxUses > 0 && (_uses[rule.id] ?? 0) >= rule.maxUses)) return false;
+        if (!rule.isEnabled ||
+            (rule.maxUses > 0 && (_uses[rule.id] ?? 0) >= rule.maxUses))
+          { return false; }
 
         // 1. Match method
         if (rule.method != 'ANY' && rule.method != options.method) {
@@ -137,22 +144,34 @@ class LikeMockInterceptor extends Interceptor {
       options.extra['like.synthetic'] = true;
       _uses[matchingRule.id] = (_uses[matchingRule.id] ?? 0) + 1;
       try {
-        if (options.cancelToken?.isCancelled == true) throw options.cancelToken!.cancelError!;
+        if (options.cancelToken?.isCancelled == true)
+          { throw options.cancelToken!.cancelError!; }
         if (matchingRule.delayMs > 0) {
           await Future.any<void>([
             Future<void>.delayed(Duration(milliseconds: matchingRule.delayMs)),
-            if (options.cancelToken != null) options.cancelToken!.whenCancel.then<void>((error) => throw error),
+            if (options.cancelToken != null)
+              options.cancelToken!.whenCancel
+                  .then<void>((error) => throw error),
           ]);
         }
         final failure = matchingRule.failure;
         if (failure != LikeMockFailure.none) {
-          handler.reject(DioException(requestOptions: options,
-            type: failure == LikeMockFailure.offline ? DioExceptionType.connectionError
-                : failure == LikeMockFailure.timeout ? DioExceptionType.receiveTimeout : DioExceptionType.cancel,
-            message: 'Synthetic test failure'), true);
+          handler.reject(
+              DioException(
+                  requestOptions: options,
+                  type: failure == LikeMockFailure.offline
+                      ? DioExceptionType.connectionError
+                      : failure == LikeMockFailure.timeout
+                          ? DioExceptionType.receiveTimeout
+                          : DioExceptionType.cancel,
+                  message: 'Synthetic test failure'),
+              true);
           return;
         }
-      } on DioException catch (error) { handler.reject(error, true); return; }
+      } on DioException catch (error) {
+        handler.reject(error, true);
+        return;
+      }
 
       dynamic responseData = matchingRule.responseBody;
       try {
@@ -162,15 +181,24 @@ class LikeMockInterceptor extends Interceptor {
         // Keep as string if not valid JSON
       }
 
-      final response = Response(requestOptions: options, data: responseData,
-        statusCode: matchingRule.statusCode, statusMessage: 'MOCKED',
-        headers: Headers.fromMap(matchingRule.responseHeaders.map((key, value) => MapEntry(key, [value]))),
-        extra: Map<String, dynamic>.from(options.extra)..['isMocked'] = true);
-      if (!(options.validateStatus?.call(matchingRule.statusCode) ??
-          (matchingRule.statusCode >= 200 && matchingRule.statusCode < 300))) {
-        handler.reject(DioException.badResponse(statusCode: matchingRule.statusCode,
-          requestOptions: options, response: response), true);
-      } else { handler.resolve(response, true); }
+      final response = Response(
+          requestOptions: options,
+          data: responseData,
+          statusCode: matchingRule.statusCode,
+          statusMessage: 'MOCKED',
+          headers: Headers.fromMap(matchingRule.responseHeaders
+              .map((key, value) => MapEntry(key, [value]))),
+          extra: Map<String, dynamic>.from(options.extra)..['isMocked'] = true);
+      if (!(options.validateStatus(matchingRule.statusCode))) {
+        handler.reject(
+            DioException.badResponse(
+                statusCode: matchingRule.statusCode,
+                requestOptions: options,
+                response: response),
+            true);
+      } else {
+        handler.resolve(response, true);
+      }
       return;
     }
 

@@ -4,7 +4,9 @@ import 'package:like_shop_shared/testing.dart';
 import 'package:like_bloc_app/shop_app.dart';
 
 void main() {
-  testWidgets('guest to authenticated checkout, search, retry and disposal', (tester) async {
+  testWidgets('guest to authenticated checkout, search, retry and disposal', (
+    tester,
+  ) async {
     final repository = FixtureShopRepository();
     await tester.pumpWidget(ShopApp(repository: repository));
     await tester.pumpAndSettle();

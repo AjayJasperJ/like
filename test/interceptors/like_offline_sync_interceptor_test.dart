@@ -67,8 +67,8 @@ void main() {
     var calls = 0;
     when(() => adapter.fetch(any(), any(), any())).thenAnswer((invocation) async {
       calls++;
-      if (calls == 1) throw DioException(requestOptions: invocation.positionalArguments.first as RequestOptions,
-        type: DioExceptionType.connectionError);
+      if (calls == 1) { throw DioException(requestOptions: invocation.positionalArguments.first as RequestOptions,
+        type: DioExceptionType.connectionError); }
       return ResponseBody.fromString('{}', 200);
     });
     final empty = interceptor.taskChanges.firstWhere((tasks) => tasks.isEmpty);
