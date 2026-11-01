@@ -71,6 +71,10 @@ jobs:
           git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/device-flutter"
           echo "$RUNNER_TEMP/device-flutter/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/device-flutter/bin/flutter" config --no-analytics
+      - name: Select Xcode 26 SDK
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+          xcodebuild -version
       - name: Complete flows on iOS simulator
         run: |
           device_id=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for k,vs in d["devices"].items() if "iOS" in k for v in vs if "iPhone" in v["name"]))')
