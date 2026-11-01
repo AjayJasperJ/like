@@ -1,3 +1,4 @@
+import 'package:like/src/core/like_session_scope.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
@@ -38,6 +39,32 @@ void main() {
         expect(cached, isNotNull);
         expect(cached!.data, equals(payloads[index]));
       }
+    });
+
+    test('tag invalidation removes only the matching account and origin on disk', () async {
+      const owner = LikeSessionScope(accountId: 'owner');
+      const other = LikeSessionScope(accountId: 'other');
+      RequestOptions options(String origin, String scope) => RequestOptions(
+        path: '/items', baseUrl: origin, extra: {
+          LikeSessionIdentity.scopeKey: scope, 'like.cacheTags': ['items'],
+        });
+      final a = options('https://a.example', owner.key);
+      final b = options('https://b.example', owner.key);
+      final c = options('https://a.example', other.key);
+      for (final request in [a, b, c]) {
+        await LikeService.saveResponseToCache(Response(requestOptions: request,
+          data: {'id': 1}, statusCode: 200));
+        final key = LikeSessionIdentity.forRequest(request);
+        await LikeService.putEtag(key, 'etag-fixture');
+        await LikeService.metadataBox.put(key, {'saved': true});
+      }
+      await LikeService.invalidateTags({'items'}, owner.key, 'https://a.example');
+      expect(await LikeService.fetchResponseFromCache(a), isNull);
+      expect(LikeService.getEtag(LikeSessionIdentity.forRequest(a)), isNull);
+      expect(LikeService.metadataBox.containsKey(LikeSessionIdentity.forRequest(a)), isFalse);
+      expect((await LikeService.fetchResponseFromCache(b))!.data, {'id': 1});
+      expect((await LikeService.fetchResponseFromCache(c))!.data, {'id': 1});
+      expect(LikeService.getEtag(LikeSessionIdentity.forRequest(b)), 'etag-fixture');
     });
 
     test('legacy JSON cache entries remain readable', () async {

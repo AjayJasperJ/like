@@ -49,6 +49,7 @@ jobs:
           flutter pub get
           flutter analyze
           flutter test
+          flutter test --platform chrome
       - name: Native host flow tests
         working-directory: examples/${{ matrix.state }}_app
         run: flutter test --coverage

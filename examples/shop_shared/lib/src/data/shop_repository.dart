@@ -75,11 +75,13 @@ final class PublicShopRepository implements ShopRepository {
       json['id'] as int,
       '${json['firstName'] ?? ''} ${json['lastName'] ?? ''}'.trim(),
     );
-    _accessToken = json['accessToken'] as String;
-    _refreshToken = json['refreshToken'] as String;
+    final accessToken = json['accessToken'] as String;
+    final refreshToken = json['refreshToken'] as String;
     await sessions.write(
-      jsonEncode({'accessToken': _accessToken, 'refreshToken': _refreshToken}),
+      jsonEncode({'accessToken': accessToken, 'refreshToken': refreshToken}),
     );
+    _accessToken = accessToken;
+    _refreshToken = refreshToken;
     _customer = customer;
     setScope(customer);
     return customer;

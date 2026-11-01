@@ -37,9 +37,10 @@ Verified evidence:
 - DevTool runner 41259905030: strict analysis, host tests, browser privacy/lifecycle
   tests and release web compilation passed against the explicit core checkout.
 - A minimum-SDK probe established that path_provider 2.1.6 requires Dart 3.10.
-  The declared minimum and dedicated test workflow now target Flutter 3.38.0.
-- A live DummyJSON probe received HTTP 403. It remains a separate live-contract
-  issue under investigation; deterministic app fixtures passed.
+  The declared minimum and dedicated test workflow now target Flutter 3.38.1.
+- The initial Python live probe received HTTP 403. Sending a browser-compatible
+  User-Agent resolved it; runner 41260440563 verified catalog, detail, search,
+  login, profile, refresh and simulated checkout against the live public API.
 
 The code now implements session-scoped queue/cache identity, durable multipart
 replay, scheduled retry and operation IDs, queue controls, resilient refresh,

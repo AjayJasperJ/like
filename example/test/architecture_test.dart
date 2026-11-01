@@ -23,6 +23,7 @@ PaginatedPosts page() => PaginatedPosts.fromJson({
 });
 
 void main() {
+  registerFallbackValue(CancelToken());
   test(
     'all three state adapters share invalidation and transport cancellation',
     () async {
@@ -128,13 +129,22 @@ void main() {
   test('Riverpod repository override avoids the default client', () async {
     final repository = MockRepository();
     final expected = ApiResult.success(page());
-    when(() => repository.list(page: 2)).thenAnswer((_) async => expected);
+    late CancelToken token;
+    when(() => repository.list(page: 2, cancelToken: any(named: 'cancelToken')))
+        .thenAnswer((invocation) async {
+          token = invocation.namedArguments[#cancelToken] as CancelToken;
+          return expected;
+        });
     final container = ProviderContainer(
       overrides: [postsRepositoryProvider.overrideWithValue(repository)],
     );
-    addTearDown(container.dispose);
-    final result = await container.read(postsPageProvider(2).future);
-    expect(result, same(expected));
+    try {
+      final result = await container.read(postsPageProvider(2).future);
+      expect(result, same(expected));
+    } finally {
+      container.dispose();
+    }
+    expect(token.isCancelled, isTrue);
   });
 
   test('Cubit publishes repository errors', () async {

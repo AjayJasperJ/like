@@ -23,7 +23,7 @@ The SDK and Pub cache are temporary, uncached and removed at job completion.
 Every job has a one-hour timeout. APK artifacts are retained for seven days;
 coverage and generated-source review artifacts for one day.
 
-The proposed minimum is Flutter 3.38.0 / Dart 3.10; a dedicated workflow resolves
+The proposed minimum is Flutter 3.38.1 / Dart 3.10; a dedicated workflow resolves
 and tests that SDK independently of current stable. Treat this support claim as
 unvalidated until the minimum-SDK job passes. The prior 3.16/Dart 3.0 constraint
 was incompatible with dependency requirements. The minimum-SDK probe confirmed

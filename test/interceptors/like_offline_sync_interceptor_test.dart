@@ -57,6 +57,8 @@ void main() {
     await queue.add(task);
     await queue.add({...task}..remove('scope'));
     await interceptor.syncQueue();
+    await expectLater(interceptor.cancelTask(queue.keys.first), throwsStateError);
+    expect(queue.length, 2);
     verifyNever(() => adapter.fetch(any(), any(), any()));
     expect(
       interceptor.tasks.every(

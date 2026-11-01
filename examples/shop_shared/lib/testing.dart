@@ -10,6 +10,7 @@ final class FixtureShopRepository implements ShopRepository {
     '',
     12.5,
   );
+  static const second = Product(2, 'Fixture laptop', 'Second page product', '', 20);
   bool disposed = false;
   bool failNext = false;
   bool signedIn = false;
@@ -43,13 +44,13 @@ final class FixtureShopRepository implements ShopRepository {
       throw const ShopFailure('Offline fixture');
     }
     return ProductPage(
-      search == 'missing' ? [] : [item],
-      search == 'missing' ? 0 : 1,
+      search == 'missing' ? [] : [skip == 0 ? item : second],
+      search == 'missing' ? 0 : 2,
     );
   }
 
   @override
-  Future<Product> product(int id) async => item;
+  Future<Product> product(int id) async => id == 1 ? item : second;
   @override
   Future<List<CartLine>> loadCart() async => List.of(cart);
   @override

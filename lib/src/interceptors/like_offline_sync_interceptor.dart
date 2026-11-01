@@ -147,6 +147,11 @@ class LikeOfflineSyncInterceptor extends Interceptor {
   }
 
   Future<void> cancelTask(dynamic key) async {
+    final task = _queueBox.get(key);
+    if (task == null) { return; }
+    if (task is! Map || task['scope'] != currentSession().key) {
+      throw StateError('Session owner unavailable');
+    }
     _running[key]?.cancel('Queued action cancelled');
     await _lock.synchronized(() => _queueBox.delete(key));
     _publish();
@@ -517,7 +522,11 @@ class LikeOfflineSyncInterceptor extends Interceptor {
       if (code >= 400 && code < 500 && code != 408 && code != 429) {
         task['status'] = 'failed';
         task['lastFailure'] = 'HTTP $code';
-        await _lock.synchronized(() => _queueBox.put(key, task));
+        await _lock.synchronized(() async {
+          if (_queueBox.containsKey(key)) {
+            await _queueBox.put(key, task);
+          }
+        });
         return;
       }
     }
@@ -530,7 +539,11 @@ class LikeOfflineSyncInterceptor extends Interceptor {
         ? '${error.type.name}:${error.response?.statusCode ?? 0}'
         : 'Replay body unavailable';
     task['nextAttemptAt'] = DateTime.now().add(delay).toIso8601String();
-    await _lock.synchronized(() => _queueBox.put(key, task));
+    await _lock.synchronized(() async {
+          if (_queueBox.containsKey(key)) {
+            await _queueBox.put(key, task);
+          }
+        });
     await LikeLogger.log(
       level: LikeLogLevel.error,
       category: 'offline_sync',
