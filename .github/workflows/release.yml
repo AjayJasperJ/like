@@ -13,7 +13,7 @@ jobs:
       contents: read
     environment: pub-dev
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate release identity
         env:
           RELEASE_TAG: ${{ github.ref_name }}

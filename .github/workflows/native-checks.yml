@@ -23,7 +23,7 @@ jobs:
     env:
       CI: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Configure temporary SDK paths
         run: |
           echo "FLUTTER_SDK_DIR=$RUNNER_TEMP/like-native-flutter" >> "$GITHUB_ENV"
