@@ -42,7 +42,11 @@ Expected project URL: https://ajayjasperj.github.io/like/.
 - Add/edit authored guides in `site/content/` and register them in `site/pages.json`.
 - Existing deep guides are imported from `documents/`; edit their original source.
 - Relative guide links are rewritten to site routes; code links point to the build's commit.
-- Public API source index is generated from library exports. It is not full Dartdoc.
+- Public API reference uses pinned tree-sitter Dart grammar to extract exported declarations,
+  constructor/method signatures, fields, callback types and parameter metadata. It respects
+  show/hide rules, excludes private names, and fails on syntax extraction errors.
+  It is not full Dartdoc and does not duplicate inherited Flutter APIs.
+- `api-reference.json` is generated alongside the HTML and agent Markdown.
 - Keep `tokenStore`, repository and toast-handler placeholders explicitly identified.
 - Run build tests: they check internal destinations/fragments, agent/search parity,
   raw Markdown, source revision metadata and root/subpath behavior.

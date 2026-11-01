@@ -9,6 +9,8 @@ The site serves the same guide sources as Markdown for retrieval tools.
 | --- | --- |
 | `llms.txt` | Compact guide map and non-negotiable integration facts |
 | `llms-full.txt` | All guide content from the same build |
+| `api-data/<type-name-lowercase>.json` | One public widget/type, such as `api-data/likebuilder.json` |
+| `api-reference.json` | Public widgets/types, constructors, members and parameter metadata |
 | `manifest.json` | Package version, source revision and page/source map |
 | `markdown/<slug>.md` | One raw guide without UI markup |
 | `search.json` | Public client-side search index |
@@ -55,9 +57,11 @@ change credentials or send messages.
 
 ## Verify claims against source
 
-The [Public API source index](api/) enumerates exported libraries and links to
-revision-specific code. It is a source/navigation reference, not generated Dartdoc.
-Do not infer unlisted method parameters. Code fragments using `tokenStore`,
+The [Public API source index](api/) contains public widget/type constructors, method signatures,
+parameter tables, defaults, callbacks and source comments directly on the site.
+It is generated from Dart syntax trees and export rules, not full Dartdoc;
+inherited framework APIs are not duplicated. Read `api-reference.json` for
+structured metadata and do not infer unlisted method parameters. Code fragments using `tokenStore`,
 `repository`, `showAppToast`, `showSyncProgress` or `app` explicitly require
 application-owned implementations/context; they are not package globals.
 
