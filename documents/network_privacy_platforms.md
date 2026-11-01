@@ -96,9 +96,11 @@ scaffolding is generated only inside CI. SDK/dependency downloads are temporary,
 uncached and removed at completion, with a one-hour limit per job.
 
 These are distinct levels of evidence: VM tests are not real-device plugin tests;
-native builds are not Android/iOS runtime or simulator interaction tests. Device
-integration, additional browsers, web persistence/quota cases and complete platform
-parity remain pending until their tests have been implemented and passed.
+native builds are not Android/iOS runtime or simulator interaction tests. Separate
+Android emulator and iOS simulator workflows now exercise complete UI flows and
+the production repository against the public API. Inspect the exact commit/run
+before claiming a pass. Additional browsers, exhaustive quota/eviction cases and
+physical-device/platform parity are not established by that coverage.
 
 
 ## Complete public API applications
