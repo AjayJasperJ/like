@@ -420,8 +420,10 @@ class LikeClient implements LikeHttpClient {
     );
     final absoluteUriKey = LikeSessionIdentity.forRequest(tempOptions);
     final requestKey = absoluteUriKey;
-    if (isGet) _resourceIndex.bind(requestKey, tempOptions.uri.origin,
-      requestConfig?.cacheTags ?? const <String>[]);
+    if (isGet && tempOptions.uri.hasAuthority) {
+      _resourceIndex.bind(requestKey, tempOptions.uri.origin,
+          requestConfig?.cacheTags ?? const <String>[]);
+    }
 
     // 1. Reset Logic
     final bool resetSessionStale = extra['resetSessionStale'] ?? false;

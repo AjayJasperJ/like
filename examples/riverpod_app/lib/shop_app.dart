@@ -5,10 +5,12 @@ import 'package:like_shop_shared/shop_shared.dart';
 final shopRepositoryProvider = Provider<ShopRepository>((ref) => throw StateError('Repository must be injected'));
 final shopProvider = NotifierProvider<ShopNotifier, ShopState>(ShopNotifier.new);
 final class ShopNotifier extends Notifier<ShopState> with ShopActions {
+  late ShopRepository _repository;
   @override
-  ShopRepository get repository => ref.read(shopRepositoryProvider);
+  ShopRepository get repository => _repository;
   @override
   ShopState build() {
+    _repository = ref.read(shopRepositoryProvider);
     ref.onDispose(closeActions);
     return const ShopState();
   }
