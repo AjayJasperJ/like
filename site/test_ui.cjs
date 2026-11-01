@@ -44,6 +44,20 @@ const fs = require('node:fs');
   await page.getByRole('heading', {name: 'Quick start', exact: true}).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   await page.screenshot({path: output + '/mobile.png', fullPage: true});
+  await page.goto(origin + '/like/api/');
+  await page.getByRole('searchbox', {name: 'Filter widgets, classes and methods'}).fill('LikeBuilder');
+  const builder = page.locator('[data-api-symbol="LikeBuilder"]');
+  await builder.waitFor();
+  assert.equal(await builder.locator('details').getAttribute('open'), '');
+  assert.match(await builder.innerText(), /required this.onSuccess/);
+  assert.match(await builder.innerText(), /Widget Function/);
+  await page.getByRole('searchbox', {name: 'Filter widgets, classes and methods'}).fill('cancelToken');
+  await page.locator('[data-api-symbol="LikeClient"]').waitFor();
+  const api = await (await page.request.get(origin + '/like/api-reference.json')).json();
+  assert.ok(api.symbols.some(s => s.name === 'LikeCacheImage'));
+  assert.ok(!api.symbols.some(s => s.name === '_LikeState'));
+  await page.goto(origin + '/like/api/#likebuilder');
+  assert.equal(await builder.locator('details').getAttribute('open'), '');
   // Every guide must reflow without whole-page horizontal scrolling.
   const manifest = await (await page.request.get(origin + '/like/manifest.json')).json();
   for (const width of [320, 360, 390, 768, 980, 1024, 1280, 1440, 1920]) {

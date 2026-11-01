@@ -73,6 +73,9 @@ class DocumentationBuildTest(unittest.TestCase):
             self.assertTrue(raw.is_file())
             self.assertIn(raw.read_text(), full)
             self.assertIn(record['title'], full)
+        api = json.loads((self.output / 'api-reference.json').read_text())
+        for symbol in api['symbols']:
+            self.assertTrue((self.output / symbol['json_url'].removeprefix('/like/')).exists())
         self.assertIn('slowInternet', full)
         self.assertIn('showSlowInternetToasts', full)
         self.assertIn('LikeHttpClient', (self.output / 'markdown/api.md').read_text())

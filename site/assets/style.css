@@ -174,3 +174,14 @@ dialog::backdrop { background: #101b2e99; }
   .brand strong > span { display: none; }
   main { padding-left: 16px; padding-right: 16px; }
 }
+
+/* The complete API reference stays scannable without hiding it from agent exports. */
+.api-filter-label { display: block; font-weight: 650; margin: 24px 0 8px; }
+#api-filter { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font-size: 1rem; }
+#api-filter-status { color: var(--muted); font-size: .9375rem; }
+.api-symbol { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 26px; }
+.api-symbol[hidden] { display: none; }
+.api-symbol summary { cursor: pointer; min-height: 44px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; font-weight: 600; font-size: .9375rem; }
+.api-symbol details[open] > summary { margin-bottom: 18px; }
+.api-symbol h4 { font-size: 1.125rem; margin: 30px 0 12px; overflow-wrap: anywhere; }
+.api-symbol > h3 { margin-top: 14px; }

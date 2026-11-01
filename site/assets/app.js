@@ -44,6 +44,37 @@
   async function copy(text) { try { await navigator.clipboard.writeText(text); notice('Copied to clipboard'); } catch { notice('Clipboard unavailable. Use View Markdown or select the code.'); } }
   document.querySelectorAll('pre > code').forEach(code => { const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Copy'; button.className = 'copy-code'; button.setAttribute('aria-label', 'Copy code example'); button.addEventListener('click', () => copy(code.textContent)); code.parentElement.prepend(button); });
   document.querySelector('#copy-page').addEventListener('click', async event => { try { const response = await fetch(event.currentTarget.dataset.url); if (!response.ok) throw new Error('Unavailable'); await copy(await response.text()); } catch { notice('Page copy unavailable. Use View Markdown.'); } });
+  const apiFilter = document.querySelector('#api-filter');
+  if (apiFilter) {
+    const symbols = [...document.querySelectorAll('[data-api-symbol]')];
+    const applyFilter = () => {
+      const terms = apiFilter.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      let count = 0;
+      symbols.forEach(section => {
+        const matches = terms.every(term => section.textContent.toLowerCase().includes(term));
+        section.hidden = !matches;
+        if (matches) count++;
+        section.querySelector('details').open = matches && terms.length > 0;
+      });
+      document.querySelector('#api-filter-status').textContent = count + ' public declarations shown' + (terms.length ? ' for your filter.' : '. Expand a declaration to read its members.');
+    };
+    apiFilter.addEventListener('input', applyFilter);
+    const revealAnchor = () => {
+      let id;
+      try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+      if (!id) return;
+      const target = document.getElementById(id);
+      const section = target?.closest('[data-api-symbol]');
+      if (section) {
+        apiFilter.value = '';
+        applyFilter();
+        section.querySelector('details').open = true;
+        target.scrollIntoView({block: 'start'});
+      }
+    };
+    addEventListener('hashchange', revealAnchor);
+    revealAnchor();
+  }
   const dialog = document.querySelector('#search'), input = document.querySelector('#search-input'), results = document.querySelector('#search-results'), status = document.querySelector('#search-status');
   let indexPromise;
   function loadIndex() { if (!indexPromise) indexPromise = fetch(document.body.dataset.base + 'search.json').then(response => { if (!response.ok) throw new Error('Index unavailable'); return response.json(); }).catch(error => { indexPromise = null; throw error; }); return indexPromise; }

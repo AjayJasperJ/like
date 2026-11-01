@@ -27,30 +27,8 @@ def source_ref():
 
 
 def api_index(ref):
-    lines = ['# Public API source index', '',
-             'This index is derived from the exports in `lib/like.dart` and `lib/testing.dart`.',
-             'It links to exact source contracts; it is **not** generated Dartdoc or a promise',
-             'that every symbol in a library is exported (check `show`/`hide` clauses).', '']
-    for entry in ['lib/like.dart', 'lib/testing.dart']:
-        lines += ['## ' + entry, '']
-        for rel in re.findall(r"^export '([^']+)'[^;]*;", (ROOT / entry).read_text(), re.M):
-            if rel.startswith('package:'):
-                continue
-            path = (Path(entry).parent / rel).as_posix()
-            source = ROOT / path
-            if not source.is_file():
-                raise ValueError('Export target missing: ' + path)
-            text = source.read_text()
-            symbols = re.findall(r'^(?:(?:abstract|final|base|sealed|interface)\s+)*(?:class|enum|mixin|typedef|extension)\s+([A-Za-z]\w*)', text, re.M)
-            lines += ['### ' + ('LikeConfig' if path == 'lib/src/core/like_config.dart' else (symbols[0] if symbols else source.stem)), '',
-                      f'[{path}]({REPO}/blob/{ref}/{path})', '',
-                      'Declared types: ' + (', '.join('`' + x + '`' for x in symbols) or 'See source') + '.', '']
-            if path == 'lib/src/core/like_config.dart':
-                begin = text.index('  LikeConfig({')
-                end = text.index('  })', begin)
-                lines += ['Constructor defaults for the full configuration surface:', '', '```dart', text[begin:end] + '  });', '```', '']
-    lines += ['## Complete injectable HTTP contract', '', 'The following contract is copied from the source for this build. Concrete client helpers are linked above.', '', '```dart', (ROOT / 'lib/src/client/like_http_client.dart').read_text(), '```', '']
-    return '\n'.join(lines)
+    from api_reference import render_reference
+    return render_reference(ROOT, ref, REPO)[0]
 
 
 def resolve_link(value, source, base, ref):
@@ -65,7 +43,7 @@ def resolve_link(value, source, base, ref):
     route = path.strip('/')
     if route in SLUGS:
         return base + ('' if route == 'overview' else route + '/') + frag
-    if route.startswith('assets/') or route in ['llms.txt', 'llms-full.txt', 'manifest.json', 'search.json', 'sitemap.xml']:
+    if route.startswith(('assets/', 'markdown/', 'api-data/')) or route in ['llms.txt', 'llms-full.txt', 'manifest.json', 'search.json', 'sitemap.xml', 'api-reference.json']:
         return base + route + frag
     if path.startswith('../assets/'):
         return base + path.removeprefix('../')
@@ -126,13 +104,21 @@ def build(output, base='/like/', origin='https://ajayjasperj.github.io'):
     output.mkdir(parents=True, exist_ok=True)
     shutil.copytree(SITE / 'assets', output / 'assets', dirs_exist_ok=True)
     (output / 'markdown').mkdir(exist_ok=True)
+    from api_reference import exported_api
+    api = exported_api(ROOT)
+    api.update({'version': version, 'source_revision': ref})
+    (output / 'api-data').mkdir(exist_ok=True)
+    for symbol in api['symbols']:
+        symbol['json_url'] = base + 'api-data/' + symbol['name'].lower() + '.json'
+        (output / 'api-data' / (symbol['name'].lower() + '.json')).write_text(json.dumps({'version': version, 'source_revision': ref, **symbol}, ensure_ascii=False, indent=2))
+    (output / 'api-reference.json').write_text(json.dumps(api, ensure_ascii=False, indent=2))
     records, full = [], []
     for index, (slug, title, group, source) in enumerate(PAGES):
         text = api_index(ref) if source == '@api' else (ROOT / source).read_text()
         if text.count('```') % 2:
             raise ValueError('Unbalanced fences in ' + source)
         effective_source = source if source != '@api' else 'site/content/api.md'
-        md = markdown.Markdown(extensions=['fenced_code', 'tables', 'toc', 'sane_lists'])
+        md = markdown.Markdown(extensions=['fenced_code', 'tables', 'toc', 'sane_lists', 'md_in_html'])
         body = md.convert(text)
         rewrite = LinkRewriter(effective_source, base, ref)
         rewrite.feed(body)
@@ -191,7 +177,7 @@ def build(output, base='/like/', origin='https://ajayjasperj.github.io'):
         'pages': [{k: v for k, v in x.items() if k != 'text'} for x in records]}, indent=2))
     llms = f'# LIKE documentation\n\n> Flutter networking, caching, offline replay and state coordination.\n\nSource version: {version}; revision: {ref}.\n\nRequires Flutter >=3.44.1 and Dart >=3.12.\nSource presence does not imply pub.dev publication.\n\n## Read first\n\n- Inject LikeHttpClient into services; repositories depend on contracts.\n- Set stable session scope after login; propagate cancellation and dispose owned resources.\n- Auth and durable replay require explicit request flags. Queued is not acknowledged.\n- Diagnostic redaction does not encrypt caches or secure a compromised device.\n- This is not a browser engine; CORS and platform restrictions apply.\n\n## Guides\n\n'
     llms += '\n'.join(f'- [{x["title"]}]({origin}{x["markdown"]}): {x["group"]}' for x in records)
-    llms += f'\n\nFull context: {origin}{base}llms-full.txt\nBuild manifest: {origin}{base}manifest.json\n'
+    llms += f'\n\nFull context: {origin}{base}llms-full.txt\nStructured API: {origin}{base}api-reference.json\nBuild manifest: {origin}{base}manifest.json\n'
     (output / 'llms.txt').write_text(llms)
     (output / 'llms-full.txt').write_text(llms + ''.join(full))
     (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join('<url><loc>' + html.escape(origin + x['url']) + '</loc></url>' for x in records) + '</urlset>')
