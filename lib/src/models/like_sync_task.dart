@@ -66,11 +66,11 @@ class LikeAdHocSyncTask extends LikeSyncTask {
   LikeAdHocSyncTask({
     required this.id,
     this.priority = LikeSyncPriority.normal,
-    required Future<void> Function() action,
+    required this._action,
     this.endpoint,
     this.retryOnError = true,
     this.isRecovery = false,
-  }) : _action = action;
+  });
 
   @override
   Future<void> run() => _action();

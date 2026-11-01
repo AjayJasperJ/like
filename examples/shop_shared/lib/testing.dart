@@ -1,6 +1,8 @@
 // Deterministic repository fixture for adapter and end-to-end UI tests.
 // Production entry points never import this library.
 import 'shop_shared.dart';
+import 'package:like/testing.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 final class FixtureShopRepository implements ShopRepository {
   static const item = Product(
@@ -79,4 +81,13 @@ final class FixtureShopRepository implements ShopRepository {
   void dispose() {
     disposed = true;
   }
+}
+
+/// Cleanup for the isolated live native repository integration test.
+Future<void> closeLiveShopTestResources() async {
+  LikeOfflineSyncManager().dispose();
+  LikeClient().dispose();
+  LikeConnectivityManager().dispose();
+  await Future<void>.delayed(Duration.zero);
+  await Hive.close();
 }

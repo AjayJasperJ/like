@@ -32,6 +32,11 @@ jobs:
         run: |
           flutter pub get
           flutter test
+      - name: Resolve and test server dependencies
+        working-directory: server
+        run: |
+          dart pub get
+          dart test
       - run: flutter analyze
       - name: Clean temporary SDK
         if: always()

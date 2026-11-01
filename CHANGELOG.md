@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Browser filesystem guards, IndexedDB cleanup and deterministic WebSocket reconnect tests.
 
 ### Migration
+- Requires Dart 3.12 / Flutter 3.44.1 or newer, matching the dependency floor.
 - Explicitly set LikeSessionScope for protected account data. Unscoped protected requests do not cache or queue.
 - Legacy ownerless offline operations remain blocked for review; idempotency requires backend support.
 - Redaction affects diagnostic copies only. Application data and image caches are not encrypted by this package.

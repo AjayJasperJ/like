@@ -44,6 +44,7 @@ final class GeneratedApi {
           FixtureItem.fromJson(Map<String, dynamic>.from(response.data as Map)),
     );
   }
+
   Future<ApiResult<FixtureItem>> createItem({
     CancelToken? cancelToken,
     required FixtureItem body,

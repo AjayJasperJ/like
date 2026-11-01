@@ -48,22 +48,44 @@ void main() {
       expect(result.data!.toJson()['title'], 'Fixture');
     },
   );
-  test('generated mutations map bodies and explicit invalidation policies', () async {
-    final http = _Http();
-    registerFallbackValue(const LikeRequestConfig());
-    when(() => http.post('/items', withAuth: true,
-      requestConfig: any(named: 'requestConfig'), body: any(named: 'body')))
-      .thenAnswer((_) async => LikeApiResult.success(Response(
-        requestOptions: RequestOptions(path: '/items'),
-        data: {'id': 9, 'title': 'Created', 'price': 3})));
-    final result = await GeneratedApi(http).createItem(
-      body: const FixtureItem(id: 0, title: 'New', price: 3));
-    expect(result.data!.id, 9);
-    final captured = verify(() => http.post('/items', withAuth: true,
-      requestConfig: captureAny(named: 'requestConfig'), body: captureAny(named: 'body'))).captured;
-    expect(captured.whereType<LikeRequestConfig>().single.invalidates, ['items']);
-    final body = captured.whereType<Map>().single;
-    expect(body.containsKey('note'), isFalse);
-    expect(body['title'], 'New');
-  });
+  test(
+    'generated mutations map bodies and explicit invalidation policies',
+    () async {
+      final http = _Http();
+      registerFallbackValue(const LikeRequestConfig());
+      when(
+        () => http.post(
+          '/items',
+          withAuth: true,
+          requestConfig: any(named: 'requestConfig'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => LikeApiResult.success(
+          Response(
+            requestOptions: RequestOptions(path: '/items'),
+            data: {'id': 9, 'title': 'Created', 'price': 3},
+          ),
+        ),
+      );
+      final result = await GeneratedApi(
+        http,
+      ).createItem(body: const FixtureItem(id: 0, title: 'New', price: 3));
+      expect(result.data!.id, 9);
+      final captured = verify(
+        () => http.post(
+          '/items',
+          withAuth: true,
+          requestConfig: captureAny(named: 'requestConfig'),
+          body: captureAny(named: 'body'),
+        ),
+      ).captured;
+      expect(captured.whereType<LikeRequestConfig>().single.invalidates, [
+        'items',
+      ]);
+      final body = captured.whereType<Map>().single;
+      expect(body.containsKey('note'), isFalse);
+      expect(body['title'], 'New');
+    },
+  );
 }

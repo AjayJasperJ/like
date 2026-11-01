@@ -218,14 +218,13 @@ class LikeOfflineSyncInterceptor extends Interceptor {
 
   LikeOfflineSyncInterceptor({
     required this.dio,
-    required Box queueBox,
+    required this._queueBox,
     this.authConfig,
     this.codec = const DefaultLikeReplayCodec(),
     this.autoSchedule = false,
     LikeSessionScope Function()? currentSession,
     FutureOr<void> Function(String path)? notifyRefresh,
   }) : currentSession = currentSession ?? (() => const LikeSessionScope()),
-       _queueBox = queueBox,
        _notifyRefresh =
            notifyRefresh ?? ((path) => LikeClient().notifyRefresh(path)) {
     if (autoSchedule) {

@@ -30,6 +30,10 @@ jobs:
       - run: flutter test
       - name: Analyze package and legacy example
         run: |
+          cd server
+          dart pub get
+          dart test
+          cd ..
           cd example
           flutter pub get
           cd ..

@@ -13,3 +13,5 @@ for state in provider riverpod bloc; do
   flutter pub get
   flutter test integration_test/flow_test.dart -d "$device_id"
 done
+cd "$repo_root/examples/provider_app"
+flutter test integration_test/live_api_test.dart -d "$device_id"

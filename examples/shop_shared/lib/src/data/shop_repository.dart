@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -206,18 +207,24 @@ final class PublicShopRepository implements ShopRepository {
   void dispose() => closeClient();
 }
 
+const shopApiOrigin = 'https://dummyjson.com';
+Map<String, String> get shopApiHeaders => {
+  'Accept': 'application/json',
+  if (!kIsWeb) 'User-Agent': 'Mozilla/5.0 LIKE-Public-Demo/1.0',
+};
+
 Future<ShopRepository> createShopRepository(String projectName) async {
   await LikeService.init(
     config: LikeConfig(
       projectName: projectName,
-      baseUrl: 'https://dummyjson.com',
+      baseUrl: shopApiOrigin,
       supportWeb: true,
       withAuthByDefault: false,
       enableLogging: false,
     ),
   );
   final client = LikeClient.scoped(
-    const LikeClientConfig(baseUrl: 'https://dummyjson.com'),
+    LikeClientConfig(baseUrl: shopApiOrigin, defaultHeaders: shopApiHeaders),
   );
   final box = await Hive.openBox<dynamic>('${projectName}_cart');
   return PublicShopRepository(
