@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Report direct dependency SDK requirements
         run: python3 tool/dependency_floors.py
       - name: Install documented minimum SDK temporarily
