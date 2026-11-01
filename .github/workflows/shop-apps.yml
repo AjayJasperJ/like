@@ -27,7 +27,7 @@ jobs:
           git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/shop-flutter"
           echo "$RUNNER_TEMP/shop-flutter/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/shop-flutter/bin/flutter" config --no-analytics
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
