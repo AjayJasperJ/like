@@ -19,20 +19,35 @@ jobs:
             const active = new Set(['queued', 'in_progress', 'pending', 'waiting', 'requested']);
             const heavy = new Set(['ci.yml', 'minimum-sdk.yml', 'native-checks.yml', 'device-flows.yml', 'shop-apps.yml']);
             const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {...context.repo, per_page: 100});
+            const latestDocs = runs.filter(run => run.path.endsWith('/documentation.yml') && run.head_branch === 'main').sort((a, b) => b.id - a.id)[0];
+            const targets = [];
             let cancelled = 0;
             for (const run of runs) {
               if (run.id === context.runId || !active.has(run.status)) continue;
               const file = run.path.split('/').pop();
               const automatic = run.event === 'pull_request' || (run.event === 'push' && run.head_branch === 'main');
               const obsoleteHeavy = heavy.has(file) && automatic;
-              const obsoleteDocs = file === 'documentation.yml' && automatic && run.head_sha !== context.sha;
+              const obsoleteDocs = file === 'documentation.yml' && automatic && run.id !== latestDocs?.id;
               if (!obsoleteHeavy && !obsoleteDocs) continue;
               try {
                 await github.rest.actions.cancelWorkflowRun({...context.repo, run_id: run.id});
                 cancelled++;
+                targets.push(run.id);
                 core.info(`Cancellation requested: ${run.id} ${run.name} (${run.head_branch})`);
               } catch (error) {
                 if (error.status === 409 || error.status === 422) core.info(`Run ${run.id} already finishing: ${error.status}`);
+                else throw error;
+              }
+            }
+            if (targets.length) await new Promise(resolve => setTimeout(resolve, 15000));
+            for (const id of targets) {
+              const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: id});
+              if (!active.has(run.status)) continue;
+              try {
+                await github.request('POST /repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel', {...context.repo, run_id: id});
+                core.info(`Forced cancellation of unresponsive obsolete run: ${id}`);
+              } catch (error) {
+                if (error.status === 409 || error.status === 422) core.info(`Run ${id} already finishing: ${error.status}`);
                 else throw error;
               }
             }
