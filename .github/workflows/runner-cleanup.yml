@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Cancel stale automatic tests and superseded documentation runs
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const active = new Set(['queued', 'in_progress', 'pending', 'waiting', 'requested']);
