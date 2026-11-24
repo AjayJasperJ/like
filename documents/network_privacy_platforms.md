@@ -33,7 +33,6 @@ LikeConfig(
     connected: (message) => showAppToast(message),
     disconnected: (message) => showAppToast(message),
     slowInternet: (message) => showAppToast(message),
-    resync: (message, progress) => showSyncProgress(message, progress),
   ),
 );
 ```
@@ -47,6 +46,11 @@ messenger key. Without a messenger or callback, no notification is shown. Set
 `Like(showSlowInternetToasts: false, child: app)` to disable slow notifications
 without disabling measurements or connectivity notifications. Custom monitors
 remain caller-owned and do not feed this shared root notification hook.
+
+`LikeToastConfig.resync`, `cacheUse`, and `swrUse` are compatibility fields in
+2.4.0 and are not dispatched automatically. Use `LikeNotifierState.resyncState`
+and the cache/SWR provenance flags on `LikeStateResponse` for application-owned
+feedback.
 
 ## Redaction before diagnostic publication
 

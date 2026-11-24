@@ -231,8 +231,8 @@ origin restorations schedule refreshes. Dispose owned queries and subscriptions.
 Existing notifier-based UI helpers remain available:
 
 - `LikeBuilder` and `LikeSliverBuilder`: render a notifier's lifecycle states.
-- `LikeSelector` and `LikeSelectorSliver`: select part of a provider's state.
-- `LikeMultiBuilder` and `LikeMultiSliverBuilder`: combine multiple states.
+- `LikeStateResponseBuilder` and `LikeStateResponseBuilderSliver`: render an
+  immutable response snapshot.
 - `LikeWhen`: render an existing `LikeStateResponse` snapshot.
 - `updateNotifier`: configurable action feedback and haptics.
 - `likeWhenNotifier`: manually controlled side effects without built-in toast feedback.
@@ -365,17 +365,17 @@ root's `toastConfig`:
 final notifications = LikeToastConfig(
   connected: (message) => showAppToast(message),
   disconnected: (message) => showAppToast(message),
-  resync: (message, progress) => showSyncProgress(message, progress),
+  slowInternet: (message) => showAppToast(message),
   actionQueued: (message) => showAppToast(message),
-  cacheUse: (message) => showAppToast(message),
-  swrUse: (message) => showAppToast(message),
 );
 ```
 
 The functions above are application callbacks. A custom callback replaces LIKE's
 built-in feedback for its event. Configure callbacks when wrapping MaterialApp,
 using your app's messenger key or toast service; default ScaffoldMessenger
-notifications require a suitable ancestor context.
+notifications require a suitable ancestor context. `resync`, `cacheUse`, and
+`swrUse` remain reserved configuration fields in 2.4.0 and are not dispatched
+automatically by runtime flows.
 
 ### Slow API-path detection
 

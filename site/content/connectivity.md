@@ -26,10 +26,7 @@ final config = LikeConfig(
     connected: (message) => showAppToast(message),
     disconnected: (message) => showAppToast(message),
     slowInternet: (message) => showAppToast(message),
-    resync: (message, progress) => showSyncProgress(message, progress),
     actionQueued: (message) => showAppToast(message),
-    cacheUse: (message) => showAppToast(message),
-    swrUse: (message) => showAppToast(message),
   ),
 );
 ```
@@ -39,6 +36,12 @@ A custom event callback replaces default feedback. When wrapping MaterialApp,
 use a callback connected to your app messenger key/toast service. The built-in
 slow warning needs a ScaffoldMessenger ancestor; without it or a callback it is
 silent rather than throwing.
+
+In 2.4.0, `resync`, `cacheUse`, and `swrUse` remain part of the configuration
+surface for compatibility, but runtime flows do not dispatch them automatically.
+Observe `LikeNotifierState.resyncState` for resynchronization progress and inspect
+`LikeStateResponse.isFromCache`, `isFrom304`, and
+`isFromStaleWhileRevalidate` when application UI needs those signals.
 
 ## Slow-internet trigger
 

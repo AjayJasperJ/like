@@ -9,11 +9,11 @@ Thank you for contributing to the **Link Intelligent Kernel Engine (LIKE)**. To 
 ## 🏗️ Design Philosophy
 
 1.  **Strict 4-Tier Separation**:
-    *   **UI Layer**: Presentation only (`LikeBuilder`, `LikeSelector`, etc.).
+    *   **UI Layer**: Presentation only (`LikeBuilder`, `LikeSliverBuilder`, `LikeWhen`).
     *   **Provider Layer**: State holding and asynchronous orchestration (`ChangeNotifier` + `LikeNotifierState`).
     *   **Repository Layer**: Business mapping, query building, and thin forwarding.
     *   **Service Layer**: Network client orchestration (`LikeClient`, raw HTTP, intercepts).
-2.  **Context-Agnostic Core**: Keep core engine logic fully decoupled from Flutter's `BuildContext` to guarantee pure unit-testability. Use managers and static delegates (like `LikeToastManager`) for UI-level side effects.
+2.  **Context-Agnostic Core**: Keep core engine logic fully decoupled from Flutter's `BuildContext` to guarantee pure unit-testability. Keep UI-level side effects in widgets or application-owned callbacks.
 3.  **L1 · L2 · SWR Caching**: Every fetch must respect the multi-tier caching system (L1 RAM -> L2 Hive Box -> background SWR revalidation -> ETag/304 negotiation) to maximize responsiveness and minimize cellular bandwidth.
 4.  **No Main-Thread Jank**: Always delegate payload parsing to background isolates using `.mapAsync()` for payloads larger than 100 KB.
 5.  **Reactive State Contracts**: Never expose raw domain models directly from providers to the UI. Always wrap state in a `LikeNotifierState` or `LikeStateResponse` to handle `loading`, `refreshing`, `success`, `error`, and `staleWhileRevalidate` states out-of-the-box.
@@ -31,14 +31,14 @@ Thank you for contributing to the **Link Intelligent Kernel Engine (LIKE)**. To 
     Future<LikeApiResult<User>> getUser(String id) =>
         _service.getUser(id).mapAsync(User.fromJson);
     ```
-*   **Provider**: Inherits from `ChangeNotifier` with `LikeAutoReconnectMixin` and updates a `LikeNotifierState<T>`.
-*   **UI**: Observes state using highly localized `LikeBuilder<T>`, `LikeSelector<N, T>`, or `LikeMultiBuilder` widgets.
+*   **Provider**: Inherits from `ChangeNotifier` with `LikeStateMixin` and updates a `LikeNotifierState<T>`.
+*   **UI**: Observes notifier state using a localized `LikeBuilder<T>` or `LikeSliverBuilder<T>`.
 
 ### 2. The Gold Standard Notifier (Provider)
 New state notifiers must follow this zero-boilerplate pattern:
 
 ```dart
-class UserNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
+class UserNotifier extends ChangeNotifier with LikeStateMixin {
   final _repo = UserRepository();
 
   // 1. Reactive state with auto-pipeline serialization mapper
@@ -67,8 +67,8 @@ class UserNotifier extends ChangeNotifier with LikeAutoReconnectMixin {
 Do not introduce custom stateful builder bindings. Always leverage LIKE's optimized widget suite:
 *   `LikeBuilder<T>`: Subscribes directly to states.
 *   `LikeSliverBuilder<T>`: For CustomScrollViews.
-*   `LikeSelector<N, T>`: For rebuilding a widget only when a selected property of a state changes.
-*   `LikeMultiBuilder`: For combining multiple concurrent states.
+*   `LikeStateResponseBuilder<T>`: Renders an immutable response snapshot.
+*   `LikeStateResponseBuilderSliver<T>`: Sliver equivalent for response snapshots.
 *   `LikeWhen<T>`: Pattern-matching shorthand.
 
 ---
