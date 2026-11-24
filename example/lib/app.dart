@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:like/like.dart';
+import 'package:like_devtool/like_devtool.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants/app_constants.dart';
@@ -24,6 +25,7 @@ class LikeServerApp extends StatelessWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
       home: Like(
+        devTool: (child) => LikeDevTool(child: child),
         child: Consumer<AuthProvider>(
           builder: (_, auth, _) {
             if (auth.initializing) {

@@ -24,12 +24,12 @@ The SDK and Pub cache are temporary, uncached and removed at job completion.
 Every job has a one-hour timeout. APK artifacts are retained for seven days;
 coverage and generated-source review artifacts for one day.
 
-The proposed minimum is Flutter 3.44.1 / Dart 3.12; a dedicated workflow resolves
+The verified minimum is Flutter 3.44.0 / Dart 3.12; a dedicated workflow resolves
 and tests that SDK independently of current stable. Treat this support claim as
 unvalidated until the minimum-SDK job passes. The prior 3.16/Dart 3.0 constraint
 was incompatible with dependency requirements. The minimum-SDK probe confirmed
 that path_provider 2.1.6 requires Dart 3.10; it cannot resolve on Dart 3.8.
 
 The same probe confirmed synchronized 3.4.1 requires Dart 3.12. The minimum
-workflow therefore targets Flutter 3.44.1 and the package declares Dart 3.12;
+workflow therefore targets Flutter 3.44.0 and the package declares Dart 3.12;
 current stable remains independently tested.

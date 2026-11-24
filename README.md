@@ -69,7 +69,7 @@ and the independent `Like.showSlowInternetToasts` toggle.
 
 ## Installation
 
-The 2.4.0 source requires **Flutter 3.44.1 / Dart 3.12 or newer**.
+The 2.4.x source requires **Flutter 3.44.0 / Dart 3.12 or newer**.
 
 For the latest published version:
 
@@ -505,7 +505,7 @@ physical device, and Chrome coverage does not establish Safari/Firefox parity.
 Browser CORS, TLS, storage quotas and background timer limits still apply.
 Native certificate pinning cannot override browser certificate policy.
 
-CI tests minimum Flutter 3.44.1 separately from current stable. Device jobs use
+CI tests minimum Flutter 3.44.0 separately from current stable. Device jobs use
 bounded startup recovery only before tests connect; assertion failures are not
 retried. Temporary downloaded SDKs/dependency caches are cleaned at completion,
 with one-hour job limits and disposable hosted runners.

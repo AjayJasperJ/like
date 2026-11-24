@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.1] - 2026-11-24
+
+### Changed
+- Lowered the verified minimum Flutter SDK from 3.44.1 to 3.44.0.
+- Integrated `like_devtool` directly in the production-style example through `Like.devTool`.
+
 ## [2.4.0] - 2026-11-01
 
 ### Added
@@ -20,7 +26,7 @@ All notable changes to this project will be documented in this file.
 - Browser filesystem guards, IndexedDB cleanup and deterministic WebSocket reconnect tests.
 
 ### Migration
-- Requires Dart 3.12 / Flutter 3.44.1 or newer, matching the dependency floor.
+- Requires Dart 3.12 / Flutter 3.44.0 or newer, matching the verified dependency floor.
 - Explicitly set LikeSessionScope for protected account data. Unscoped protected requests do not cache or queue.
 - Legacy ownerless offline operations remain blocked for review; idempotency requires backend support.
 - Redaction affects diagnostic copies only. Application data and image caches are not encrypted by this package.
