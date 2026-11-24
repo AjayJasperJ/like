@@ -24,5 +24,12 @@ linter:
     - use_rethrow_when_possible
 
 analyzer:
+  errors:
+    # Flutter 3.50 deprecates material.dart in favor of the new material_ui
+    # package. Keep the established import while this package supports older
+    # Flutter SDKs where material_ui is unavailable.
+    deprecated_member_use: ignore
   exclude:
     - examples/**
+    - build/**
+    - linux/**

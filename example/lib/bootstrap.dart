@@ -19,15 +19,13 @@ Future<void> bootstrap() async {
       compactApiLogs: false,
       receiveTimeout: AppConstants.requestTimeout,
       toastConfig: LikeToastConfig(
-        connected: (message) {
-          debugPrint('CUSTOM CONNECTED HANDLER: $message');
-        },
-        disconnected: (message) {
-          debugPrint('CUSTOM DISCONNECTED HANDLER: $message');
-        },
-        resync: (message, progress) {
-          debugPrint('CUSTOM RESYNC HANDLER: $message ($progress)');
-        },
+        connected: (message) {},
+        disconnected: (message) {},
+        resync: (message, progress) {},
+        cacheUse: (message) {},
+        slowInternet: (message) {},
+        actionQueued: (message) {},
+        swrUse: (message) {},
       ),
     ),
   );

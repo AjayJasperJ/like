@@ -1,1 +1,10 @@
+analyzer:
+  errors:
+    # Keep the example compatible with Flutter versions that predate the
+    # standalone material_ui package introduced by newer stable SDKs.
+    deprecated_member_use: ignore
+  exclude:
+    - build/**
+    - web/**
+    - linux/**
 include: package:flutter_lints/flutter.yaml

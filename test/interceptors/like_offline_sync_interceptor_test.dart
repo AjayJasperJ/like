@@ -5,6 +5,8 @@ import 'package:like/like.dart' show LikeOfflineTaskStatus;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:like/src/interceptors/like_offline_sync_interceptor.dart';
+import 'package:like/src/core/like_config.dart';
+import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -46,7 +48,43 @@ void main() {
     await queue.close();
     await Hive.deleteBoxFromDisk('offline_interceptor_test');
     await LikeConnectivityManager().reset();
+    LikeConstants.reset();
   });
+
+  test(
+    'actionQueued hook fires after an eligible mutation is persisted',
+    () async {
+      final messages = <String>[];
+      LikeConstants.apply(
+        LikeConstants.current.copyWith(
+          toastConfig: LikeToastConfig(actionQueued: messages.add),
+        ),
+      );
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        throw DioException(
+          requestOptions:
+              invocation.positionalArguments.first as RequestOptions,
+          type: DioExceptionType.connectionError,
+        );
+      });
+
+      await expectLater(
+        dio.post<void>(
+          'clients',
+          data: <String, Object>{'name': 'Queued client'},
+          options: Options(extra: <String, Object>{'offlineSync': true}),
+        ),
+        throwsA(isA<DioException>()),
+      );
+
+      expect(queue, hasLength(1));
+      expect(messages, <String>[
+        'Action saved offline. Will sync when connection is restored.',
+      ]);
+    },
+  );
 
   test('another session and legacy unowned records never replay', () async {
     final task = _task(
