@@ -59,6 +59,7 @@ class LikeOfflineSyncManager {
 
   void dispose() {
     _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
     _isInitialized = false;
   }
 }

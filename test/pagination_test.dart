@@ -210,5 +210,201 @@ void main() {
       expect(
           state.items.map((e) => e.name), equals(['Item 1 Updated', 'Item 2']));
     });
+
+    test('PaginationTool.updateCursor tracks cursors and stops on repeated cursor', () {
+      final first = PaginationTool<SampleItem>.initial().updateCursor(
+        pageData: [SampleItem(id: 1, name: 'A')],
+        append: false,
+        cursor: null,
+        nextCursor: 'c2',
+        limit: 1,
+      );
+      expect(first.isCursorMode, isTrue);
+      expect(first.hasMore, isTrue);
+      expect(first.nextCursor, 'c2');
+
+      final second = first.updateCursor(
+        pageData: [SampleItem(id: 2, name: 'B')],
+        append: true,
+        cursor: 'c2',
+        nextCursor: 'c2',
+        limit: 1,
+      );
+      expect(second.items?.map((e) => e.id), [1, 2]);
+      expect(second.hasMore, isFalse);
+    });
+
+    test('PaginatedNotifierState.loadCursor and loadNextCursor handle cursor pages', () async {
+      final state = PaginatedNotifierState<SampleItem>(pageSize: 1);
+      addTearDown(state.dispose);
+
+      await state.loadCursor(
+        action: (cursor, limit) async {
+          expect(cursor, isNull);
+          return ApiResult.success(
+            PaginationTool<SampleItem>(
+              cursorBased: true,
+              nextCursor: 'cursor-2',
+              listData: [SampleItem(id: 1, name: 'First')],
+            ),
+          );
+        },
+      );
+      expect(state.isCursorMode, isTrue);
+      expect(state.nextCursor, 'cursor-2');
+      expect(state.hasMore, isTrue);
+
+      await state.loadNextCursor(
+        action: (cursor, limit) async {
+          expect(cursor, 'cursor-2');
+          return ApiResult.success(
+            PaginationTool<SampleItem>(
+              cursorBased: true,
+              cursor: cursor,
+              nextCursor: null,
+              listData: [SampleItem(id: 2, name: 'Second')],
+            ),
+          );
+        },
+      );
+      expect(state.items.map((e) => e.name), ['First', 'Second']);
+      expect(state.currentCursor, 'cursor-2');
+      expect(state.nextCursor, isNull);
+      expect(state.hasMore, isFalse);
+    });
+
+    test(
+        'cursor pagination honors 3-parameter combinations: current cursor, next cursor, hasMore',
+        () async {
+      final state = PaginatedNotifierState<SampleItem>(pageSize: 2);
+      addTearDown(state.dispose);
+
+      // Case 1: Initial load with current='c1', next='c2', hasMore=true
+      await state.loadCursor(
+        action: (cursor, limit) async {
+          expect(cursor, isNull);
+          expect(limit, 2);
+          return ApiResult.success(
+            PaginationTool<SampleItem>(
+              cursorBased: true,
+              cursor: 'c1',
+              nextCursor: 'c2',
+              hasNextOverride: true,
+              listData: [
+                SampleItem(id: 1, name: 'A'),
+                SampleItem(id: 2, name: 'B'),
+              ],
+            ),
+          );
+        },
+      );
+      expect(state.currentCursor, 'c1');
+      expect(state.nextCursor, 'c2');
+      expect(state.hasMore, isTrue);
+      expect(state.items.map((e) => e.id), [1, 2]);
+
+      // Case 2: hasMore=false overrides non-null nextCursor and stops loadNextCursor
+      var nextCalls = 0;
+      await state.loadNextCursor(
+        action: (cursor, limit) async {
+          nextCalls++;
+          expect(cursor, 'c2');
+          return ApiResult.success(
+            PaginationTool<SampleItem>(
+              cursorBased: true,
+              cursor: 'c2',
+              nextCursor: 'c3',
+              hasNextOverride: false,
+              listData: [SampleItem(id: 3, name: 'C')],
+            ),
+          );
+        },
+      );
+      expect(nextCalls, 1);
+      expect(state.currentCursor, 'c2');
+      expect(state.nextCursor, 'c3');
+      expect(state.hasMore, isFalse);
+      expect(state.items.map((e) => e.id), [1, 2, 3]);
+
+      // Subsequent loadNextCursor must be a no-op because hasMore is false
+      await state.loadNextCursor(
+        action: (cursor, limit) async {
+          nextCalls++;
+          return ApiResult.success(const <SampleItem>[]);
+        },
+      );
+      expect(nextCalls, 1);
+
+      // Case 3: Refresh resets cursor state and replaces items
+      await state.loadCursor(
+        refresh: true,
+        action: (cursor, limit) async {
+          expect(cursor, isNull);
+          return ApiResult.success(
+            PaginationTool<SampleItem>(
+              cursorBased: true,
+              cursor: 'fresh-1',
+              nextCursor: 'fresh-2',
+              hasNextOverride: true,
+              listData: [SampleItem(id: 10, name: 'Fresh')],
+            ),
+          );
+        },
+      );
+      expect(state.currentCursor, 'fresh-1');
+      expect(state.nextCursor, 'fresh-2');
+      expect(state.hasMore, isTrue);
+      expect(state.items.map((e) => e.id), [10]);
+    });
+
+    test(
+        'cursor pagination preserves current/next cursors on loadNextCursor failure and stops on repeated cursor',
+        () async {
+      final state = PaginatedNotifierState<SampleItem>(pageSize: 1);
+      addTearDown(state.dispose);
+
+      await state.loadCursor(
+        action: (cursor, limit) async => ApiResult.success(
+          PaginationTool<SampleItem>(
+            cursorBased: true,
+            cursor: 'c1',
+            nextCursor: 'c2',
+            hasNextOverride: true,
+            listData: [SampleItem(id: 1, name: 'A')],
+          ),
+        ),
+      );
+
+      // Failed loadNextCursor keeps existing items and cursors intact
+      await state.loadNextCursor(
+        action: (cursor, limit) async => ApiResult<PaginationTool<SampleItem>>.error(
+          LikeError(message: 'Network error', type: LikeApiErrorType.network),
+        ),
+      );
+      expect(state.items.map((e) => e.id), [1]);
+      expect(state.currentCursor, 'c1');
+      expect(state.nextCursor, 'c2');
+      expect(state.hasMore, isTrue);
+      expect(state.loadMoreError?.message, 'Network error');
+
+      // Retry succeeds, but API repeats nextCursor == cursor ('c2') -> stops pagination
+      await state.loadNextCursor(
+        action: (cursor, limit) async {
+          expect(cursor, 'c2');
+          return ApiResult.success(
+            PaginationTool<SampleItem>(
+              cursorBased: true,
+              cursor: 'c2',
+              nextCursor: 'c2',
+              hasNextOverride: true,
+              listData: [SampleItem(id: 2, name: 'B')],
+            ),
+          );
+        },
+      );
+      expect(state.items.map((e) => e.id), [1, 2]);
+      expect(state.currentCursor, 'c2');
+      expect(state.hasMore, isFalse);
+    });
   });
 }

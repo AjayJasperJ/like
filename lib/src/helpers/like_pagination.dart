@@ -61,13 +61,17 @@ class PaginationTool<T> {
       listData != null &&
       listData!.length >= resolvedPage * contentLimit!;
 
+  /// Whether this pagination instance is operating in cursor mode.
+  bool get isCursorMode =>
+      cursorBased || cursor != null || nextCursor != null;
+
   /// Uses cursor metadata when provided by the API.
   bool get hasMoreByCursor => nextCursor != null && nextCursor!.isNotEmpty;
 
   /// Selects a strategy based only on metadata supplied by the API.
   bool get hasMore {
     if (hasNextOverride != null) return hasNextOverride!;
-    if (cursorBased || cursor != null || nextCursor != null) {
+    if (isCursorMode) {
       return hasMoreByCursor;
     }
     if (totalContent != null) return hasMoreByTotal;
@@ -137,9 +141,41 @@ class PaginationTool<T> {
       cursorBased:
           cursorBased ||
           cursor != null ||
+          nextCursor != null ||
           this.cursor != null ||
           this.nextCursor != null,
       listData: data,
+    );
+  }
+
+  /// Returns pagination updated from a cursor-based fetch.
+  ///
+  /// When [append] is `false`, resets page tracking to `1` and replaces
+  /// existing items. When [nextCursor] repeats [cursor], [hasNext] is forced
+  /// to `false` to prevent infinite cursor loops.
+  PaginationTool<T> updateCursor({
+    required List<T> pageData,
+    required bool append,
+    String? cursor,
+    String? nextCursor,
+    int? limit,
+    int? totalContent,
+    bool? hasNext,
+    bool? hasPrevious,
+  }) {
+    final nextPageNumber = append ? resolvedPage + 1 : 1;
+    final repeatedCursor =
+        cursor != null && nextCursor != null && cursor == nextCursor;
+    return updatePage(
+      page: nextPageNumber,
+      limit: limit ?? contentLimit ?? pageData.length,
+      pageData: pageData,
+      append: append,
+      totalContent: totalContent,
+      cursor: cursor,
+      nextCursor: nextCursor,
+      hasNext: repeatedCursor ? false : hasNext,
+      hasPrevious: hasPrevious,
     );
   }
 
@@ -206,6 +242,7 @@ class PaginationTool<T> {
     int? currentContent,
     bool? hasNextOverride,
     bool? hasPreviousOverride,
+    bool? cursorBased,
     String? cursor,
     String? nextCursor,
     List<T>? listData,
@@ -218,9 +255,9 @@ class PaginationTool<T> {
     currentContent: currentContent ?? this.currentContent,
     hasNextOverride: hasNextOverride ?? this.hasNextOverride,
     hasPreviousOverride: hasPreviousOverride ?? this.hasPreviousOverride,
+    cursorBased: cursorBased ?? this.cursorBased,
     cursor: cursor ?? this.cursor,
     nextCursor: nextCursor ?? this.nextCursor,
-    cursorBased: cursorBased,
     listData: listData ?? this.listData,
   );
 

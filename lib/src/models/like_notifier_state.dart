@@ -17,10 +17,14 @@ import 'package:like/src/core/like_ars.dart';
 class LikeNotifierState<T> extends ChangeNotifier {
   /// The current state response.
   LikeStateResponse<T> _value;
+  bool _isDisposed = false;
+
+  /// Whether this state has been disposed.
+  bool get isDisposed => _isDisposed;
 
   LikeStateResponse<T> get value => _value;
   set value(LikeStateResponse<T> newValue) {
-    if (_value == newValue) return;
+    if (_isDisposed || _value == newValue) return;
     _value = newValue;
     notifyListeners();
   }
@@ -47,7 +51,7 @@ class LikeNotifierState<T> extends ChangeNotifier {
   /// This is public for custom lifecycle integrations. Most callers should use
   /// `LikeEngine.triggerResync` and `cancelResync` instead.
   set resyncState(LikeResyncState value) {
-    if (identical(_resyncState, value)) return;
+    if (_isDisposed || identical(_resyncState, value)) return;
     _resyncState = value;
     notifyListeners();
   }
@@ -125,12 +129,25 @@ class LikeNotifierState<T> extends ChangeNotifier {
     value = LikeStateResponse<T>.idle(message: message);
   }
 
+  /// Alias for [clear] that resets this state back to its initial `idle` state.
+  void toInitState({String? message}) => clear(message: message);
+
   /// Cancels the active request if running.
   void cancel([String? message]) {
     if (ct != null && !ct!.isCancelled) {
       ct!.cancel(message ?? 'Request cancelled');
     }
     ct = null;
+  }
+
+  @override
+  void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    ct?.cancel('State disposed');
+    ct = null;
+    refreshAction = null;
+    super.dispose();
   }
 }
 
@@ -172,6 +189,15 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
 
   /// Whether there are more items available according to pagination metadata or data count.
   bool get hasMore => _pagination.hasMore;
+
+  /// Current cursor used for the most recently loaded page, if any.
+  String? get currentCursor => _pagination.cursor;
+
+  /// Cursor token to request the next page, if any.
+  String? get nextCursor => _pagination.nextCursor;
+
+  /// Whether this paginated state is operating in cursor-based mode.
+  bool get isCursorMode => _pagination.isCursorMode;
 
   /// Whether a load-more operation is currently in progress.
   bool get isLoadingMore =>
@@ -354,6 +380,133 @@ class PaginatedNotifierState<T> extends NotifierState<List<T>> {
       ars: ars,
       itemExtractor: itemExtractor,
     );
+  }
+
+  /// All-in-one cursor-based paginated data loader.
+  ///
+  /// Pass [cursor] as `null` (or `refresh: true`) to load/refresh from the start,
+  /// or pass a non-null [cursor] to append the next slice.
+  Future<void> loadCursor({
+    required Future<dynamic> Function(String? cursor, int limit) action,
+    String? cursor,
+    bool refresh = false,
+    LikeEngine? engine,
+    LikeARS? ars,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) async {
+    final isFirstPage = refresh || cursor == null;
+    if (!isFirstPage && (!hasMore || isLoadingMore)) return;
+
+    final targetState = isFirstPage ? this : loadMoreState;
+    final activeEngine = engine ?? _ownedEngine;
+    final nextPageNumber = isFirstPage ? 1 : _pagination.resolvedPage + 1;
+
+    final effectiveARS =
+        ars ??
+        LikeARS(
+          refresh: isFirstPage && (refresh || value.data != null),
+          checkAvailability: !isFirstPage,
+          visibility: true,
+        );
+
+    await activeEngine.fetchResult<List<T>>(
+      state: targetState,
+      autoResync: isFirstPage,
+      ars: effectiveARS,
+      action: () async {
+        final result = await action(isFirstPage ? null : cursor, pageSize);
+
+        if (result is ApiResult) {
+          if (result.isSuccess) {
+            final payload = result.data;
+            _applyCursorResultPayload(
+              payload: payload,
+              page: nextPageNumber,
+              cursor: isFirstPage ? null : cursor,
+              isFirstPage: isFirstPage,
+              itemExtractor: itemExtractor,
+            );
+            return ApiResult.success(items);
+          } else {
+            return ApiResult.error(
+              result.error ??
+                  LikeError(
+                    message: 'Could not load cursor page',
+                    type: LikeApiErrorType.unknown,
+                  ),
+            );
+          }
+        }
+
+        _applyCursorResultPayload(
+          payload: result,
+          page: nextPageNumber,
+          cursor: isFirstPage ? null : cursor,
+          isFirstPage: isFirstPage,
+          itemExtractor: itemExtractor,
+        );
+        return ApiResult.success(items);
+      },
+    );
+  }
+
+  /// All-in-one trigger to load the next cursor page using [nextCursor].
+  Future<void> loadNextCursor({
+    required Future<dynamic> Function(String? cursor, int limit) action,
+    LikeEngine? engine,
+    LikeARS? ars,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) async {
+    if (!hasMore || isLoadingMore) return;
+    final cursor = _pagination.nextCursor;
+    if (cursor == null || cursor.isEmpty) return;
+    await loadCursor(
+      action: action,
+      cursor: cursor,
+      engine: engine,
+      ars: ars,
+      itemExtractor: itemExtractor,
+    );
+  }
+
+  void _applyCursorResultPayload({
+    required dynamic payload,
+    required int page,
+    required String? cursor,
+    required bool isFirstPage,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) {
+    if (payload is PaginationTool<T>) {
+      final repeatedCursor =
+          cursor != null &&
+          payload.nextCursor != null &&
+          cursor == payload.nextCursor;
+      applyPageData(
+        page: page,
+        data: payload.items ?? const [],
+        isFirstPage: isFirstPage,
+        totalPages: payload.totalPages,
+        totalContent: payload.totalContent,
+        cursor: payload.cursor ?? cursor,
+        nextCursor: payload.nextCursor,
+        hasNext: repeatedCursor ? false : payload.hasNextOverride,
+        hasPrevious: payload.hasPreviousOverride,
+      );
+    } else if (payload is List<T>) {
+      applyPageData(
+        page: page,
+        data: payload,
+        isFirstPage: isFirstPage,
+        cursor: cursor,
+      );
+    } else if (itemExtractor != null) {
+      applyPageData(
+        page: page,
+        data: itemExtractor(payload),
+        isFirstPage: isFirstPage,
+        cursor: cursor,
+      );
+    }
   }
 
   void _applyResultPayload({

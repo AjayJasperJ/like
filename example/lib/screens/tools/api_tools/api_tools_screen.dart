@@ -12,7 +12,7 @@ class ApiToolsScreen extends StatefulWidget {
 }
 
 class _ApiToolsScreenState extends State<ApiToolsScreen>
-    with LikeVisibilityMixin {
+    with LikeScreenMixin {
   final _status = TextEditingController(text: '200');
   final _delay = TextEditingController(text: '500');
 

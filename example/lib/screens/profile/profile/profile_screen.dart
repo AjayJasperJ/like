@@ -12,7 +12,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen>
-    with LikeVisibilityMixin {
+    with LikeScreenMixin {
   @override
   Future<void> onRecover() async {
     if (!mounted) return;

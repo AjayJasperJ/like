@@ -67,14 +67,17 @@ class LikeLogger {
   }) async {
     await _ensureInitialized();
 
-    message = LikeRedaction.message(message);
+    final redact = LikeConstants.enableRedaction;
+    if (redact) {
+      message = LikeRedaction.message(message);
+    }
     final timestampStr = DateTime.now().toIso8601String();
-    final safeDetails =
-        LikeRedaction.sanitize(
+    final safeDetails = redact
+        ? LikeRedaction.sanitize(
               details,
               sensitiveKeys: LikeConstants.current.sensitiveHeaders,
-            )
-            as Map<String, Object?>?;
+            ) as Map<String, Object?>?
+        : details;
     final entry = {
       'privacyVersion': 2,
       'timestamp': timestampStr,
@@ -105,7 +108,10 @@ class LikeLogger {
     bool? shrinkEndpointOnly,
     String? statusText,
   }) async {
-    endpoint = LikeRedaction.endpoint(endpoint);
+    final redact = LikeConstants.enableRedaction;
+    if (redact) {
+      endpoint = LikeRedaction.endpoint(endpoint);
+    }
     final shouldShrink = shrinkEndpointOnly ?? LikeConstants.compactApiLogs;
     final finalStatus = statusText ?? (success ? 'SUCCESS' : 'FAILED');
 
@@ -125,11 +131,14 @@ class LikeLogger {
         'requestHeaders': ?requestHeaders,
         'responseHeaders': ?responseHeaders,
         if (requestBody != null)
-          'requestBody': kReleaseMode ? LikeRedaction.omitted : requestBody,
+          'requestBody':
+              (redact && kReleaseMode) ? LikeRedaction.omitted : requestBody,
         'requestFields': ?requestFields,
         'requestQuery': ?requestQuery,
         if (response != null)
-          'response': LikeRedaction.apiPayload(response, release: kReleaseMode),
+          'response': redact
+              ? LikeRedaction.apiPayload(response, release: kReleaseMode)
+              : response,
         if (shouldShrink) 'shrink': true,
         'status': ?statusText,
       },
@@ -147,16 +156,18 @@ class LikeLogger {
     dynamic query,
   }) async {
     if (LikeConstants.silentApiStartLogs) return;
+    final redact = LikeConstants.enableRedaction;
 
     await log(
       level: LikeLogLevel.info,
       category: 'api',
-      message: '${LikeRedaction.endpoint(endpoint)} | STARTED',
+      message: '${redact ? LikeRedaction.endpoint(endpoint) : endpoint} | STARTED',
       details: {
         'requestId': requestId,
         'method': ?method,
         'headers': ?headers,
-        if (body != null) 'body': kReleaseMode ? LikeRedaction.omitted : body,
+        if (body != null)
+          'body': (redact && kReleaseMode) ? LikeRedaction.omitted : body,
         'fields': ?fields,
         'query': ?query,
       },

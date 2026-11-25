@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with LikeVisibilityMixin {
+class _LoginScreenState extends State<LoginScreen> with LikeScreenMixin {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();

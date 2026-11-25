@@ -14,11 +14,10 @@ class LikeMapper {
       return parser(data);
     }
 
-    // Rough estimate of size for typical JSON structures (Map/List)
-    // For simplicity, we just use compute if it's a Map or List.
-    // In production, we could check string length if it was raw JSON.
-    if (data is Map || data is List) {
-      // We use compute for mapping to models to keep the main thread smooth.
+    final thresholdBytes = thresholdKB * 1024;
+    if ((data is Map || data is List) &&
+        _exceedsThreshold(data, thresholdBytes)) {
+      // We use compute for large payloads to keep the main thread smooth.
       // Note: parser must be a top-level or static function to work with compute.
       try {
         return await compute(_parseInIsolate, _MapperTask(data, parser));
@@ -29,6 +28,36 @@ class LikeMapper {
     }
 
     return parser(data);
+  }
+
+  static bool _exceedsThreshold(dynamic value, int thresholdBytes) {
+    if (thresholdBytes <= 0) return true;
+    var estimated = 0;
+    bool visit(dynamic node, int depth) {
+      if (depth > 16) return false;
+      if (node is String) {
+        estimated += node.length + 2;
+      } else if (node is Map) {
+        estimated += 2;
+        for (final entry in node.entries) {
+          estimated += entry.key.toString().length + 4;
+          if (estimated >= thresholdBytes) return true;
+          if (visit(entry.value, depth + 1)) return true;
+        }
+      } else if (node is List) {
+        estimated += 2;
+        for (final item in node) {
+          estimated += 2;
+          if (estimated >= thresholdBytes) return true;
+          if (visit(item, depth + 1)) return true;
+        }
+      } else {
+        estimated += 8;
+      }
+      return estimated >= thresholdBytes;
+    }
+
+    return visit(value, 0);
   }
 
   static T _parseInIsolate<T>(_MapperTask<T> task) {

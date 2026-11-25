@@ -16,6 +16,7 @@ void main() {
       expect(ars.verifySSL, isTrue);
       expect(ars.deduplicate, isTrue);
       expect(ars.suppressErrors, isTrue);
+      expect(ars.skip, isFalse);
     });
 
     test('toJson should return correct map', () {

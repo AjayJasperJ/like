@@ -16,7 +16,7 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen>
-    with LikeVisibilityMixin {
+    with LikeScreenMixin {
   late ApiPost _post;
 
   @override

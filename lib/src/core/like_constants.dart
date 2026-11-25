@@ -48,6 +48,9 @@ class LikeConstants {
   /// Disables writing network and sync logs to persistent file storage.
   static bool get disableFileLogging => _config.disableFileLogging;
 
+  /// Whether diagnostic and API logs apply redaction (`LikeRedaction`).
+  static bool get enableRedaction => _config.enableRedaction;
+
   // --- Feature Flags ---
 
   /// Enables advanced debugging features and highly verbose error reporting.
@@ -64,6 +67,10 @@ class LikeConstants {
 
   /// Enables the multi-layer (Memory/Persistent) caching system.
   static bool get cacheEnabled => _config.cacheEnabled;
+
+  /// Whether authenticated (`withAuth: true`) GET requests are eligible for
+  /// caching by default.
+  static bool get cacheAuthenticatedGets => _config.cacheAuthenticatedGets;
 
   /// Enables the Stale-While-Revalidate strategy for serving cached data while fetching updates.
   static bool get staleWhileRevalidateEnabled =>

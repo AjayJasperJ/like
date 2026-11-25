@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0] - 2026-11-26
+
+### Added
+- **`LikeChangeNotifier` mixin**: Lightweight `ChangeNotifier` state management with `fetch`, `fetchResult`, `fetchResponse`, `fetchResponseResult`, `fetcher`, `keyedStates`, `paginatedStates`, `keyedResponses`, `getByKey`, `getPaginatedByKey`, `getResponseByKey`, `setResponseByKey`, `fetchResponseByKey`, `fetchResponseResultByKey`, and `toInitState`.
+- **`LikeScreenMixin`**: Unified `State` mixin combining route/tab visibility tracking (`likeRouteObserver`, `isCurrentlyVisible`, `notifyVisibility`) and connectivity/origin-reachability callbacks (`onConnectivityChanged`, `onOnline`, `onOffline`, `onOriginTransition`, `onConnectivityRestored`, `onRecover`, `onVisibleRestored`, `rebuildOnConnectivityChange`, `deferRecoveryUntilVisible`), replacing `LikeVisibilityMixin`.
+- **Cursor Pagination**: Added `PaginationTool.updateCursor` and `PaginatedNotifierState.loadCursor` / `loadNextCursor` with `docs` in `documents/cursor_pagination.md`.
+- **`LikeARS.skip`**: Short-circuits `fetcher` when `skip: true` and a prior success state with non-null data already exists.
+- **`LikeConfig.enableRedaction`** (default `true`): Controls diagnostic redaction of headers, queries, and payloads.
+- **`LikeBuilder` optimizations**: Replaced `setState` with `ValueNotifier` + `ValueListenableBuilder`, added `buildWhen` and `selector` filters, and eliminated redundant listener churn in `didUpdateWidget`.
+- **`LikeCacheImage` `borderRadius` & Web `imageBuilder`**: Added `borderRadius` clipping on both Web and Native, and enabled `imageBuilder` support in the Web `Image` fallback.
+
+### Fixed
+- **2.4.1 Audit Patches**: Fixed `LikeService.init(cacheEnabled: false)` Hive skip, ETag 304 retry on cache miss, `LikeCacheInterceptor.pruneCache` safety, `LikeAuthInterceptor` unsafe POST replay guard, `LikeEngine` `exactQueryMatch` isolation, invalidation generation check against stale cache writes, `LikeMapper` `thresholdKB` compute offload check, `LikeDiagnostics` session scope reset, `LikePagedQuery` repeated-cursor stop & stale in-flight suppression, and `cacheAuthenticatedGets: false` gating on scoped `withAuth` GETs.
+
 ## [2.4.1] - 2026-11-24
 
 ### Changed

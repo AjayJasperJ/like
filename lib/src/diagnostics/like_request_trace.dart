@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 
 enum LikeResponseSource {
   network,
@@ -68,12 +69,23 @@ class LikeDiagnostics {
   static final shared = LikeDiagnostics();
   final _events = StreamController<LikeRequestTrace>.broadcast();
   final List<LikeRequestTrace> _history = [];
+
+  /// Whether trace recording is enabled. Defaults to `false` in release builds.
+  bool enabled = !kReleaseMode;
+
+  /// Maximum number of trace entries retained in [history].
+  int maxHistory = 400;
+
   Stream<LikeRequestTrace> get stream => _events.stream;
   List<LikeRequestTrace> get history => List.unmodifiable(_history);
   void emit(LikeRequestTrace trace) {
-    if (_events.isClosed) return;
-    _history.add(trace);
-    if (_history.length > 400) _history.removeAt(0);
+    if (!enabled || _events.isClosed) return;
+    if (maxHistory > 0) {
+      _history.add(trace);
+      while (_history.length > maxHistory) {
+        _history.removeAt(0);
+      }
+    }
     _events.add(trace);
   }
 

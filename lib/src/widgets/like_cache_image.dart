@@ -73,6 +73,9 @@ class LikeCacheImage extends StatelessWidget {
   /// An optional tint color applied to the image pixels.
   final Color? color;
 
+  /// Optional border radius to clip the rendered image on both Web and Native.
+  final BorderRadiusGeometry? borderRadius;
+
   const LikeCacheImage({
     super.key,
     required this.imageUrl,
@@ -88,7 +91,13 @@ class LikeCacheImage extends StatelessWidget {
     this.fadeOutDuration = const Duration(milliseconds: 1000),
     this.normalizeUrl = true,
     this.color,
+    this.borderRadius,
   });
+
+  Widget _applyBorderRadius(Widget child) {
+    if (borderRadius == null) return child;
+    return ClipRRect(borderRadius: borderRadius!, child: child);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,43 +109,91 @@ class LikeCacheImage extends StatelessWidget {
 
     // 2. Handle Web Platform Safety (Dual-runtime fallback)
     if (kIsWeb && LikeConstants.supportWeb) {
-      return Image.network(
-        imageUrl,
-        fit: fit,
-        width: width,
-        height: height,
-        color: color,
-        errorBuilder: errorWidget != null
-            ? (context, error, stackTrace) =>
-                errorWidget!(context, imageUrl, error)
-            : null,
-        loadingBuilder: placeholder != null
-            ? (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return placeholder!(context, imageUrl);
+      final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+      final resolvedCacheWidth = memCacheWidth ??
+          (width != null && width!.isFinite ? (width! * dpr).round() : null);
+      final resolvedCacheHeight = memCacheHeight ??
+          (height != null && height!.isFinite ? (height! * dpr).round() : null);
+      final validCacheWidth =
+          resolvedCacheWidth != null && resolvedCacheWidth > 0
+              ? resolvedCacheWidth
+              : null;
+      final validCacheHeight =
+          resolvedCacheHeight != null && resolvedCacheHeight > 0
+              ? resolvedCacheHeight
+              : null;
+
+      if (imageBuilder != null) {
+        final provider = ResizeImage.resizeIfNeeded(
+          validCacheWidth,
+          validCacheHeight,
+          NetworkImage(imageUrl),
+        );
+        return _applyBorderRadius(
+          Image(
+            image: provider,
+            fit: fit,
+            width: width,
+            height: height,
+            color: color,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              if (frame == null && !wasSynchronouslyLoaded) {
+                return placeholder?.call(context, imageUrl) ??
+                    const SizedBox.shrink();
               }
-            : null,
+              return imageBuilder!(context, provider);
+            },
+            errorBuilder: errorWidget != null
+                ? (context, error, stackTrace) =>
+                    errorWidget!(context, imageUrl, error)
+                : null,
+          ),
+        );
+      }
+
+      return _applyBorderRadius(
+        Image.network(
+          imageUrl,
+          fit: fit,
+          width: width,
+          height: height,
+          cacheWidth: validCacheWidth,
+          cacheHeight: validCacheHeight,
+          color: color,
+          errorBuilder: errorWidget != null
+              ? (context, error, stackTrace) =>
+                  errorWidget!(context, imageUrl, error)
+              : null,
+          loadingBuilder: placeholder != null
+              ? (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return placeholder!(context, imageUrl);
+                }
+              : null,
+        ),
       );
     }
 
     // 3. Native Platform persistent cache with key normalization
     final cacheKey = normalizeUrl ? AppCacheUtils.normalizeUrl(imageUrl) : null;
 
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      cacheKey: cacheKey,
-      cacheManager: AppCacheManager(),
-      fit: fit,
-      width: width,
-      height: height,
-      memCacheWidth: memCacheWidth,
-      memCacheHeight: memCacheHeight,
-      fadeInDuration: fadeInDuration,
-      fadeOutDuration: fadeOutDuration,
-      imageBuilder: imageBuilder,
-      placeholder: placeholder,
-      errorWidget: errorWidget,
-      color: color,
+    return _applyBorderRadius(
+      CachedNetworkImage(
+        imageUrl: imageUrl,
+        cacheKey: cacheKey,
+        cacheManager: AppCacheManager(),
+        fit: fit,
+        width: width,
+        height: height,
+        memCacheWidth: memCacheWidth,
+        memCacheHeight: memCacheHeight,
+        fadeInDuration: fadeInDuration,
+        fadeOutDuration: fadeOutDuration,
+        imageBuilder: imageBuilder,
+        placeholder: placeholder,
+        errorWidget: errorWidget,
+        color: color,
+      ),
     );
   }
 }

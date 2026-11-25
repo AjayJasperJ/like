@@ -15,7 +15,7 @@ class PostsScreen extends StatefulWidget {
   State<PostsScreen> createState() => _PostsScreenState();
 }
 
-class _PostsScreenState extends State<PostsScreen> with LikeVisibilityMixin {
+class _PostsScreenState extends State<PostsScreen> with LikeScreenMixin {
   final _search = TextEditingController();
 
   @override

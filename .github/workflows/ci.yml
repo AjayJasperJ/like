@@ -90,7 +90,7 @@ jobs:
         working-directory: example
         run: |
           flutter pub get
-          flutter build web
+          flutter build web --release
       - name: Require committed Dart formatting
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: git diff --exit-code -- '*.dart'

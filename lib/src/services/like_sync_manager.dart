@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_logger.dart';
 import 'package:like/src/models/like_sync_task.dart';
@@ -32,7 +33,8 @@ class LikeSyncManager {
   bool _isDisposed = false;
   LikeSyncStatus _status = LikeSyncStatus.idle;
 
-  final _statusController = StreamController<LikeSyncStatus>.broadcast();
+  StreamController<LikeSyncStatus> _statusController =
+      StreamController<LikeSyncStatus>.broadcast();
   Stream<LikeSyncStatus> get statusStream => _statusController.stream;
 
   /// The current synchronization status.
@@ -41,7 +43,8 @@ class LikeSyncManager {
   int _totalTasks = 0;
   int _completedTasks = 0;
   bool _hasRecoveryTask = false;
-  final _progressController = StreamController<double>.broadcast();
+  StreamController<double> _progressController =
+      StreamController<double>.broadcast();
   Stream<double> get progressStream => _progressController.stream;
 
   /// Whether there is currently a recovery task (e.g., offline sync) in the queue.
@@ -223,11 +226,37 @@ class LikeSyncManager {
     }
   }
 
+  /// Resets the singleton manager for tests without permanently disabling it.
+  @visibleForTesting
+  Future<void> reset() async {
+    _idleTimer?.cancel();
+    _idleTimer = null;
+    await _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+    _processingFuture = null;
+    _isProcessing = false;
+    _isDisposed = false;
+    _totalTasks = 0;
+    _completedTasks = 0;
+    _hasRecoveryTask = false;
+    _status = LikeSyncStatus.idle;
+    _taskQueue.clear();
+    _pendingTasks.clear();
+    if (_statusController.isClosed) {
+      _statusController = StreamController<LikeSyncStatus>.broadcast();
+    }
+    if (_progressController.isClosed) {
+      _progressController = StreamController<double>.broadcast();
+    }
+    _init();
+  }
+
   void dispose() {
     if (_isDisposed) return;
     _isDisposed = true;
     _idleTimer?.cancel();
     _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
     _taskQueue.clear();
     _pendingTasks.clear();
     _statusController.close();

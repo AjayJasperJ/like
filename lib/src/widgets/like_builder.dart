@@ -96,6 +96,17 @@ class LikeBuilder<T> extends StatefulWidget {
   ///   interfere with the active widget build cycle.
   final void Function(LikeStateResponse<dynamic> response)? listener;
 
+  /// Optional predicate to skip rebuilding when [previous] and [next]
+  /// represent no visual change for this widget.
+  final bool Function(
+    LikeStateResponse<dynamic> previous,
+    LikeStateResponse<dynamic> next,
+  )? buildWhen;
+
+  /// Optional selector on success [T] data. When provided, consecutive
+  /// success/refreshing/SWR notifications with equal selected values skip rebuilds.
+  final Object? Function(T data)? selector;
+
   const LikeBuilder({
     super.key,
     required this.observe,
@@ -105,6 +116,8 @@ class LikeBuilder<T> extends StatefulWidget {
     this.onError,
     this.onException,
     this.listener,
+    this.buildWhen,
+    this.selector,
   });
 
   @override
@@ -113,32 +126,48 @@ class LikeBuilder<T> extends StatefulWidget {
 
 class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
   LikeStateResponse<dynamic>? _lastNotifiedResponse;
+  LikeStateResponse<dynamic>? _lastRenderedResponse;
+  Object? _lastSelectedValue;
+  bool _hasSelectedValue = false;
   Listenable? _observedListenable;
+  late ValueNotifier<LikeStateResponse<dynamic>> _responseNotifier;
 
   @override
   void initState() {
     super.initState();
-    _subscribe();
+    final rawObserved = widget.observe();
+    _responseNotifier = ValueNotifier<LikeStateResponse<dynamic>>(
+      _resolveResponse(rawObserved),
+    );
+    _syncSubscription(rawObserved);
   }
 
   @override
   void didUpdateWidget(covariant LikeBuilder<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If the widget gets updated in the tree, we unsubscribe from the old state and resubscribe to the new one.
-    _unsubscribe();
-    _subscribe();
+    final rawObserved = widget.observe();
+    final nextResponse = _resolveResponse(rawObserved);
+    final listenableChanged =
+        !identical(rawObserved is Listenable ? rawObserved : null, _observedListenable);
+    // Replace the notifier when the observed source changes or a direct snapshot updates,
+    // avoiding mutating the active ValueNotifier during the build/update phase.
+    if (listenableChanged ||
+        (rawObserved is! Listenable && nextResponse != _responseNotifier.value)) {
+      final oldNotifier = _responseNotifier;
+      _responseNotifier = ValueNotifier<LikeStateResponse<dynamic>>(nextResponse);
+      WidgetsBinding.instance.addPostFrameCallback((_) => oldNotifier.dispose());
+    }
+    _syncSubscription(rawObserved);
   }
 
   @override
   void dispose() {
     _unsubscribe();
+    _responseNotifier.dispose();
     super.dispose();
   }
 
-  /// Registers a listener on the observed state if it is a Listenable (like LikeNotifierState).
-  /// This ensures our widget rebuilds automatically whenever the state changes.
-  void _subscribe() {
-    final rawObserved = widget.observe();
+  LikeStateResponse<dynamic> _resolveResponse(dynamic rawObserved) {
     assert(
       rawObserved is Listenable || rawObserved is LikeStateResponse,
       'LikeBuilder.observe() must return either a Listenable (e.g. a LikeNotifierState) '
@@ -147,8 +176,19 @@ class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
       'Hint: use `observe: () => provider.myState` '
       'not `observe: () => provider.myState.value`.',
     );
-    if (rawObserved is Listenable) {
-      _observedListenable = rawObserved;
+    return rawObserved is LikeNotifierState
+        ? rawObserved.value
+        : rawObserved as LikeStateResponse<dynamic>;
+  }
+
+  /// Registers a listener on the observed state if it is a Listenable (like LikeNotifierState),
+  /// avoiding redundant unsubscribe/resubscribe churn when the instance is unchanged.
+  void _syncSubscription(dynamic rawObserved) {
+    final nextListenable = rawObserved is Listenable ? rawObserved : null;
+    if (identical(nextListenable, _observedListenable)) return;
+    _unsubscribe();
+    if (nextListenable != null) {
+      _observedListenable = nextListenable;
       _observedListenable!.addListener(_handleUpdate);
     }
   }
@@ -161,10 +201,30 @@ class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
     }
   }
 
-  /// Rebuilds the UI when state mutations occur.
+  /// Pushes updates to [_responseNotifier] only when the observed state (or selected slice) changed.
   void _handleUpdate() {
-    if (mounted) {
-      setState(() {});
+    if (!mounted) return;
+    final current = _observedListenable;
+    if (current is LikeNotifierState) {
+      final next = current.value;
+      final prev = _lastRenderedResponse;
+      if (prev != null) {
+        if (prev == next) return;
+        if (widget.buildWhen != null && !widget.buildWhen!(prev, next)) {
+          return;
+        }
+        if (widget.selector != null &&
+            _hasSelectedValue &&
+            prev.state == next.state &&
+            prev.isFromStaleWhileRevalidate == next.isFromStaleWhileRevalidate) {
+          final casted = _castData(next.data);
+          if (casted != null &&
+              widget.selector!(casted) == _lastSelectedValue) {
+            return;
+          }
+        }
+      }
+      _responseNotifier.value = next;
     }
   }
 
@@ -186,54 +246,63 @@ class _LikeBuilderState<T> extends State<LikeBuilder<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final rawObserved = widget.observe();
-    // Resolve the latest state response.
-    final response = rawObserved is LikeNotifierState
-        ? rawObserved.value
-        : rawObserved as LikeStateResponse<dynamic>;
+    return ValueListenableBuilder<LikeStateResponse<dynamic>>(
+      valueListenable: _responseNotifier,
+      builder: (context, response, _) {
+        _lastRenderedResponse = response;
 
-    // Handle the side-effect listener in a safe frame phase.
-    if (widget.listener != null && _lastNotifiedResponse != response) {
-      _lastNotifiedResponse = response;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.listener!(response);
-      });
-    }
-
-    final casted = _castData(response.data);
-
-    // Map each possible lifecycle state to its corresponding UI builder.
-    switch (response.state) {
-      case LikeState.idle:
-        return widget.onIdle?.call() ?? const SizedBox.shrink();
-
-      case LikeState.loading:
-        return widget.onLoading?.call() ??
-            const Center(child: CircularProgressIndicator());
-
-      case LikeState.success:
-      case LikeState.refreshing:
-      case LikeState.staleWhileRevalidate:
-        if (casted == null) {
-          throw StateError(
-            'Success/Refreshing/SWR state requires non-null data. '
-            'Expected type: $T, Received: ${response.data?.runtimeType ?? "null"}',
-          );
+        // Handle the side-effect listener in a safe frame phase.
+        if (widget.listener != null && _lastNotifiedResponse != response) {
+          _lastNotifiedResponse = response;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) widget.listener!(response);
+          });
         }
-        return widget.onSuccess(
-          casted,
-          response.state == LikeState.refreshing,
-          response.state == LikeState.staleWhileRevalidate ||
-              response.isFromStaleWhileRevalidate,
-        );
 
-      case LikeState.error:
-        return widget.onError?.call(response.error!) ?? const SizedBox.shrink();
+        final casted = _castData(response.data);
+        if (widget.selector != null && casted != null) {
+          _lastSelectedValue = widget.selector!(casted);
+          _hasSelectedValue = true;
+        } else {
+          _hasSelectedValue = false;
+          _lastSelectedValue = null;
+        }
 
-      case LikeState.exception:
-        return widget.onException?.call(response.message, response.error) ??
-            const SizedBox.shrink();
-    }
+        // Map each possible lifecycle state to its corresponding UI builder.
+        switch (response.state) {
+          case LikeState.idle:
+            return widget.onIdle?.call() ?? const SizedBox.shrink();
+
+          case LikeState.loading:
+            return widget.onLoading?.call() ??
+                const Center(child: CircularProgressIndicator());
+
+          case LikeState.success:
+          case LikeState.refreshing:
+          case LikeState.staleWhileRevalidate:
+            if (casted == null) {
+              throw StateError(
+                'Success/Refreshing/SWR state requires non-null data. '
+                'Expected type: $T, Received: ${response.data?.runtimeType ?? "null"}',
+              );
+            }
+            return widget.onSuccess(
+              casted,
+              response.state == LikeState.refreshing,
+              response.state == LikeState.staleWhileRevalidate ||
+                  response.isFromStaleWhileRevalidate,
+            );
+
+          case LikeState.error:
+            return widget.onError?.call(response.error!) ??
+                const SizedBox.shrink();
+
+          case LikeState.exception:
+            return widget.onException?.call(response.message, response.error) ??
+                const SizedBox.shrink();
+        }
+      },
+    );
   }
 }
 

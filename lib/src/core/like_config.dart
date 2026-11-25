@@ -87,7 +87,8 @@ class LikeConfig {
 
   /// How long the engine is allowed to take to set up and open its local databases (Hive) when the app starts.
   ///
-  /// If your app takes longer than this duration to open local storage boxes at startup, it will fail with an error.
+  /// If storage initialization exceeds this duration, [LikeService.storageStatus]
+  /// becomes [LikeStorageStatus.timedOut] and LIKE degrades to network-only mode.
   final Duration initTimeout;
 
   /// How long to wait when doing a real-world internet check (like pinging a reliable website).
@@ -150,6 +151,12 @@ class LikeConfig {
   /// from being printed out in plain text or saved to debug files.
   final List<String> sensitiveHeaders;
 
+  /// Whether diagnostic and API logs redact sensitive fields, endpoints, and opaque strings.
+  ///
+  /// Defaults to `true` (safe redaction and `[PAYLOAD OMITTED]` for opaque/release payloads).
+  /// Set to `false` in trusted local debugging when you want unredacted API request/response logs.
+  final bool enableRedaction;
+
   /// The threshold size (in Kilobytes) above which JSON parsing is offloaded to a background thread.
   ///
   /// **Analogy:** If you have a small grocery bag (small JSON), you can carry it in your hand (UI thread).
@@ -186,6 +193,13 @@ class LikeConfig {
   ///
   /// If set to `false`, all cache layers are ignored. Every single request will bypass storage and hit the network.
   final bool cacheEnabled;
+
+  /// Whether `withAuth: true` GET requests may be written to L1/L2 caches by default.
+  ///
+  /// Set to `false` to require explicit `disableCache: false` on individual
+  /// authenticated GET calls. Anonymous `withAuth: true` requests are always
+  /// excluded from caching regardless of this setting.
+  final bool cacheAuthenticatedGets;
 
   /// Master switch to enable the "Stale-While-Revalidate" (SWR) cache flow globally.
   ///
@@ -339,7 +353,10 @@ class LikeConfig {
   /// How many minutes session-stale RAM data is considered fresh before it expires.
   final int sessionStaleTTL;
 
-  /// How many days cached images are stored before they are marked stale and eligible for deletion.
+  /// How many days cached images are stored on native platforms before they are marked stale.
+  ///
+  /// Note: On Web, [AppCacheManager] uses non-persistent browser/memory caching
+  /// and does not persist image files across sessions.
   final int imageStalePeriod;
 
   /// The maximum number of image files allowed to be stored in the disk image cache.
@@ -370,8 +387,10 @@ class LikeConfig {
   /// The host website address (defaults to `google.com`) used to verify if the device has actual, active internet.
   final String connCheckHost;
 
-  /// Enabling this parameter configures the engine to operate fully safely and functionally
-  /// on Web platforms without compromising key features (like caching and offline mutations).
+  /// Switches [LikeCacheImage] to `Image.network` on Web platforms.
+  ///
+  /// Persistent storage capability, offline queue gating, and network-only
+  /// fallback are handled automatically by [LikeService.init] regardless of this flag.
   final bool supportWeb;
 
   // --- Network Access ---
@@ -424,10 +443,12 @@ class LikeConfig {
     this.disableFileLogging = false,
     this.verboseLogging = false,
     this.sensitiveHeaders = const ['Authorization', 'Cookie', 'Set-Cookie'],
+    this.enableRedaction = true,
     this.computeThresholdKB = 100,
     bool? verifySSL,
     this.sslCertSha256 = '',
     this.cacheEnabled = true,
+    this.cacheAuthenticatedGets = true,
     this.staleWhileRevalidateEnabled = true,
     this.deduplicateEnabled = true,
     this.perfTrackingEnabled = true,
@@ -470,7 +491,7 @@ class LikeConfig {
     String? boxCacheMetadata,
     String? boxEtags,
     this.connCheckHost = 'google.com',
-    this.supportWeb = false,
+    this.supportWeb = kIsWeb,
     this.interceptors = const [],
   }) : verifySSL = verifySSL ?? !kDebugMode,
        boxApiCache =
@@ -508,10 +529,12 @@ class LikeConfig {
     bool? disableFileLogging,
     bool? verboseLogging,
     List<String>? sensitiveHeaders,
+    bool? enableRedaction,
     int? computeThresholdKB,
     bool? verifySSL,
     String? sslCertSha256,
     bool? cacheEnabled,
+    bool? cacheAuthenticatedGets,
     bool? staleWhileRevalidateEnabled,
     bool? deduplicateEnabled,
     bool? perfTrackingEnabled,
@@ -579,10 +602,13 @@ class LikeConfig {
       disableFileLogging: disableFileLogging ?? this.disableFileLogging,
       verboseLogging: verboseLogging ?? this.verboseLogging,
       sensitiveHeaders: sensitiveHeaders ?? this.sensitiveHeaders,
+      enableRedaction: enableRedaction ?? this.enableRedaction,
       computeThresholdKB: computeThresholdKB ?? this.computeThresholdKB,
       verifySSL: verifySSL ?? this.verifySSL,
       sslCertSha256: sslCertSha256 ?? this.sslCertSha256,
       cacheEnabled: cacheEnabled ?? this.cacheEnabled,
+      cacheAuthenticatedGets:
+          cacheAuthenticatedGets ?? this.cacheAuthenticatedGets,
       staleWhileRevalidateEnabled:
           staleWhileRevalidateEnabled ?? this.staleWhileRevalidateEnabled,
       deduplicateEnabled: deduplicateEnabled ?? this.deduplicateEnabled,

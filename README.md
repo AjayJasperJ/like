@@ -495,14 +495,16 @@ additional integration demonstrations; they are not required by the three shops.
 
 | Target | Repository verification |
 | --- | --- |
-| Web | Headless Chrome HTTP/model/widget flows, browser storage tests and release compilation |
+| Web (Dart2JS) | Headless Chrome HTTP/model/widget flows, browser storage tests and release compilation |
+| Web (WASM / Skwasm) | Network-only mode supported when `LikeService.init` degrades unavailable Hive storage (`LikeService.storageStatus`); `hive 2.2.3` persistence is not WASM-compatible |
 | Android | Native build, emulator UI flows and live production-repository integration |
 | iOS | Simulator build, isolated UI flows and live production-repository integration |
 | Linux / macOS / Windows | Host VM tests and native example compilation |
 
 These levels are different: compilation does not prove every plugin works on a
-physical device, and Chrome coverage does not establish Safari/Firefox parity.
-Browser CORS, TLS, storage quotas and background timer limits still apply.
+physical device, and Chrome Dart2JS coverage does not establish WASM or
+Safari/Firefox parity. Browser CORS, TLS, storage quotas, non-persistent web
+image caching, and background timer limits still apply.
 Native certificate pinning cannot override browser certificate policy.
 
 CI tests minimum Flutter 3.44.0 separately from current stable. Device jobs use

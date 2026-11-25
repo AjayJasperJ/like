@@ -1,6 +1,6 @@
 name: like
 description: "LIKE - A high-performance, offline-first Flutter networking package built with Dio and Hive."
-version: 2.4.1
+version: 2.5.0
 repository: https://github.com/AjayJasperJ/like
 
 topics:

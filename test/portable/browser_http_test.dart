@@ -102,4 +102,32 @@ void main() {
     expect(result.isSuccess, isTrue);
     expect(result.data!.data['token'], 'fixture-secret');
   });
+
+  test('public LikeService.init(cacheEnabled: false) works in browser without Hive boxes',
+      () async {
+    await LikeService.init(
+      config: LikeConfig(
+        projectName: 'browser-public-smoke',
+        baseUrl: base,
+        cacheEnabled: false,
+        disableFileLogging: true,
+        silentConsole: true,
+      ),
+    );
+    addTearDown(() async {
+      await LikeService.reset(closeBoxes: true);
+      LikeClient.reset();
+      LikeConstants.reset();
+    });
+
+    expect(LikeService.storageAvailable, isFalse);
+    expect(LikeService.storageStatus, LikeStorageStatus.disabled);
+
+    final client = LikeClient();
+    client.dio.httpClientAdapter = dio.httpClientAdapter;
+    final getResult = await client.get('/ok');
+    expect(getResult.isSuccess, isTrue);
+    final postResult = await client.post('/ok', body: {'value': 1});
+    expect(postResult.isSuccess, isTrue);
+  });
 }

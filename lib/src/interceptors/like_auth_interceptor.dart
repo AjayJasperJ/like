@@ -46,6 +46,31 @@ class LikeAuthInterceptor extends Interceptor {
   /// Hook for the host app to provide an API Key (x-api-key) (legacy static API).
   static FutureOr<String?> Function()? getApiKey;
 
+  /// Resets static legacy hooks and global rate-limit/refresh state for tests.
+  @visibleForTesting
+  static void resetGlobalState() {
+    getToken = null;
+    refreshToken = null;
+    onLogout = null;
+    getApiKey = null;
+    _rateLimitedUntilByOrigin.clear();
+    _legacyRefreshes.clear();
+    isRefreshing.value = false;
+  }
+
+  static bool _isReplayEligible(RequestOptions options) {
+    final method = options.method.toUpperCase();
+    if (method == 'GET' || method == 'HEAD' || method == 'OPTIONS') {
+      return true;
+    }
+    final hasIdempotencyHeader = options.headers.keys.any(
+      (k) => k.toLowerCase() == 'idempotency-key',
+    );
+    return hasIdempotencyHeader ||
+        options.extra['idempotencyKey'] != null ||
+        options.extra['allowUnsafeReplay'] == true;
+  }
+
   LikeAuthInterceptor({required this.dio, this.authConfig, LikeRetryPolicy? retryPolicy})
       : retryPolicy = retryPolicy ?? LikeRetryPolicy();
 
@@ -162,6 +187,13 @@ class LikeAuthInterceptor extends Interceptor {
       }
     }
 
+    final idempotencyKey = options.extra['idempotencyKey'];
+    if (idempotencyKey is String &&
+        idempotencyKey.isNotEmpty &&
+        !options.headers.keys.any((k) => k.toLowerCase() == 'idempotency-key')) {
+      options.headers['Idempotency-Key'] = idempotencyKey;
+    }
+
     final bool withAuth =
         options.extra['withAuth'] ?? LikeConstants.withAuthByDefault;
     final bool isRetry = options.extra['isRetry'] ?? false;
@@ -196,8 +228,11 @@ class LikeAuthInterceptor extends Interceptor {
       return;
     }
     if (err.response?.statusCode == 401 && withAuth) {
-      if (err.requestOptions.extra['isRetry'] == true) {
-        await _safeLogout();
+      if (err.requestOptions.extra['isRetry'] == true ||
+          !_isReplayEligible(err.requestOptions)) {
+        if (err.requestOptions.extra['isRetry'] == true) {
+          await _safeLogout();
+        }
         handler.next(err);
         return;
       }
@@ -215,7 +250,9 @@ class LikeAuthInterceptor extends Interceptor {
     // bounded, origin-aware, and cancellable as part of the original request.
     if (err.response?.statusCode == 429 &&
         LikeConstants.rateLimitEnabled &&
-        LikeConstants.autoRetryRateLimit) {
+        LikeConstants.autoRetryRateLimit &&
+        (err.requestOptions.extra['requireIdempotencyKey'] != true ||
+            _isReplayEligible(err.requestOptions))) {
       final options = err.requestOptions;
       final retryCount = (options.extra[_retryCountKey] as int?) ?? 0;
       final configuredMaximum = (options.extra['maxAutoRetries'] as int?) ??
@@ -234,6 +271,14 @@ class LikeAuthInterceptor extends Interceptor {
 
       try {
         await _cancellableDelay(waitDuration, options.cancelToken);
+        if (!LikeSessionIdentity.isCurrent(options)) {
+          return handler.next(
+            DioException.requestCancelled(
+              requestOptions: options,
+              reason: 'Session changed',
+            ),
+          );
+        }
         if (!LikeConnectivityManager()
             .isOriginAvailable(options.uri.toString())) {
           return handler.next(err);

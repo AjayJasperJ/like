@@ -16,7 +16,7 @@ class PostFormScreen extends StatefulWidget {
 }
 
 class _PostFormScreenState extends State<PostFormScreen>
-    with LikeVisibilityMixin {
+    with LikeScreenMixin {
   final _key = GlobalKey<FormState>();
   late final TextEditingController _title;
   late final TextEditingController _body;

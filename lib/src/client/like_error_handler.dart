@@ -64,6 +64,7 @@ class LikeErrorHandler {
     String defaultMsg = 'An error occurred';
     LikeApiErrorType type = LikeApiErrorType.unknown;
     int? code = error.response?.statusCode;
+    String? transportReason;
 
     if (error.error == 'OFFLINE_QUEUED') {
       return LikeError(
@@ -106,6 +107,7 @@ class LikeErrorHandler {
         type = LikeApiErrorType.cancelled;
         break;
       case DioExceptionType.connectionError:
+        transportReason = kIsWeb ? 'web_connection_error' : 'connection_error';
         if (!conn.isInternetConnected) {
           defaultMsg = 'No internet connection – Unable to reach the server.';
           type = LikeApiErrorType.network;
@@ -124,6 +126,9 @@ class LikeErrorHandler {
                 error.response == null &&
                 error.type == DioExceptionType.unknown);
         if (isSocketLike) {
+          transportReason = kIsWeb
+              ? 'web_opaque_network_error'
+              : 'socket_exception';
           if (!conn.isInternetConnected) {
             defaultMsg = 'No internet connection – Please check your network.';
             type = LikeApiErrorType.network;
@@ -132,16 +137,23 @@ class LikeErrorHandler {
             type = LikeApiErrorType.network;
           }
         } else if (error.error is FormatException) {
+          transportReason = 'format_exception';
           defaultMsg = 'Data Error – Specific format exception.';
           type = LikeApiErrorType.parsing;
         } else {
+          transportReason = error.error?.runtimeType.toString();
           defaultMsg = 'Unknown error: ${error.message}';
           type = LikeApiErrorType.unknown;
         }
         break;
     }
 
-    return LikeError(message: defaultMsg, type: type, code: code);
+    return LikeError(
+      message: defaultMsg,
+      type: type,
+      code: code,
+      transportReason: transportReason,
+    );
   }
 
   static Future<LikeError> parseResponse(Response res) async {

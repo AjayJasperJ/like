@@ -39,8 +39,11 @@ export 'src/services/like_logger.dart';
 
 // Mixins
 export 'src/engine/like_engine.dart';
-export 'src/mixins/like_visibility_mixin.dart';
+export 'src/mixins/like_screen_mixin.dart';
 export 'src/mixins/like_state_mixin.dart';
+export 'src/mixins/like_change_notifier.dart';
+export 'src/models/like_connectivity_check_result.dart';
+export 'src/models/like_connectivity_transition.dart';
 
 // Mocking
 export 'src/services/like_mock_controller.dart';

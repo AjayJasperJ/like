@@ -83,6 +83,9 @@ class LikeARS {
   /// Enables automatic UI refetching when the bound screen comes into focus.
   final bool visibility;
 
+  /// Skips executing the request when `true`.
+  final bool skip;
+
   const LikeARS({
     this.visibility = false,
     this.staleWhileRevalidate = false,
@@ -97,6 +100,7 @@ class LikeARS {
     this.checkAvailability = false,
     this.deduplicate = true,
     this.suppressErrors = true,
+    this.skip = false,
   });
 
   LikeARS copyWith({
@@ -113,6 +117,7 @@ class LikeARS {
     bool? deduplicate,
     bool? suppressErrors,
     bool? visibility,
+    bool? skip,
   }) {
     return LikeARS(
       staleWhileRevalidate: staleWhileRevalidate ?? this.staleWhileRevalidate,
@@ -128,6 +133,7 @@ class LikeARS {
       deduplicate: deduplicate ?? this.deduplicate,
       suppressErrors: suppressErrors ?? this.suppressErrors,
       visibility: visibility ?? this.visibility,
+      skip: skip ?? this.skip,
     );
   }
 
@@ -145,6 +151,7 @@ class LikeARS {
         'deduplicate': deduplicate,
         'suppressErrors': suppressErrors,
         'visibility': visibility,
+        'skip': skip,
       };
 
   factory LikeARS.fromJson(Map<String, dynamic> json) => LikeARS(
@@ -161,5 +168,6 @@ class LikeARS {
         deduplicate: json['deduplicate'] ?? true,
         suppressErrors: json['suppressErrors'] ?? true,
         visibility: json['visibility'] ?? false,
+        skip: json['skip'] ?? false,
       );
 }

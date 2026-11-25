@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_ars.dart';
+import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_state_response.dart';
 import 'package:like/src/models/like_notifier_state.dart';
 import 'package:like/src/models/like_sync_event.dart';
@@ -46,14 +47,24 @@ mixin LikeStateMixin on ChangeNotifier {
   final Set<_LikePipelineStateBinding> _pipelineBindings = {};
   bool _isDisposed = false;
 
-  /// Helper to extract clean path from an endpoint, URI, or key.
+  /// Helper to extract clean path from an endpoint, URI, or key without extra list allocations.
   static String _cleanPath(String input) {
-    if (input.startsWith('http://') || input.startsWith('https://')) {
-      final uri = Uri.tryParse(input);
-      return uri != null ? uri.path : input.split('?').first;
+    var working = input;
+    final pipeIdx = working.indexOf('|');
+    if (pipeIdx != -1) {
+      working = working.substring(pipeIdx + 1);
     }
-    final path = input.contains(':') ? input.split(':').last : input;
-    return path.split('?').first;
+    if (working.startsWith('http://') || working.startsWith('https://')) {
+      final uri = Uri.tryParse(working);
+      if (uri != null) return uri.path;
+    } else {
+      final colonIdx = working.indexOf(':');
+      if (colonIdx != -1) {
+        working = working.substring(colonIdx + 1);
+      }
+    }
+    final qIdx = working.indexOf('?');
+    return qIdx == -1 ? working : working.substring(0, qIdx);
   }
 
   /// Hook for manual refresh signals.
@@ -77,12 +88,14 @@ mixin LikeStateMixin on ChangeNotifier {
     }
 
     _refreshSubscription = LikeClient().refreshStream.listen((path) {
+      if (_isDisposed) return;
       if (path == 'reconnected') {
         LikeSyncManager().registerTask(_LikeProviderSyncTask(this));
         return;
       }
 
       onAutoRefresh(path);
+      if (_granularTasks.isEmpty) return;
 
       final cleanPath = _cleanPath(path);
       for (final task in _granularTasks) {
@@ -90,6 +103,7 @@ mixin LikeStateMixin on ChangeNotifier {
           final targetEndpoint = task.endpoint!;
           if (cleanPath == targetEndpoint ||
               (cleanPath.startsWith(targetEndpoint) &&
+                  cleanPath.length > targetEndpoint.length &&
                   cleanPath[targetEndpoint.length] == '/')) {
             if (task.condition()) {
               LikeSyncManager().registerTask(task);
@@ -100,15 +114,20 @@ mixin LikeStateMixin on ChangeNotifier {
     });
 
     _syncSubscription = LikeClient().syncStream.listen((event) {
+      if (_isDisposed || _registeredStates.isEmpty) return;
+      _registeredStates.removeWhere((s) => s.isDisposed);
+      if (_registeredStates.isEmpty) return;
+
       final cleanPath = _cleanPath(event.path);
       for (final state in _registeredStates) {
         if (state.autoResync &&
             state.endpointPath != null &&
             state.refreshAction != null) {
-          final statePath = _cleanPath(state.endpointPath!);
+          final statePath = state.cleanEndpointPath ?? _cleanPath(state.endpointPath!);
 
           if (cleanPath == statePath ||
               (cleanPath.startsWith(statePath) &&
+                  cleanPath.length > statePath.length &&
                   cleanPath[statePath.length] == '/')) {
             final overlap = _checkQueryOverlap(
               state.activeQuery ?? const {},
@@ -128,13 +147,17 @@ mixin LikeStateMixin on ChangeNotifier {
     });
 
     _pipelineSubscription = LikePipeline().stream.listen((event) {
+      if (_isDisposed || _pipelineBindings.isEmpty) return;
+      _pipelineBindings.removeWhere((b) => b.state.isDisposed);
+      if (_pipelineBindings.isEmpty) return;
+
       final cleanIncomingPath = _cleanPath(event.key);
       final eventQuery = event.response.requestOptions.queryParameters;
       bool handled = false;
 
       for (final binding in _pipelineBindings) {
         final rawStatePath = binding.getCleanEndpointPath() ??
-            binding.getEndpointPath()?.split('?').first;
+            binding.getEndpointPath();
         if (rawStatePath == null) continue;
         final statePath = _cleanPath(rawStatePath);
 
@@ -237,6 +260,7 @@ mixin LikeStateMixin on ChangeNotifier {
     bool autoResync = false,
     LikeSyncPriority priority = LikeSyncPriority.normal,
     bool disableRequestCancellation = false,
+    bool exactQueryMatch = false,
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
         action,
   }) async {
@@ -246,6 +270,7 @@ mixin LikeStateMixin on ChangeNotifier {
       _initAutoReconnect();
     }
 
+    _registeredStates.removeWhere((s) => s.isDisposed);
     _registeredStates.add(state);
 
     if (state.mapper != null) {
@@ -255,7 +280,7 @@ mixin LikeStateMixin on ChangeNotifier {
         getEndpointPath: () => state.endpointPath,
         getCleanEndpointPath: () => state.cleanEndpointPath,
         getActiveQuery: () => state.activeQuery ?? const {},
-        exactQueryMatch: false,
+        exactQueryMatch: exactQueryMatch,
         processAndAssign: (rawData) {
           if (state.value.isLoading || state.value.isRefreshing) return;
           final mappedData = state.mapper!(rawData);
@@ -306,11 +331,26 @@ mixin LikeStateMixin on ChangeNotifier {
   }) async {
     ars ??= const LikeARS();
 
+    final activeState = Zone.current[#likeActiveState];
+    T? currentData;
+    LikeStateResponse<T>? resolvedPreviousState = previousState;
+    if (activeState is LikeNotifierState) {
+      try {
+        resolvedPreviousState ??= activeState.value as LikeStateResponse<T>?;
+        currentData = activeState.data as T?;
+      } catch (_) {}
+    }
+
+    if (ars.skip &&
+        resolvedPreviousState != null &&
+        resolvedPreviousState.isSuccess &&
+        resolvedPreviousState.data != null) {
+      return resolvedPreviousState;
+    }
+
     final next =
         disableRequestCancellation ? (ct ?? CancelToken()) : _newCT(ct);
     onRotate(next);
-
-    final activeState = Zone.current[#likeActiveState];
 
     bool checkObsolete() {
       if (isObsolete != null) {
@@ -320,15 +360,6 @@ mixin LikeStateMixin on ChangeNotifier {
         return activeState.ct != next;
       }
       return false;
-    }
-
-    T? currentData;
-    LikeStateResponse<T>? resolvedPreviousState = previousState;
-    if (activeState is LikeNotifierState) {
-      try {
-        resolvedPreviousState ??= activeState.value as LikeStateResponse<T>?;
-        currentData = activeState.data as T?;
-      } catch (_) {}
     }
 
     final LikeStateResponse<T> fallbackState;
@@ -361,6 +392,16 @@ mixin LikeStateMixin on ChangeNotifier {
       if (!_isDisposed) notifyListeners();
 
       final result = await action(next, ars);
+
+      final isCancelledResult =
+          result.isError && result.error?.type == LikeApiErrorType.cancelled;
+      if (isCancelledResult) {
+        if (!checkObsolete() && !_isDisposed) {
+          onUpdate(fallbackState);
+          notifyListeners();
+        }
+        return fallbackState;
+      }
 
       if (!checkObsolete()) {
         onUpdate(result);
@@ -488,6 +529,7 @@ class _LikeProviderSyncTask extends LikeSyncTask {
 
   @override
   Future<void> run() async {
+    if (_mixin._isDisposed) return;
     if (_mixin.shouldRetry) {
       await _mixin.onReconnect();
     }

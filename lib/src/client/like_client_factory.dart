@@ -111,13 +111,15 @@ class LikeClientFactory {
         LikeMockInterceptor(),
 
         // 1. Core Logic
-        LikeEtagInterceptor(),
+        LikeEtagInterceptor(dio: dio),
         LikeCacheInterceptor(),
         LikePipelineInterceptor(),
 
         // 2. Offline & Sync
         LikeConnectivityInterceptor(),
-        if (LikeConstants.offlineSyncEnabled)
+        if (LikeConstants.offlineSyncEnabled &&
+            LikeService.storageAvailable &&
+            _isOfflineQueueOpen)
           LikeOfflineSyncInterceptor(
             dio: dio,
             queueBox: LikeService.boxOfflineQueue,
@@ -141,5 +143,14 @@ class LikeClientFactory {
         ...customInterceptors,
       ].whereType<Interceptor>(),
     );
+  }
+
+  static bool get _isOfflineQueueOpen {
+    try {
+      LikeService.boxOfflineQueue;
+      return true;
+    } on StateError {
+      return false;
+    }
   }
 }

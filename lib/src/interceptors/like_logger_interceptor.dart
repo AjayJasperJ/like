@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:uuid/uuid.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/like_logger.dart';
@@ -62,8 +63,12 @@ class LikeLoggerInterceptor extends Interceptor {
       statusText = 'RESILIENCY FALLBACK';
     }
 
+    final includeDetails =
+        (!kReleaseMode || !LikeConstants.enableRedaction) &&
+        (LikeConstants.debugMode || LikeConstants.logApiResponses);
+
     Map<String, String>? fields;
-    if (response.requestOptions.data is FormData) {
+    if (includeDetails && response.requestOptions.data is FormData) {
       final formData = response.requestOptions.data as FormData;
       fields = {};
       for (var field in formData.fields) {
@@ -75,24 +80,16 @@ class LikeLoggerInterceptor extends Interceptor {
       response.requestOptions.path,
       success: true,
       statusCode: response.statusCode,
-      response: (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? response.data
-          : null,
+      response: includeDetails ? response.data : null,
       requestId: requestId,
       method: response.requestOptions.method,
       statusText: statusText,
-      requestHeaders: (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? response.requestOptions.headers
-          : null,
-      responseHeaders:
-          (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? response.headers.map
-          : null,
-      requestBody: (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? response.requestOptions.data
-          : null,
+      requestHeaders: includeDetails ? response.requestOptions.headers : null,
+      responseHeaders: includeDetails ? response.headers.map : null,
+      requestBody: includeDetails ? response.requestOptions.data : null,
       requestFields: fields,
-      requestQuery: response.requestOptions.queryParameters,
+      requestQuery:
+          includeDetails ? response.requestOptions.queryParameters : null,
       shrinkEndpointOnly: LikeConstants.compactApiLogs,
     );
     handler.next(response);
@@ -110,8 +107,12 @@ class LikeLoggerInterceptor extends Interceptor {
         ? err.error.toString()
         : err.message;
 
+    final includeDetails =
+        (!kReleaseMode || !LikeConstants.enableRedaction) &&
+        (LikeConstants.debugMode || LikeConstants.logApiResponses);
+
     Map<String, String>? fields;
-    if (err.requestOptions.data is FormData) {
+    if (includeDetails && err.requestOptions.data is FormData) {
       final formData = err.requestOptions.data as FormData;
       fields = {};
       for (var field in formData.fields) {
@@ -123,23 +124,16 @@ class LikeLoggerInterceptor extends Interceptor {
       err.requestOptions.path,
       success: false,
       statusCode: err.response?.statusCode,
-      response: (LikeConstants.debugMode || LikeConstants.logApiResponses)
+      response: includeDetails
           ? (err.response?.data ?? errorMessage)
           : errorMessage,
       requestId: requestId,
       method: err.requestOptions.method,
-      requestHeaders: (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? err.requestOptions.headers
-          : null,
-      responseHeaders:
-          (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? err.response?.headers.map
-          : null,
-      requestBody: (LikeConstants.debugMode || LikeConstants.logApiResponses)
-          ? err.requestOptions.data
-          : null,
+      requestHeaders: includeDetails ? err.requestOptions.headers : null,
+      responseHeaders: includeDetails ? err.response?.headers.map : null,
+      requestBody: includeDetails ? err.requestOptions.data : null,
       requestFields: fields,
-      requestQuery: err.requestOptions.queryParameters,
+      requestQuery: includeDetails ? err.requestOptions.queryParameters : null,
     );
     handler.next(err);
   }

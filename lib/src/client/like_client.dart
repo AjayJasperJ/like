@@ -69,6 +69,7 @@ class LikeClient implements LikeHttpClient {
       origin: target,
     );
     final keys = _resourceIndex.matching(event);
+    LikeService.markKeysInvalidated(keys);
     try {
       keys.addAll(
         await LikeService.invalidateTags(event.tags, event.scope, event.origin),
@@ -95,6 +96,7 @@ class LikeClient implements LikeHttpClient {
     cancelOfflineSync(reason: 'Session changed');
     _registry.clear();
     _resourceIndex.clear();
+    LikeDiagnostics.shared.clear();
     _sessionScope = scope;
     _sessionChanges.add(scope);
     offlineQueue?.resume();
@@ -404,6 +406,10 @@ class LikeClient implements LikeHttpClient {
     if (capturedScope.isAnonymous && extra['withAuth'] == true) {
       extra['disableCache'] = true;
       extra['offlineSync'] = false;
+    } else if (extra['withAuth'] == true &&
+        !LikeConstants.cacheAuthenticatedGets &&
+        options?.extra?['disableCache'] != false) {
+      extra['disableCache'] = true;
     }
     final bool isGet = method == 'GET';
     final activeState = Zone.current[#likeActiveState];
@@ -511,6 +517,11 @@ class LikeClient implements LikeHttpClient {
     );
     final absoluteUriKey = LikeSessionIdentity.forRequest(tempOptions);
     final requestKey = absoluteUriKey;
+    if (isGet) {
+      extra['like.cacheGeneration'] = LikeService.generationForKey(
+        absoluteUriKey,
+      );
+    }
     if (isGet && tempOptions.uri.hasAuthority) {
       _resourceIndex.bind(
         requestKey,
@@ -781,8 +792,14 @@ class LikeClient implements LikeHttpClient {
         response.requestOptions,
       );
 
-      // Final promotion to L1 cache on success
-      if (response.extra['isMocked'] != true) {
+      // Final promotion to L1 cache on success (skip if invalidated while in flight)
+      final startGen =
+          response.requestOptions.extra['like.cacheGeneration'] as int?;
+      final invalidatedInFlight =
+          !isFromCache &&
+          startGen != null &&
+          startGen < LikeService.generationForKey(absoluteUriKey);
+      if (response.extra['isMocked'] != true && !invalidatedInFlight) {
         _registry.addSessionKey(absoluteUriKey, response: response);
       }
 
@@ -1110,28 +1127,30 @@ class LikeClient implements LikeHttpClient {
 
     if (filePaths != null) {
       // MultipartFile.fromFile() reads a native file-system path.
-      // On web there is no file-system — use the `files` parameter with
-      // MultipartBytesFile (in-memory bytes) instead.
-      assert(
-        !kIsWeb,
-        'LikeClient.multipart(): the `filePaths` parameter is not supported on web '
-        'because the web platform has no file-system access. '
-        'Use the `files` parameter with MultipartBytesFile (bytes) instead.',
-      );
-      if (!kIsWeb) {
-        if (filePaths is Map<String, String>) {
-          for (final entry in filePaths.entries) {
+      // On web there is no file-system — fail deterministically in both debug
+      // and release builds so callers use MultipartBytesFile instead.
+      if (kIsWeb) {
+        return LikeApiResult.error(
+          LikeError(
+            message:
+                'LikeClient.multipart(): `filePaths` is not supported on web. '
+                'Use the `files` parameter with MultipartBytesFile instead.',
+            type: LikeApiErrorType.badRequest,
+          ),
+        );
+      }
+      if (filePaths is Map<String, String>) {
+        for (final entry in filePaths.entries) {
+          formData.files.add(
+            MapEntry(entry.key, await MultipartFile.fromFile(entry.value)),
+          );
+        }
+      } else if (filePaths is Map<String, List<String>>) {
+        for (final entry in filePaths.entries) {
+          for (final p in entry.value) {
             formData.files.add(
-              MapEntry(entry.key, await MultipartFile.fromFile(entry.value)),
+              MapEntry(entry.key, await MultipartFile.fromFile(p)),
             );
-          }
-        } else if (filePaths is Map<String, List<String>>) {
-          for (final entry in filePaths.entries) {
-            for (final p in entry.value) {
-              formData.files.add(
-                MapEntry(entry.key, await MultipartFile.fromFile(p)),
-              );
-            }
           }
         }
       }

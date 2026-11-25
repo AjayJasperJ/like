@@ -68,11 +68,15 @@ class LikeError {
   /// The raw response data from the server (if any).
   final dynamic rawResponse;
 
+  /// Optional machine-readable transport reason (e.g. `web_opaque_network_error`).
+  final String? transportReason;
+
   LikeError({
     required this.message,
     this.code,
     required this.type,
     this.rawResponse,
+    this.transportReason,
   });
 
   /// Extracts structured error map from raw response if available.

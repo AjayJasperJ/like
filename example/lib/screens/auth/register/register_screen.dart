@@ -13,7 +13,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen>
-    with LikeVisibilityMixin {
+    with LikeScreenMixin {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();

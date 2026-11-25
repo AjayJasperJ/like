@@ -107,12 +107,15 @@ class LikeEngine {
         .listen((event) => _handleOriginRestoration(event.origin));
 
     _refreshSubscription = LikeClient().refreshStream.listen((path) {
+      if (_isDisposed) return;
       // Manual compatibility signal only. Automatic connectivity restoration
       // uses the origin-scoped stream above and never broadcasts this value.
       if (path == 'reconnected') {
         unawaited(_runLegacyReconnect(LikeResyncTrigger.legacyReconnection));
         return;
       }
+
+      if (_granularTasks.isEmpty) return;
 
       // 2. Automated syncWith support
       for (final task in _granularTasks) {
@@ -140,6 +143,9 @@ class LikeEngine {
     });
 
     _syncSubscription = LikeClient().syncStream.listen((event) {
+      if (_isDisposed || _registeredStates.isEmpty) return;
+      _registeredStates.removeWhere((s) => s.isDisposed);
+      if (_registeredStates.isEmpty) return;
       for (final state in _registeredStates) {
         if (state.autoResync &&
             state.endpointPath != null &&
@@ -188,6 +194,10 @@ class LikeEngine {
     });
 
     _pipelineSubscription = LikePipeline().stream.listen((event) {
+      if (_isDisposed || _pipelineBindings.isEmpty) return;
+      _pipelineBindings.removeWhere((b) => b.state.isDisposed);
+      if (_pipelineBindings.isEmpty) return;
+
       final incomingKey = event.key;
       String cleanIncomingPath;
       if (incomingKey.startsWith('http://') ||
@@ -639,6 +649,7 @@ class LikeEngine {
     bool autoResync = false,
     LikeSyncPriority priority = LikeSyncPriority.normal,
     bool disableRequestCancellation = false,
+    bool exactQueryMatch = false,
     required Future<StateResponse<T>> Function() action,
   }) async {
     if (_refreshSubscription == null &&
@@ -658,7 +669,7 @@ class LikeEngine {
           getEndpointPath: () => state.endpointPath,
           getCleanEndpointPath: () => state.cleanEndpointPath,
           getActiveQuery: () => state.activeQuery ?? const {},
-          exactQueryMatch: false,
+          exactQueryMatch: exactQueryMatch,
           processAndAssign: (rawData) {
             if (state.value.isLoading || state.value.isRefreshing) return;
             final mappedData = state.mapper!(rawData);
@@ -768,6 +779,7 @@ class LikeEngine {
     bool autoResync = false,
     LikeSyncPriority priority = LikeSyncPriority.normal,
     bool disableRequestCancellation = false,
+    bool exactQueryMatch = false,
     required Future<ApiResult<T>> Function() action,
   }) async {
     return fetch<T>(
@@ -776,6 +788,7 @@ class LikeEngine {
       autoResync: autoResync,
       priority: priority,
       disableRequestCancellation: disableRequestCancellation,
+      exactQueryMatch: exactQueryMatch,
       action: () async {
         final result = await action();
         return result.toStateResponse();

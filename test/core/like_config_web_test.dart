@@ -1,11 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:like/like.dart';
 
 void main() {
   group('LikeConfig Web Support', () {
-    test('supportWeb default is false', () {
+    test('supportWeb defaults to kIsWeb', () {
       final config = LikeConfig(projectName: 'test_project');
-      expect(config.supportWeb, isFalse);
+      expect(config.supportWeb, equals(kIsWeb));
     });
 
     test('supportWeb copyWith works correctly', () {

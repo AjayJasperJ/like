@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:like/like.dart';
 import 'package:like/src/interceptors/like_connectivity_interceptor.dart';
 import 'package:like/src/interceptors/like_offline_sync_interceptor.dart';
-import 'package:like/src/models/like_connectivity_check_result.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
 import 'package:like/src/services/like_offline_sync_manager.dart';
 import 'package:provider/provider.dart';

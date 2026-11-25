@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:hive/hive.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/services/like_service.dart';
 
@@ -15,8 +16,11 @@ class LikeCacheInterceptor extends Interceptor {
         response.requestOptions.method == 'GET' &&
         response.statusCode == 200 &&
         response.requestOptions.extra['disableCache'] != true) {
-      // Await the write so Hive has data before the next request can 304
-      await LikeService.saveResponseToCache(response);
+      // Await the write so Hive has data before the next request can 304,
+      // but never let a storage write failure fail a successful network response.
+      try {
+        await LikeService.saveResponseToCache(response);
+      } catch (_) {}
     }
     handler.next(response);
   }
@@ -24,6 +28,7 @@ class LikeCacheInterceptor extends Interceptor {
   /// Removes stale entries from the cache based on individual or global TTL.
   /// Matches the enterprise pruning logic for background maintenance.
   Future<void> pruneCache() async {
+    if (!Hive.isBoxOpen(LikeConstants.boxApiCache)) return;
     final box = LikeService.cacheBox;
     final now = DateTime.now();
     final keysToDelete = <String>[];
