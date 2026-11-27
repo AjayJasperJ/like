@@ -1,6 +1,6 @@
 name: like
 description: "LIKE - A high-performance, offline-first Flutter networking package built with Dio and Hive."
-version: 2.5.0
+version: 2.6.0
 repository: https://github.com/AjayJasperJ/like
 
 topics:
@@ -22,7 +22,6 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ">=1.1.0 <2.0.0"
   connectivity_plus: ^7.2.0
-  universal_io: ^2.3.1
   crypto: ^3.0.7
   path_provider: ^2.1.6
   provider: ^6.1.5+1
@@ -32,7 +31,6 @@ dependencies:
   http_parser: ^4.1.2
   flutter_cache_manager: ^3.4.1
   cached_network_image: ">=3.4.1 <5.0.0"
-  file: ^7.0.1
 
 dev_dependencies:
   flutter_test:

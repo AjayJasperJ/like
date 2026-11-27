@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:universal_io/io.dart';
+import 'dart:io';
 import 'package:like/like.dart';
 import 'package:like/src/models/like_event.dart';
 import 'package:like/src/services/like_pipeline.dart';

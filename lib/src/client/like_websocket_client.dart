@@ -8,7 +8,8 @@ import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/diagnostics/like_redaction.dart';
 import 'package:like/src/interceptors/like_auth_interceptor.dart';
 import 'package:synchronized/synchronized.dart';
-import 'package:universal_io/io.dart';
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io';
 import 'package:like/src/services/like_pipeline.dart';
 
 class _WsLifecycleObserver with WidgetsBindingObserver {

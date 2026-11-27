@@ -6,6 +6,7 @@ import 'package:like/src/core/like_ars.dart';
 import 'package:like/src/models/like_api_result.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/models/like_notifier_state.dart';
+import 'package:like/src/models/like_paginated_response.dart';
 import 'package:like/src/models/like_state_response.dart';
 
 /// Lightweight [ChangeNotifier] base class for individual request execution.
@@ -17,6 +18,8 @@ mixin LikeChangeNotifier on ChangeNotifier {
   final Map<Object, LikeNotifierState<dynamic>> _keyedStates = {};
   final Map<Object, PaginatedNotifierState<dynamic>> _paginatedStates = {};
   final Map<Object, LikeStateResponse<dynamic>> _keyedResponses = {};
+  final Map<Object, LikePaginatedResponse<dynamic>> _keyedPaginatedResponses =
+      {};
   final Map<Object, CancelToken> _responseTokens = {};
   bool _isDisposed = false;
 
@@ -34,6 +37,14 @@ mixin LikeChangeNotifier on ChangeNotifier {
   /// [getResponseByKey], [setResponseByKey], or [fetchResponseByKey].
   Map<Object, LikeStateResponse<dynamic>> get keyedResponses =>
       Map<Object, LikeStateResponse<dynamic>>.unmodifiable(_keyedResponses);
+
+  /// Read-only view of [LikePaginatedResponse] snapshots stored by key via
+  /// [getPaginatedResponseByKey], [setPaginatedResponseByKey],
+  /// [fetchPaginatedResponseByKey], or [fetchPaginatedCursorResponseByKey].
+  Map<Object, LikePaginatedResponse<dynamic>> get keyedPaginatedResponses =>
+      Map<Object, LikePaginatedResponse<dynamic>>.unmodifiable(
+        _keyedPaginatedResponses,
+      );
 
   /// Returns the [LikeNotifierState<T>] associated with [key], creating and
   /// registering one if it does not exist yet (or was disposed).
@@ -104,6 +115,37 @@ mixin LikeChangeNotifier on ChangeNotifier {
     if (!_isDisposed) notifyListeners();
   }
 
+  /// Returns the [LikePaginatedResponse<T>] associated with [key], initializing
+  /// it with [initialValue] (or `LikePaginatedResponse<T>.idle(pageSize: pageSize)`)
+  /// if absent.
+  LikePaginatedResponse<T> getPaginatedResponseByKey<T>(
+    Object key, {
+    int pageSize = 10,
+    LikePaginatedResponse<T>? initialValue,
+  }) {
+    final existing = _keyedPaginatedResponses[key];
+    if (existing is LikePaginatedResponse<T>) {
+      return existing;
+    }
+    final created = existing != null && existing.isIdle
+        ? LikePaginatedResponse<T>.idle(
+            pageSize: pageSize,
+            message: existing.response.message,
+          )
+        : (initialValue ?? LikePaginatedResponse<T>.idle(pageSize: pageSize));
+    _keyedPaginatedResponses[key] = created;
+    return created;
+  }
+
+  /// Stores [response] under [key] in [keyedPaginatedResponses] and notifies listeners.
+  void setPaginatedResponseByKey<T>(
+    Object key,
+    LikePaginatedResponse<T> response,
+  ) {
+    _keyedPaginatedResponses[key] = response;
+    if (!_isDisposed) notifyListeners();
+  }
+
   /// Resets the state for [key] (or all registered states if [key] is omitted)
   /// back to its initial `idle` state.
   void toInitState([Object? key, String? message]) {
@@ -112,6 +154,12 @@ mixin LikeChangeNotifier on ChangeNotifier {
       _paginatedStates[key]?.toInitState(message: message);
       if (_keyedResponses.containsKey(key)) {
         _keyedResponses[key] = LikeStateResponse<dynamic>.idle(
+          message: message,
+        );
+      }
+      final existingPaginated = _keyedPaginatedResponses[key];
+      if (existingPaginated != null) {
+        _keyedPaginatedResponses[key] = existingPaginated.toInitState(
           message: message,
         );
       }
@@ -128,6 +176,11 @@ mixin LikeChangeNotifier on ChangeNotifier {
       }
       for (final k in _keyedResponses.keys.toList()) {
         _keyedResponses[k] = LikeStateResponse<dynamic>.idle(message: message);
+      }
+      for (final k in _keyedPaginatedResponses.keys.toList()) {
+        _keyedPaginatedResponses[k] = _keyedPaginatedResponses[k]!.toInitState(
+          message: message,
+        );
       }
       for (final token in _responseTokens.values) {
         cancelTokenNow(token, message);
@@ -159,8 +212,10 @@ mixin LikeChangeNotifier on ChangeNotifier {
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
     action,
   }) {
-    _registeredStates.removeWhere((s) => s.isDisposed);
-    _registeredStates.add(state);
+    if (!_registeredStates.contains(state)) {
+      _registeredStates.removeWhere((s) => s.isDisposed);
+      _registeredStates.add(state);
+    }
     final effectiveArs = ars ?? const LikeARS();
 
     return runZoned(
@@ -301,12 +356,321 @@ mixin LikeChangeNotifier on ChangeNotifier {
     );
   }
 
+  /// Executes a page-based paginated request against an immutable
+  /// [LikePaginatedResponse<T>] snapshot, calling [onUpdate] and
+  /// `notifyListeners()` on each transition.
+  Future<LikePaginatedResponse<T>> fetchPaginatedResponse<T>({
+    required LikePaginatedResponse<T> state,
+    required void Function(LikePaginatedResponse<T> next) onUpdate,
+    required Future<dynamic> Function(int page, int limit, CancelToken ct)
+    action,
+    int page = 1,
+    bool refresh = false,
+    bool overwrite = false,
+    Object? key,
+    CancelToken? ct,
+    void Function(CancelToken next)? onRotate,
+    LikeARS? ars,
+    bool disableRequestCancellation = false,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) {
+    final isFirstPage = page == 1;
+    if (!isFirstPage && !overwrite && (!state.hasMore || state.isLoadingMore)) {
+      return Future.value(state);
+    }
+    return _executePaginatedResponse<T>(
+      state: state,
+      onUpdate: onUpdate,
+      page: isFirstPage ? 1 : page,
+      refresh: refresh,
+      overwrite: overwrite,
+      cursorMode: false,
+      key: key,
+      ct: ct,
+      onRotate: onRotate,
+      ars: ars,
+      disableRequestCancellation: disableRequestCancellation,
+      itemExtractor: itemExtractor,
+      invoke: (cancelToken) => action(page, state.pageSize, cancelToken),
+    );
+  }
+
+  /// Keyed wrapper around [fetchPaginatedResponse] using [keyedPaginatedResponses].
+  Future<LikePaginatedResponse<T>> fetchPaginatedResponseByKey<T>({
+    required Object key,
+    required Future<dynamic> Function(int page, int limit, CancelToken ct)
+    action,
+    int page = 1,
+    int pageSize = 10,
+    bool refresh = false,
+    bool overwrite = false,
+    LikePaginatedResponse<T>? initialValue,
+    LikeARS? ars,
+    bool disableRequestCancellation = false,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) {
+    final current = getPaginatedResponseByKey<T>(
+      key,
+      pageSize: pageSize,
+      initialValue: initialValue,
+    );
+    return fetchPaginatedResponse<T>(
+      key: key,
+      state: current,
+      onUpdate: (next) => _keyedPaginatedResponses[key] = next,
+      action: action,
+      page: page,
+      refresh: refresh,
+      overwrite: overwrite,
+      ars: ars,
+      disableRequestCancellation: disableRequestCancellation,
+      itemExtractor: itemExtractor,
+    );
+  }
+
+  /// Executes a cursor-based paginated request against an immutable
+  /// [LikePaginatedResponse<T>] snapshot, calling [onUpdate] and
+  /// `notifyListeners()` on each transition.
+  Future<LikePaginatedResponse<T>> fetchPaginatedCursorResponse<T>({
+    required LikePaginatedResponse<T> state,
+    required void Function(LikePaginatedResponse<T> next) onUpdate,
+    required Future<dynamic> Function(String? cursor, int limit, CancelToken ct)
+    action,
+    bool refresh = false,
+    String? initialCursor,
+    Object? key,
+    CancelToken? ct,
+    void Function(CancelToken next)? onRotate,
+    LikeARS? ars,
+    bool disableRequestCancellation = false,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) {
+    final effectiveCursor = refresh
+        ? initialCursor
+        : (state.nextCursor ?? initialCursor);
+    if (!refresh && state.hasData && (!state.hasMore || state.isLoadingMore)) {
+      return Future.value(state);
+    }
+    return _executePaginatedResponse<T>(
+      state: state,
+      onUpdate: onUpdate,
+      page: refresh ? 1 : state.currentPage + 1,
+      refresh: refresh,
+      overwrite: false,
+      cursorMode: true,
+      key: key,
+      ct: ct,
+      onRotate: onRotate,
+      ars: ars,
+      disableRequestCancellation: disableRequestCancellation,
+      itemExtractor: itemExtractor,
+      invoke: (cancelToken) =>
+          action(effectiveCursor, state.pageSize, cancelToken),
+    );
+  }
+
+  /// Keyed wrapper around [fetchPaginatedCursorResponse] using
+  /// [keyedPaginatedResponses].
+  Future<LikePaginatedResponse<T>> fetchPaginatedCursorResponseByKey<T>({
+    required Object key,
+    required Future<dynamic> Function(String? cursor, int limit, CancelToken ct)
+    action,
+    int pageSize = 10,
+    bool refresh = false,
+    String? initialCursor,
+    LikePaginatedResponse<T>? initialValue,
+    LikeARS? ars,
+    bool disableRequestCancellation = false,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) {
+    final current = getPaginatedResponseByKey<T>(
+      key,
+      pageSize: pageSize,
+      initialValue: initialValue,
+    );
+    return fetchPaginatedCursorResponse<T>(
+      key: key,
+      state: current,
+      onUpdate: (next) => _keyedPaginatedResponses[key] = next,
+      action: action,
+      refresh: refresh,
+      initialCursor: initialCursor,
+      ars: ars,
+      disableRequestCancellation: disableRequestCancellation,
+      itemExtractor: itemExtractor,
+    );
+  }
+
+  Future<LikePaginatedResponse<T>> _executePaginatedResponse<T>({
+    required LikePaginatedResponse<T> state,
+    required void Function(LikePaginatedResponse<T> next) onUpdate,
+    required int page,
+    required bool refresh,
+    required bool overwrite,
+    required bool cursorMode,
+    required Future<dynamic> Function(CancelToken ct) invoke,
+    Object? key,
+    CancelToken? ct,
+    void Function(CancelToken next)? onRotate,
+    LikeARS? ars,
+    bool disableRequestCancellation = false,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) async {
+    if (_isDisposed) return state;
+    ars ??= const LikeARS();
+    if (ars.skip && state.isSuccess && state.hasData && !refresh && page == 1) {
+      return state;
+    }
+
+    final tokenKey = key ?? LikePaginatedResponse<T>;
+    final effectiveCt = ct ?? _responseTokens[tokenKey];
+    final next = disableRequestCancellation
+        ? (effectiveCt ?? CancelToken())
+        : newCT(effectiveCt);
+    if (onRotate != null) {
+      onRotate(next);
+    } else {
+      _responseTokens[tokenKey] = next;
+    }
+
+    bool checkObsolete() {
+      if (_isDisposed) return true;
+      if (onRotate == null) return _responseTokens[tokenKey] != next;
+      return false;
+    }
+
+    final effectivePage = cursorMode ? (refresh ? 1 : 2) : page;
+    final fallback = state;
+    final loadingSnapshot = state.startLoad(
+      page: effectivePage,
+      refresh: refresh,
+      overwrite: overwrite,
+    );
+    onUpdate(loadingSnapshot);
+    if (!_isDisposed) notifyListeners();
+
+    LikePaginatedResponse<T> commit(LikePaginatedResponse<T> nextState) {
+      if (!_isDisposed) {
+        onUpdate(nextState);
+        notifyListeners();
+      }
+      return nextState;
+    }
+
+    try {
+      final raw = await invoke(next);
+      if (checkObsolete()) return fallback;
+
+      final dynamic payload;
+      if (raw is LikeApiResult) {
+        if (!raw.isSuccess) {
+          final err =
+              raw.error ??
+              LikeError(
+                message: 'Could not load page $page',
+                type: LikeApiErrorType.unknown,
+              );
+          if (err.type == LikeApiErrorType.cancelled) return commit(fallback);
+          return commit(loadingSnapshot.applyError(err, page: effectivePage));
+        }
+        payload = raw.data;
+      } else if (raw is LikeStateResponse) {
+        if (!raw.isSuccess) {
+          final err =
+              raw.error ??
+              LikeError(
+                message: raw.message,
+                type: LikeApiErrorType.unknown,
+              );
+          if (err.type == LikeApiErrorType.cancelled) return commit(fallback);
+          return commit(loadingSnapshot.applyError(err, page: effectivePage));
+        }
+        payload = raw.data;
+      } else {
+        payload = raw;
+      }
+
+      final updated = cursorMode
+          ? loadingSnapshot.applyCursorPayload(
+              payload: payload,
+              refresh: refresh,
+              itemExtractor: itemExtractor,
+            )
+          : loadingSnapshot.applyPayload(
+              payload: payload,
+              page: page,
+              overwrite: overwrite,
+              itemExtractor: itemExtractor,
+            );
+      return commit(updated);
+    } catch (e) {
+      final isCancel = e is DioException && CancelToken.isCancel(e);
+      if (isCancel) {
+        if (!checkObsolete()) return commit(fallback);
+        return fallback;
+      }
+      if (!checkObsolete()) {
+        return commit(
+          loadingSnapshot.applyException(
+            'Something went wrong. Please try again.',
+            error: e,
+            page: effectivePage,
+          ),
+        );
+      }
+      return loadingSnapshot.applyException(
+        'Something went wrong. Please try again.',
+        error: e,
+        page: effectivePage,
+      );
+    }
+  }
+
+  /// Low-level paginated orchestrator managing [CancelToken] rotation,
+  /// loading/load-more/refreshing states, obsolete-call suppression, and
+  /// cancellation revert for [LikePaginatedResponse<T>].
+  Future<LikePaginatedResponse<T>> paginatedFetcher<T>({
+    required LikePaginatedResponse<T> state,
+    required void Function(LikePaginatedResponse<T> next) onUpdate,
+    required Future<dynamic> Function(CancelToken ct) action,
+    int page = 1,
+    bool refresh = false,
+    bool overwrite = false,
+    bool cursorMode = false,
+    Object? key,
+    CancelToken? ct,
+    void Function(CancelToken next)? onRotate,
+    LikeARS? ars,
+    bool disableRequestCancellation = false,
+    List<T> Function(dynamic data)? itemExtractor,
+  }) {
+    return _executePaginatedResponse<T>(
+      state: state,
+      onUpdate: onUpdate,
+      page: page,
+      refresh: refresh,
+      overwrite: overwrite,
+      cursorMode: cursorMode,
+      invoke: action,
+      key: key,
+      ct: ct,
+      onRotate: onRotate,
+      ars: ars,
+      disableRequestCancellation: disableRequestCancellation,
+      itemExtractor: itemExtractor,
+    );
+  }
+
   /// Low-level request orchestrator managing [CancelToken] rotation,
   /// loading/refreshing states, obsolete-call suppression, and cancellation revert.
+  ///
+  /// You can either pass [ct] + [onRotate] explicitly, or pass [key] (defaulting
+  /// to [T]) to let [LikeChangeNotifier] manage token rotation and disposal.
   Future<LikeStateResponse<T>> fetcher<T>({
     LikeARS? ars,
-    required CancelToken? ct,
-    required void Function(CancelToken next) onRotate,
+    Object? key,
+    CancelToken? ct,
+    void Function(CancelToken next)? onRotate,
     required Future<LikeStateResponse<T>> Function(CancelToken ct, LikeARS ars)
     action,
     required void Function(LikeStateResponse<T> state) onUpdate,
@@ -314,6 +678,9 @@ mixin LikeChangeNotifier on ChangeNotifier {
     bool Function(CancelToken next)? isObsolete,
     LikeStateResponse<T>? previousState,
   }) async {
+    if (_isDisposed) {
+      return previousState ?? LikeStateResponse<T>.idle();
+    }
     ars ??= const LikeARS();
 
     final activeState = Zone.current[#likeActiveState];
@@ -334,13 +701,22 @@ mixin LikeChangeNotifier on ChangeNotifier {
       return resolvedPreviousState;
     }
 
-    final next = disableRequestCancellation ? (ct ?? CancelToken()) : newCT(ct);
-    onRotate(next);
+    final tokenKey = key ?? T;
+    final effectiveCt = ct ?? (onRotate == null ? _responseTokens[tokenKey] : null);
+    final next = disableRequestCancellation
+        ? (effectiveCt ?? CancelToken())
+        : newCT(effectiveCt);
+    if (onRotate != null) {
+      onRotate(next);
+    } else {
+      _responseTokens[tokenKey] = next;
+    }
 
     bool checkObsolete() {
       if (_isDisposed) return true;
       if (isObsolete != null) return isObsolete(next);
       if (activeState is LikeNotifierState) return activeState.ct != next;
+      if (onRotate == null) return _responseTokens[tokenKey] != next;
       return false;
     }
 
@@ -364,10 +740,8 @@ mixin LikeChangeNotifier on ChangeNotifier {
 
     try {
       final useSilentLoading = ars.checkAvailability && currentData != null;
-      if (ars.refresh || useSilentLoading) {
-        if (currentData != null) {
-          onUpdate(LikeStateResponse<T>.refreshing(currentData));
-        }
+      if ((ars.refresh && currentData != null) || useSilentLoading) {
+        onUpdate(LikeStateResponse<T>.refreshing(currentData));
       } else {
         onUpdate(LikeStateResponse<T>.loading());
       }
@@ -420,6 +794,35 @@ mixin LikeChangeNotifier on ChangeNotifier {
     }
   }
 
+  /// Streamlined [fetcher] that unwraps [LikeApiResult] via `toStateResponse()`.
+  Future<LikeStateResponse<T>> fetcherResult<T>({
+    LikeARS? ars,
+    Object? key,
+    CancelToken? ct,
+    void Function(CancelToken next)? onRotate,
+    required Future<LikeApiResult<T>> Function(CancelToken ct, LikeARS ars)
+    action,
+    required void Function(LikeStateResponse<T> state) onUpdate,
+    bool disableRequestCancellation = false,
+    bool Function(CancelToken next)? isObsolete,
+    LikeStateResponse<T>? previousState,
+  }) {
+    return fetcher<T>(
+      ars: ars,
+      key: key,
+      ct: ct,
+      onRotate: onRotate,
+      onUpdate: onUpdate,
+      disableRequestCancellation: disableRequestCancellation,
+      isObsolete: isObsolete,
+      previousState: previousState,
+      action: (cancelToken, effectiveArs) async {
+        final result = await action(cancelToken, effectiveArs);
+        return result.toStateResponse();
+      },
+    );
+  }
+
   @override
   void dispose() {
     if (_isDisposed) return;
@@ -441,6 +844,7 @@ mixin LikeChangeNotifier on ChangeNotifier {
     }
     _responseTokens.clear();
     _keyedResponses.clear();
+    _keyedPaginatedResponses.clear();
     super.dispose();
   }
 }

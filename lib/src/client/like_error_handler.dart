@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:universal_io/io.dart';
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:like/src/models/like_error.dart';
 import 'package:like/src/core/like_constants.dart';

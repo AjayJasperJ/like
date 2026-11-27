@@ -92,7 +92,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(events, contains('visible:true'));
-      expect(events, contains('visibleRestored:false'));
+      expect(events, isNot(contains('visibleRestored:false')));
+      expect(events, isNot(contains('visibleRestored:true')));
       expect(find.text('screen-online'), findsOneWidget);
 
       // Push another route so the screen is covered (invisible).
@@ -115,14 +116,31 @@ void main() {
       expect(events, isNot(contains('recover')));
       expect(events, isNot(contains('restored:https://api.example.com:443')));
 
-      // Pop back to the screen: deferred recovery runs automatically.
+      // Pop back to the screen: deferred recovery runs onVisibleRestored(true)
+      // WITHOUT also firing onVisibilityChanged(true).
+      events.clear();
       tester.state<NavigatorState>(find.byType(Navigator)).pop();
       await tester.pumpAndSettle();
 
       expect(events, contains('restored:https://api.example.com:443'));
       expect(events, contains('recover'));
       expect(events, contains('visibleRestored:true'));
-      expect(events, contains('visible:true'));
+      expect(events, isNot(contains('visible:true')));
+
+      // Drop & restore connectivity while already visible: runs onVisibleRestored(true)
+      // WITHOUT firing onVisibilityChanged(true).
+      events.clear();
+      LikeConnectivityManager().markServerUnavailable(
+        serverUrl: 'https://api.example.com',
+      );
+      await tester.pumpAndSettle();
+      LikeConnectivityManager().markServerAvailable(
+        serverUrl: 'https://api.example.com',
+      );
+      await tester.pumpAndSettle();
+
+      expect(events, contains('visibleRestored:true'));
+      expect(events, isNot(contains('visible:true')));
     },
   );
 }

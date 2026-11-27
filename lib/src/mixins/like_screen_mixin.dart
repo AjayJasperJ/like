@@ -100,8 +100,12 @@ mixin LikeScreenMixin<T extends StatefulWidget> on State<T>
   /// origin restoration when the screen is visible.
   Future<void> onRecover() async {}
 
-  /// Combined callback invoked when the screen becomes visible (`restored = false`)
-  /// or when connectivity is restored while visible / upon returning (`restored = true`).
+  /// Invoked when connectivity is restored while this screen is visible (or
+  /// upon returning to this screen if restored while offscreen).
+  ///
+  /// Mutually exclusive with [onVisibilityChanged] (`true`): when a pending
+  /// restoration runs on screen return, [onVisibleRestored] fires instead of
+  /// [onVisibilityChanged].
   FutureOr<void> onVisibleRestored(bool restored) {}
 
   /// Explicit visibility signal for containers such as [IndexedStack] or
@@ -213,8 +217,7 @@ mixin LikeScreenMixin<T extends StatefulWidget> on State<T>
               _runRecovery(pending);
             }
           });
-        } else {
-          unawaited(Future<void>.sync(() => onVisibleRestored(false)));
+          return;
         }
       }
       onVisibilityChanged(visible);

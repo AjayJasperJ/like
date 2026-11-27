@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:like/src/services/like_service.dart';
 import 'package:like/src/services/like_invalidation.dart';
-import 'package:universal_io/io.dart' show SocketException;
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io'
+    show SocketException;
 import 'package:like/src/services/like_replay_codec.dart';
 import 'package:like/src/models/like_offline_task.dart';
 import 'package:uuid/uuid.dart';

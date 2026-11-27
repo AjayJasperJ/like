@@ -805,6 +805,146 @@ void main() {
 
     provider.dispose();
   });
+
+  test('LikePaginatedResponse works standalone and with LikeChangeNotifier keyedPaginatedResponses', () async {
+    // 1. Standalone immutable usage (e.g., Riverpod / Bloc / Cubit)
+    var standalone = LikePaginatedResponse<String>.idle(pageSize: 2);
+    expect(standalone.isIdle, isTrue);
+    standalone = standalone.startLoad(page: 1);
+    expect(standalone.isLoading, isTrue);
+    standalone = standalone.applyPayload(
+      page: 1,
+      payload: const PaginationTool<String>(
+        page: 1,
+        contentLimit: 2,
+        totalPages: 2,
+        totalContent: 4,
+        listData: ['a', 'b'],
+      ),
+    );
+    expect(standalone.isSuccess, isTrue);
+    expect(standalone.items, ['a', 'b']);
+    expect(standalone.hasMore, isTrue);
+
+    standalone = standalone.startLoad(page: 2);
+    expect(standalone.isLoadingMore, isTrue);
+    standalone = standalone.applyPayload(
+      page: 2,
+      payload: const PaginationTool<String>(
+        page: 2,
+        contentLimit: 2,
+        totalPages: 2,
+        totalContent: 4,
+        listData: ['c', 'd'],
+      ),
+    );
+    expect(standalone.items, ['a', 'b', 'c', 'd']);
+    expect(standalone.hasMore, isFalse);
+
+    // 2. LikeChangeNotifier keyedPaginatedResponses (page + cursor)
+    final provider = _TestLikeChangeNotifier();
+    expect(provider.keyedPaginatedResponses, isEmpty);
+
+    await provider.fetchPaginatedResponseByKey<String>(
+      key: 'feed',
+      page: 1,
+      pageSize: 2,
+      action: (page, limit, ct) async => PaginationTool<String>(
+        page: page,
+        contentLimit: limit,
+        totalPages: 2,
+        totalContent: 3,
+        listData: ['p1', 'p2'],
+      ),
+    );
+    expect(provider.getPaginatedResponseByKey<String>('feed').items, ['p1', 'p2']);
+
+    await provider.fetchPaginatedResponseByKey<String>(
+      key: 'feed',
+      page: 2,
+      pageSize: 2,
+      action: (page, limit, ct) async => PaginationTool<String>(
+        page: page,
+        contentLimit: limit,
+        totalPages: 2,
+        totalContent: 3,
+        listData: ['p3'],
+      ),
+    );
+    expect(provider.getPaginatedResponseByKey<String>('feed').items, ['p1', 'p2', 'p3']);
+    expect(provider.getPaginatedResponseByKey<String>('feed').hasMore, isFalse);
+
+    // Cursor mode via fetchPaginatedCursorResponseByKey
+    await provider.fetchPaginatedCursorResponseByKey<String>(
+      key: 'cursor_feed',
+      pageSize: 2,
+      refresh: true,
+      action: (cursor, limit, ct) async => PaginationTool<String>(
+        cursorBased: true,
+        cursor: cursor,
+        nextCursor: 'c2',
+        hasNextOverride: true,
+        listData: ['x1', 'x2'],
+      ),
+    );
+    expect(provider.getPaginatedResponseByKey<String>('cursor_feed').nextCursor, 'c2');
+
+    await provider.fetchPaginatedCursorResponseByKey<String>(
+      key: 'cursor_feed',
+      pageSize: 2,
+      action: (cursor, limit, ct) async {
+        expect(cursor, 'c2');
+        return PaginationTool<String>(
+          cursorBased: true,
+          cursor: cursor,
+          nextCursor: null,
+          hasNextOverride: false,
+          listData: ['x3'],
+        );
+      },
+    );
+    expect(provider.getPaginatedResponseByKey<String>('cursor_feed').items, ['x1', 'x2', 'x3']);
+    expect(provider.getPaginatedResponseByKey<String>('cursor_feed').hasMore, isFalse);
+
+    provider.toInitState('feed', 'cleared');
+    expect(provider.getPaginatedResponseByKey<String>('feed').isIdle, isTrue);
+    expect(provider.getPaginatedResponseByKey<String>('cursor_feed').items, ['x1', 'x2', 'x3']);
+
+    provider.dispose();
+  });
+
+  test('LikeChangeNotifier fetcher, fetcherResult, and paginatedFetcher support keyed token rotation', () async {
+    final provider = _TestLikeChangeNotifier();
+    var snapshot = LikeStateResponse<String>.idle();
+
+    final res = await provider.fetcherResult<String>(
+      key: 'profile_fetcher',
+      previousState: snapshot,
+      onUpdate: (next) => snapshot = next,
+      action: (ct, ars) async => LikeApiResult<String>.success('loaded'),
+    );
+    expect(res.data, 'loaded');
+    expect(snapshot.data, 'loaded');
+
+    var paged = LikePaginatedResponse<String>.idle(pageSize: 2);
+    paged = await provider.paginatedFetcher<String>(
+      key: 'paged_fetcher',
+      state: paged,
+      page: 1,
+      onUpdate: (next) => paged = next,
+      action: (ct) async => const PaginationTool<String>(
+        page: 1,
+        contentLimit: 2,
+        totalPages: 1,
+        totalContent: 2,
+        listData: ['a', 'b'],
+      ),
+    );
+    expect(paged.items, ['a', 'b']);
+    expect(paged.hasMore, isFalse);
+
+    provider.dispose();
+  });
 }
 
 class _TestLikeStateMixinProvider extends ChangeNotifier with LikeStateMixin {

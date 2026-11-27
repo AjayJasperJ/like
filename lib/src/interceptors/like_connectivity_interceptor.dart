@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:like/src/interceptors/like_retry_interceptor.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
-import 'package:universal_io/io.dart';
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io';
 
 /// Interceptor that checks connectivity before every request.
 /// Fails fast with [DioExceptionType.connectionError] if offline to avoid long timeouts.

@@ -1,4 +1,6 @@
-import 'package:universal_io/io.dart' show SocketException;
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io'
+    show SocketException;
 import 'package:like/src/core/like_retry_policy.dart';
 import 'dart:async';
 

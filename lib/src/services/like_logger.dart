@@ -1,10 +1,13 @@
 import 'package:like/src/diagnostics/like_redaction.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:universal_io/io.dart';
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:like/src/services/internal/like_paths_stub.dart'
+    if (dart.library.io) 'internal/like_paths_io.dart'
+    as like_paths;
 import 'package:synchronized/synchronized.dart';
 import 'package:like/src/core/like_constants.dart';
 
@@ -32,11 +35,15 @@ class LikeLogger {
     await _lock.synchronized(() async {
       if (_isInitialized) return;
       try {
-        final dir = await getApplicationDocumentsDirectory();
+        final dirPath = await like_paths.getDocsDirPath();
+        if (dirPath == null) {
+          _isInitialized = true;
+          return;
+        }
         final projectNamespace = LikeConstants.projectName
             .toLowerCase()
             .replaceAll(RegExp(r'[^a-z0-9_]'), '_');
-        _logFile = File('${dir.path}/${projectNamespace}_api_log.txt');
+        _logFile = File('$dirPath/${projectNamespace}_api_log.txt');
         if (!await _logFile!.exists()) {
           await _logFile!.create(recursive: true);
         }

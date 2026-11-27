@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.0] - 2026-11-28
+
+### Added
+- **`LikePaginatedResponse<T>` & `keyedPaginatedResponses`**: Immutable paginated state snapshot (`response`, `loadMoreResponse`, `pagination`, `pageSize`) usable with any state management (Riverpod, BLoC/Cubit, GetX, MobX, or `LikeChangeNotifier` via `getPaginatedResponseByKey`, `setPaginatedResponseByKey`, `fetchPaginatedResponse`, `fetchPaginatedResponseByKey`, `fetchPaginatedCursorResponse`, `fetchPaginatedCursorResponseByKey`).
+- **Mechanism-specific Builders & Slivers**: Added `LikeNotifierBuilder<T>`, `LikeNotifierSliver<T>`, `LikeResponseBuilder<T>`, and `LikeResponseSliver<T>` (with backwards-compatible `LikeStateResponseBuilder` / `LikeStateResponseBuilderSliver` typedefs).
+- **`LikeInfiniteScroll`**: Stateless `NotificationListener<ScrollNotification>` wrapper for load-more / infinite scrolling with `hasMore`, `threshold`, `scrollDirection` (`Axis.vertical` default), `notification.depth == 0`, and active `ModalRoute` gating.
+- **`LikeChangeNotifier` `fetcher` enhancements**: Added optional `key:`-based `CancelToken` management to `fetcher<T>`, plus `fetcherResult<T>` and `paginatedFetcher<T>`.
+- **Documentation**: Added `documents/like_screen_mixin.md` and expanded `documents/like_change_notifier.md` with offset-based pagination, `LikePaginatedResponse`, and a complete API reference.
+
+### Changed
+- **Full Web / Wasm Platform Compatibility (`pub.dev` `platform:web`)**: Replaced unconditional `universal_io`, `path_provider`, and `file` imports with `if (dart.library.io)` conditional imports (`like_io_stub.dart` / `like_paths_stub.dart`).
+- **Widget Optimizations**: Updated `LikeBuilder` / `LikeSliverBuilder` to use `ListenableBuilder` on unfiltered `LikeNotifierState` paths, render direct `LikeStateResponse` snapshots without `ValueNotifier` overhead, decouple `listener` from `buildWhen`/`selector` rebuild skipping, and safely fall back when `LikeState.error` has `error == null`.
+- **`LikeScreenMixin` Mutual Exclusion**: Made `onVisibilityChanged(true)` and `onVisibleRestored(true)` mutually exclusive on normal focus vs. connectivity restoration.
+
 ## [2.5.0] - 2026-11-26
 
 ### Added

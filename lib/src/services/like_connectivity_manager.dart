@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:like/src/core/like_constants.dart';
 import 'package:like/src/models/like_connectivity_check_result.dart';
 import 'package:like/src/models/like_connectivity_transition.dart';
-import 'package:universal_io/io.dart';
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io';
 
 /// Injectable connectivity interface check used by tests and embedders.
 typedef LikeInterfaceCheck = Future<List<ConnectivityResult>> Function();

@@ -21,6 +21,7 @@ export 'src/helpers/like_pagination.dart';
 
 // Models
 export 'src/models/like_state_response.dart';
+export 'src/models/like_paginated_response.dart';
 export 'src/models/like_notifier_state.dart';
 export 'src/models/like_error.dart';
 export 'src/models/like_api_result.dart';
@@ -50,6 +51,7 @@ export 'src/services/like_mock_controller.dart';
 
 // Widgets
 export 'src/widgets/like_builder.dart';
+export 'src/widgets/like_infinite_scroll.dart';
 export 'src/widgets/like_root.dart';
 export 'src/widgets/like_sliver_builder.dart';
 export 'src/widgets/like_when.dart';

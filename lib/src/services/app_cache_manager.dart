@@ -1,10 +1,13 @@
-import 'package:file/file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:like/src/core/like_constants.dart';
+import 'package:like/src/services/internal/like_paths_stub.dart'
+    if (dart.library.io) 'internal/like_paths_io.dart'
+    as like_paths;
 import 'package:like/src/services/like_logger.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:universal_io/io.dart' as io;
+import 'package:like/src/services/internal/like_io_stub.dart'
+    if (dart.library.io) 'dart:io'
+    as io;
 
 class AppCacheManager extends CacheManager {
   /// Version 2 stores ordinary image files. The namespace change prevents
@@ -57,14 +60,15 @@ class AppCacheManager extends CacheManager {
 
     return stream.asyncMap((response) async {
       if (response is FileInfo) {
-        await _updateAccessTime(response.file);
+        await _updateAccessTime(response.file.path);
       }
       return response;
     });
   }
 
-  Future<void> _updateAccessTime(File file) async {
+  Future<void> _updateAccessTime(String path) async {
     try {
+      final file = io.File(path);
       if (await file.exists()) {
         await file.setLastModified(DateTime.now());
       }
@@ -72,7 +76,7 @@ class AppCacheManager extends CacheManager {
       LikeLogger.log(
         level: LikeLogLevel.warning,
         category: 'cache_manager',
-        message: 'Failed to update access time for ${file.path}: $e',
+        message: 'Failed to update access time for $path: $e',
       );
     }
   }
@@ -85,8 +89,9 @@ class AppCacheManager extends CacheManager {
     final limitMin = minMB ?? LikeConstants.minImageCacheMB;
 
     try {
-      final cacheDir = await getTemporaryDirectory();
-      final directory = io.Directory('${cacheDir.path}/$key');
+      final cachePath = await like_paths.getTempDirPath();
+      if (cachePath == null) return;
+      final directory = io.Directory('$cachePath/$key');
 
       if (await directory.exists()) {
         final entities = await directory.list().toList();
@@ -150,8 +155,9 @@ class AppCacheManager extends CacheManager {
 
     // Remove remaining cache binaries while preserving cache-manager metadata.
     try {
-      final cacheDir = await getTemporaryDirectory();
-      final directory = io.Directory('${cacheDir.path}/$key');
+      final cachePath = await like_paths.getTempDirPath();
+      if (cachePath == null) return;
+      final directory = io.Directory('$cachePath/$key');
       if (await directory.exists()) {
         final entities = await directory.list(recursive: true).toList();
         for (final entity in entities) {

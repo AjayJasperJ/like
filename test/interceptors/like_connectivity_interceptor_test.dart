@@ -10,7 +10,7 @@ import 'package:like/like.dart';
 import 'package:like/src/interceptors/like_connectivity_interceptor.dart';
 import 'package:like/src/interceptors/like_retry_interceptor.dart';
 import 'package:like/src/services/like_connectivity_manager.dart';
-import 'package:universal_io/io.dart';
+import 'dart:io';
 
 class _AlwaysFailingAdapter implements HttpClientAdapter {
   int calls = 0;
